@@ -5,7 +5,7 @@ LABELFILE	= kick.label
 MAPFILE		= kick.map
 SOURCES		= kickstart_debug.a65 kickstart_freeze.a65 kickstart_process_descriptor.a65 kickstart_syspart.a65 kickstart_ultimax.a65 kickstart.a65 kickstart_dos.a65 kickstart_keyboard.a65 kickstart_mem.a65 kickstart_sdfat.a65 kickstart_task.a65 kickstart_virtual_f011.a65
 LISTFILES	= $(SOURCES:.a65=.list)
-INCLUDES	= kickstart.i65 kickstart_machine.a65
+INCLUDES	= kickstart.i65
 OBJECTS		= $(SOURCES:.a65=.o)
 LD65CFG		= kickstart-ld.cfg
 TARBALL		= kickstart.tar.bz2

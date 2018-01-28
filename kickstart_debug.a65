@@ -17,7 +17,6 @@
 
 
 .INCLUDE "kickstart.i65"
-.INCLUDE "kickstart_machine.a65"
 
 .SEGMENT "CODE"
 

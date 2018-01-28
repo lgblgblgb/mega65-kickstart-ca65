@@ -1,5 +1,4 @@
         .include "kickstart.i65"
-        .include "kickstart_machine.a65"
 
 .SEGMENT "CODE"
 

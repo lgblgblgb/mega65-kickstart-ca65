@@ -4,8 +4,7 @@
 ; These routines provide support for FAT32 and SDCARD support.
 
 
-        .include "kickstart.i65"
-        .include "kickstart_machine.a65"
+.include "kickstart.i65"
 
 .SEGMENT "CODE"
 

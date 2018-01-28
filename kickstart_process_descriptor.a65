@@ -5,10 +5,10 @@
 
 ; Process description (first 128 bytes)
 
+.INCLUDE "kickstart.i65"
 
 .SEGMENT "BD00SEG"
 
-.INCLUDE "kickstart.i65"
 
 .EXPORT currenttask_block
 currenttask_block:
