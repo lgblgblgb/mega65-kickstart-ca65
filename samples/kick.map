@@ -1,0 +1,634 @@
+Modules list:
+-------------
+kickstart_debug.o:
+    CODE              Offs=000000  Size=000576  Align=00001  Fill=0000
+    RODATA            Offs=000000  Size=000000  Align=00001  Fill=0000
+    BSS               Offs=000000  Size=000000  Align=00001  Fill=0000
+    DATA              Offs=000000  Size=000000  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000000  Size=000000  Align=00001  Fill=0000
+    NULL              Offs=000000  Size=000000  Align=00001  Fill=0000
+kickstart_freeze.o:
+    CODE              Offs=000576  Size=00026C  Align=00001  Fill=0000
+    RODATA            Offs=000000  Size=000000  Align=00001  Fill=0000
+    BSS               Offs=000000  Size=000000  Align=00001  Fill=0000
+    DATA              Offs=000000  Size=000000  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000000  Size=000000  Align=00001  Fill=0000
+    NULL              Offs=000000  Size=000000  Align=00001  Fill=0000
+kickstart_process_descriptor.o:
+    CODE              Offs=0007E2  Size=000000  Align=00001  Fill=0000
+    RODATA            Offs=000000  Size=000000  Align=00001  Fill=0000
+    BSS               Offs=000000  Size=000000  Align=00001  Fill=0000
+    DATA              Offs=000000  Size=000000  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000000  Size=000000  Align=00001  Fill=0000
+    NULL              Offs=000000  Size=000000  Align=00001  Fill=0000
+    BD00SEG           Offs=000000  Size=000011  Align=00001  Fill=0000
+    BD80SEG           Offs=000000  Size=000020  Align=00001  Fill=0000
+kickstart_syspart.o:
+    CODE              Offs=0007E2  Size=000297  Align=00001  Fill=0000
+    RODATA            Offs=000000  Size=000000  Align=00001  Fill=0000
+    BSS               Offs=000000  Size=000000  Align=00001  Fill=0000
+    DATA              Offs=000000  Size=000000  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000000  Size=000000  Align=00001  Fill=0000
+    NULL              Offs=000000  Size=000000  Align=00001  Fill=0000
+kickstart_ultimax.o:
+    CODE              Offs=000A79  Size=000047  Align=00001  Fill=0000
+    RODATA            Offs=000000  Size=000000  Align=00001  Fill=0000
+    BSS               Offs=000000  Size=000000  Align=00001  Fill=0000
+    DATA              Offs=000000  Size=000000  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000000  Size=000000  Align=00001  Fill=0000
+    NULL              Offs=000000  Size=000000  Align=00001  Fill=0000
+kickstart.o:
+    CODE              Offs=000AC0  Size=001314  Align=00001  Fill=0000
+    RODATA            Offs=000000  Size=000000  Align=00001  Fill=0000
+    BSS               Offs=000000  Size=000000  Align=00001  Fill=0000
+    DATA              Offs=000000  Size=000000  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000000  Size=000036  Align=00001  Fill=0000
+    NULL              Offs=000000  Size=000000  Align=00001  Fill=0000
+    CE00STUFF         Offs=000000  Size=000010  Align=00001  Fill=0000
+    TRAP              Offs=000000  Size=000140  Align=00001  Fill=0000
+    VEC               Offs=000000  Size=000008  Align=00001  Fill=0000
+    BB00SEG           Offs=000000  Size=000000  Align=00001  Fill=0000
+    BBC0SEG           Offs=000000  Size=000030  Align=00001  Fill=0000
+    BC00SEG           Offs=000000  Size=0000F9  Align=00001  Fill=0000
+    BD00SEG           Offs=000011  Size=000000  Align=00001  Fill=0000
+    STACK             Offs=000000  Size=000000  Align=00001  Fill=0000
+kickstart_dos.o:
+    CODE              Offs=001DD4  Size=0013E8  Align=00001  Fill=0000
+    RODATA            Offs=000000  Size=000000  Align=00001  Fill=0000
+    BSS               Offs=000000  Size=000000  Align=00001  Fill=0000
+    DATA              Offs=000000  Size=000000  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000036  Size=000000  Align=00001  Fill=0000
+    NULL              Offs=000000  Size=000000  Align=00001  Fill=0000
+kickstart_keyboard.o:
+    CODE              Offs=0031BC  Size=000012  Align=00001  Fill=0000
+    RODATA            Offs=000000  Size=000000  Align=00001  Fill=0000
+    BSS               Offs=000000  Size=000000  Align=00001  Fill=0000
+    DATA              Offs=000000  Size=000000  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000036  Size=000000  Align=00001  Fill=0000
+    NULL              Offs=000000  Size=000000  Align=00001  Fill=0000
+kickstart_mem.o:
+    CODE              Offs=0031CE  Size=0000F0  Align=00001  Fill=0000
+    RODATA            Offs=000000  Size=000000  Align=00001  Fill=0000
+    BSS               Offs=000000  Size=000000  Align=00001  Fill=0000
+    DATA              Offs=000000  Size=000000  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000036  Size=000000  Align=00001  Fill=0000
+    NULL              Offs=000000  Size=000000  Align=00001  Fill=0000
+kickstart_sdfat.o:
+    CODE              Offs=0032BE  Size=0001FB  Align=00001  Fill=0000
+    RODATA            Offs=000000  Size=000000  Align=00001  Fill=0000
+    BSS               Offs=000000  Size=000000  Align=00001  Fill=0000
+    DATA              Offs=000000  Size=000000  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000036  Size=000000  Align=00001  Fill=0000
+    NULL              Offs=000000  Size=000000  Align=00001  Fill=0000
+kickstart_task.o:
+    CODE              Offs=0034B9  Size=0000FD  Align=00001  Fill=0000
+    RODATA            Offs=000000  Size=000000  Align=00001  Fill=0000
+    BSS               Offs=000000  Size=000000  Align=00001  Fill=0000
+    DATA              Offs=000000  Size=000000  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000036  Size=000000  Align=00001  Fill=0000
+    NULL              Offs=000000  Size=000000  Align=00001  Fill=0000
+kickstart_virtual_f011.o:
+    CODE              Offs=0035B6  Size=000047  Align=00001  Fill=0000
+    RODATA            Offs=000000  Size=000000  Align=00001  Fill=0000
+    BSS               Offs=000000  Size=000000  Align=00001  Fill=0000
+    DATA              Offs=000000  Size=000000  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000036  Size=000000  Align=00001  Fill=0000
+    NULL              Offs=000000  Size=000000  Align=00001  Fill=0000
+
+
+Segment list:
+-------------
+Name                   Start     End    Size  Align
+----------------------------------------------------
+BSS                   000000  000000  000000  00001
+NULL                  000000  000000  000000  00001
+TRAP                  008000  00813F  000140  00001
+VEC                   0081F8  0081FF  000008  00001
+CODE                  008200  00B7FC  0035FD  00001
+DATA                  00B7FD  00B7FD  000000  00001
+RODATA                00B7FD  00B7FD  000000  00001
+BB00SEG               00BB00  00BB00  000000  00001
+BBC0SEG               00BBC0  00BBEF  000030  00001
+BC00SEG               00BC00  00BCF8  0000F9  00001
+BD00SEG               00BD00  00BD10  000011  00001
+BD80SEG               00BD80  00BD9F  000020  00001
+STACK                 00BE00  00BE00  000000  00001
+ZEROPAGE              00BF00  00BF35  000036  00001
+CE00STUFF             00CE00  00CE0F  000010  00001
+
+
+Exports list by name:
+---------------------
+__BB00AREA_FILEOFFS__     003B00  EA    __BB00AREA_LAST__         00BB00  LA    
+__BB00AREA_SIZE__         0000C0  EA    __BB00AREA_START__        00BB00  LA    
+__BB00SEG_LOAD__          00BB00  LA    __BB00SEG_RUN__           00BB00  LA    
+__BB00SEG_SIZE__          000000  EA    __BBC0AREA_FILEOFFS__     003BC0  EA    
+__BBC0AREA_LAST__         00BBF0  LA    __BBC0AREA_SIZE__         000040  EA    
+__BBC0AREA_START__        00BBC0  LA    __BBC0SEG_LOAD__          00BBC0  LA    
+__BBC0SEG_RUN__           00BBC0  LA    __BBC0SEG_SIZE__          000030  EA    
+__BC00AREA_FILEOFFS__     003C00  EA    __BC00AREA_LAST__         00BCF9  LA    
+__BC00AREA_SIZE__         000100  EA    __BC00AREA_START__        00BC00  LA    
+__BC00SEG_LOAD__          00BC00  LA    __BC00SEG_RUN__           00BC00  LA    
+__BC00SEG_SIZE__          0000F9  EA    __BD00AREA_FILEOFFS__     003D00  EA    
+__BD00AREA_LAST__         00BD11  LA    __BD00AREA_SIZE__         000080  EA    
+__BD00AREA_START__        00BD00  LA    __BD00SEG_LOAD__          00BD00  LA    
+__BD00SEG_RUN__           00BD00  LA    __BD00SEG_SIZE__          000011  EA    
+__BD80AREA_FILEOFFS__     003D80  EA    __BD80AREA_LAST__         00BDA0  LA    
+__BD80AREA_SIZE__         000080  EA    __BD80AREA_START__        00BD80  LA    
+__BD80SEG_LOAD__          00BD80  LA    __BD80SEG_RUN__           00BD80  LA    
+__BD80SEG_SIZE__          000020  EA    __BE00AREA_FILEOFFS__     003E00  EA    
+__BE00AREA_LAST__         00BE00  LA    __BE00AREA_SIZE__         000100  EA    
+__BE00AREA_START__        00BE00  LA    __BF00AREA_FILEOFFS__     003F00  EA    
+__BF00AREA_LAST__         00BF36  LA    __BF00AREA_SIZE__         000100  EA    
+__BF00AREA_START__        00BF00  LA    __CE00STUFF_LOAD__        00CE00  LA    
+__CE00STUFF_RUN__         00CE00  LA    __CE00STUFF_SIZE__        000010  EA    
+__CODE_LOAD__             008200  LA    __CODE_RUN__              008200  LA    
+__CODE_SIZE__             0035FD  EA    __DATA_LOAD__             00B7FD  LA    
+__DATA_RUN__              00B7FD  LA    __DATA_SIZE__             000000  EA    
+__GENAREA_FILEOFFS__      000200  EA    __GENAREA_LAST__          00B7FD  LA    
+__GENAREA_SIZE__          003900  EA    __GENAREA_START__         008200  LA    
+__RODATA_LOAD__           00B7FD  LA    __RODATA_RUN__            00B7FD  LA    
+__RODATA_SIZE__           000000  EA    __STACK_LOAD__            00BE00  LA    
+__STACK_RUN__             00BE00  LA    __STACK_SIZE__            000000  EA    
+__TRAPAREA_FILEOFFS__     000000  EA    __TRAPAREA_LAST__         008140  LA    
+__TRAPAREA_SIZE__         0001F8  EA    __TRAPAREA_START__        008000  LA    
+__TRAP_LOAD__             008000  LA    __TRAP_RUN__              008000  LA    
+__TRAP_SIZE__             000140  EA    __VECAREA_FILEOFFS__      0001F8  EA    
+__VECAREA_LAST__          008200  LA    __VECAREA_SIZE__          000008  EA    
+__VECAREA_START__         0081F8  LA    __VEC_LOAD__              0081F8  LA    
+__VEC_RUN__               0081F8  LA    __VEC_SIZE__              000008  EA    
+__ZEROPAGE_LOAD__         00BF00  LA    __ZEROPAGE_RUN__          00BF00  LA    
+__ZEROPAGE_SIZE__         000036  EA    checkpoint                00982B RLA    
+checkpoint_bytetohex      009905 RLA    currenttask_block         00BD00 RLA    
+currenttask_filedescriptor0 00BD80 RLA    currenttask_filedescriptor1 00BDA0 REA    
+currenttask_filedescriptor2 00BDC0 REA    currenttask_filedescriptor3 00BDE0 REA    
+currenttask_id            00BD00 RLA    d81_clustercount          00CE0E RLA    
+d81_clusternumber         00CE08 RLA    d81_clustersneeded        00CE0C RLA    
+dos_and_process_trap      009FD4 RLA    dos_cdroot                00A891 RLA    
+dos_clear_filedescriptors 00A342 RLA    dos_clearall              00A93D RLA    
+dos_closefile             00A969 RLA    dos_current_cluster       00BCAF RLA    
+dos_current_file_descriptor 00BCF4 RLA    dos_current_file_descriptor_offset 00BCF5 RLA    
+dos_current_sector        00BCAB RLA    dos_d81attach             00B1C3 RLA    
+dos_default_disk          00BC02 RLA    dos_dirent_cluster        00BC5D RLA    
+dos_dirent_length         00BC61 RLA    dos_dirent_longfilename   00BC0F RLA    
+dos_dirent_longfilename_length 00BC4F RLA    dos_dirent_shortfilename  00BC50 RLA    
+dos_dirent_type_and_attribs 00BC65 RLA    dos_disk_count            00BC01 RLA    
+dos_disk_current_disk     00BC03 RLA    dos_disk_cwd_cluster      00BC05 RLA    
+dos_disk_table            00BB00 RLA    dos_disk_table_offset     00BC04 RLA    
+dos_error_code            00BCF6 RLA    dos_file_descriptors      00BCB4 RLA    
+dos_file_loadaddress      00BF18 RLZ    dos_findfile              00A992 RLA    
+dos_get_file_descriptor_offset 00AFA2 RLA    dos_read_partitiontable   00A352 RLA    
+dos_readfileintomemory    00B147 RLA    dos_requested_filename    00BC67 RLA    
+dos_requested_filename_len 00BC66 RLA    dos_return_error          00A84B RLA    
+dos_scratch_byte_1        00BF04 RLZ    dos_scratch_byte_2        00BF05 RLZ    
+dos_scratch_vector        00BF00 RLZ    dos_sectorsread           00BCA9 RLA    
+dos_setname               00B1A1 RLA    double_restore_trap       00B764 RLA    
+dump_disk_count           0086C1 RLA    dump_disk_table           0084BD RLA    
+dumpcurrentfd             008200 RLA    dumpfddata                008242 RLA    
+dumpsectoraddress         008343 RLA    f011_virtual_read         00B7B6 RLA    
+f011_virtual_write        00B7FA RLA    freeze_to_slot            008776 RLA    
+hypervisor_setup_copy_region 0097BD RLA    hypervisor_userspace_copy_vector 00BF06 RLZ    
+invalid_subfunction       008D33 RLA    kickstart_scratchbyte0    00BC00 RLA    
+longpeek                  0096EE RLA    matrix_mode_toggle        00B79C RLA    
+memory_trap               00B426 RLA    msg_clusternumber         009DC3 RLA    
+msg_diskdata              009D08 RLA    msg_diskdata0             009CFC RLA    
+msg_foundsdcard           009C18 RLA    msg_foundsdhccard         009C30 RLA    
+msg_sdredoread            009C65 RLA    msg_sectoraddress         009DDC RLA    
+page_fault                00B3CE RLA    printhex                  009676 RLA    
+printmessage              0095EE RLA    protected_hardware_config 00B78A RLA    
+readmbr                   00B4C9 RLA    reset_machine_state       008D36 RLA    
+return_from_trap_with_failure 008D00 RLA    return_from_trap_with_success 008CD0 RLA    
+scankeyboard              00B3C7 RLA    sd_fix_sectornumber       00B684 RLA    
+sd_inc_fixedsectornumber  00B650 RLA    sd_map_sectorbuffer       00B5BB RLA    
+sd_readsector             00B5CB RLA    sd_unmap_sectorbuffer     00B5C2 RLA    
+sdcounter                 00BF33 RLZ    sdwaitawhile              00B57E RLA    
+setup_for_ultimax_cartridge 008C79 RLA    syspart_error_code        00BCF7 RLA    
+syspart_freeze_area_start 00BBD0 RLA    syspart_freeze_directory_sector_count 00BBDE RLA    
+syspart_freeze_slot_count 00BBDC RLA    syspart_freeze_slot_size_in_bytes 00BBD8 RLA    
+syspart_locate_freezeslot 008A90 RLA    syspart_open              0089E2 RLA    
+syspart_present           00BCF8 RLA    syspart_service_slot_count 00BBEC RLA    
+syspart_start_sector      00BBC0 RLA    syspart_structure         00BBC0 RLA    
+syspart_trap              008BF1 RLA    task_dummy_nmi_vector     00B72C RLA    
+task_set_c64_memorymap    00B6BC RLA    task_set_pc_to_reset_vector 00B708 RLA    
+toupper                   00B4BE RLA    trap_dos_d81attach        00A2DF  LA    
+
+
+
+Exports list by value:
+----------------------
+__BB00SEG_SIZE__          000000  EA    __DATA_SIZE__             000000  EA    
+__RODATA_SIZE__           000000  EA    __STACK_SIZE__            000000  EA    
+__TRAPAREA_FILEOFFS__     000000  EA    __VECAREA_SIZE__          000008  EA    
+__VEC_SIZE__              000008  EA    __CE00STUFF_SIZE__        000010  EA    
+__BD00SEG_SIZE__          000011  EA    __BD80SEG_SIZE__          000020  EA    
+__BBC0SEG_SIZE__          000030  EA    __ZEROPAGE_SIZE__         000036  EA    
+__BBC0AREA_SIZE__         000040  EA    __BD00AREA_SIZE__         000080  EA    
+__BD80AREA_SIZE__         000080  EA    __BB00AREA_SIZE__         0000C0  EA    
+__BC00SEG_SIZE__          0000F9  EA    __BC00AREA_SIZE__         000100  EA    
+__BE00AREA_SIZE__         000100  EA    __BF00AREA_SIZE__         000100  EA    
+__TRAP_SIZE__             000140  EA    __TRAPAREA_SIZE__         0001F8  EA    
+__VECAREA_FILEOFFS__      0001F8  EA    __GENAREA_FILEOFFS__      000200  EA    
+__CODE_SIZE__             0035FD  EA    __GENAREA_SIZE__          003900  EA    
+__BB00AREA_FILEOFFS__     003B00  EA    __BBC0AREA_FILEOFFS__     003BC0  EA    
+__BC00AREA_FILEOFFS__     003C00  EA    __BD00AREA_FILEOFFS__     003D00  EA    
+__BD80AREA_FILEOFFS__     003D80  EA    __BE00AREA_FILEOFFS__     003E00  EA    
+__BF00AREA_FILEOFFS__     003F00  EA    __TRAPAREA_START__        008000  LA    
+__TRAP_LOAD__             008000  LA    __TRAP_RUN__              008000  LA    
+__TRAPAREA_LAST__         008140  LA    __VECAREA_START__         0081F8  LA    
+__VEC_LOAD__              0081F8  LA    __VEC_RUN__               0081F8  LA    
+__CODE_LOAD__             008200  LA    __CODE_RUN__              008200  LA    
+__GENAREA_START__         008200  LA    __VECAREA_LAST__          008200  LA    
+dumpcurrentfd             008200 RLA    dumpfddata                008242 RLA    
+dumpsectoraddress         008343 RLA    dump_disk_table           0084BD RLA    
+dump_disk_count           0086C1 RLA    freeze_to_slot            008776 RLA    
+syspart_open              0089E2 RLA    syspart_locate_freezeslot 008A90 RLA    
+syspart_trap              008BF1 RLA    setup_for_ultimax_cartridge 008C79 RLA    
+return_from_trap_with_success 008CD0 RLA    return_from_trap_with_failure 008D00 RLA    
+invalid_subfunction       008D33 RLA    reset_machine_state       008D36 RLA    
+printmessage              0095EE RLA    printhex                  009676 RLA    
+longpeek                  0096EE RLA    hypervisor_setup_copy_region 0097BD RLA    
+checkpoint                00982B RLA    checkpoint_bytetohex      009905 RLA    
+msg_foundsdcard           009C18 RLA    msg_foundsdhccard         009C30 RLA    
+msg_sdredoread            009C65 RLA    msg_diskdata0             009CFC RLA    
+msg_diskdata              009D08 RLA    msg_clusternumber         009DC3 RLA    
+msg_sectoraddress         009DDC RLA    dos_and_process_trap      009FD4 RLA    
+trap_dos_d81attach        00A2DF  LA    dos_clear_filedescriptors 00A342 RLA    
+dos_read_partitiontable   00A352 RLA    dos_return_error          00A84B RLA    
+dos_cdroot                00A891 RLA    dos_clearall              00A93D RLA    
+dos_closefile             00A969 RLA    dos_findfile              00A992 RLA    
+dos_get_file_descriptor_offset 00AFA2 RLA    dos_readfileintomemory    00B147 RLA    
+dos_setname               00B1A1 RLA    dos_d81attach             00B1C3 RLA    
+scankeyboard              00B3C7 RLA    page_fault                00B3CE RLA    
+memory_trap               00B426 RLA    toupper                   00B4BE RLA    
+readmbr                   00B4C9 RLA    sdwaitawhile              00B57E RLA    
+sd_map_sectorbuffer       00B5BB RLA    sd_unmap_sectorbuffer     00B5C2 RLA    
+sd_readsector             00B5CB RLA    sd_inc_fixedsectornumber  00B650 RLA    
+sd_fix_sectornumber       00B684 RLA    task_set_c64_memorymap    00B6BC RLA    
+task_set_pc_to_reset_vector 00B708 RLA    task_dummy_nmi_vector     00B72C RLA    
+double_restore_trap       00B764 RLA    protected_hardware_config 00B78A RLA    
+matrix_mode_toggle        00B79C RLA    f011_virtual_read         00B7B6 RLA    
+f011_virtual_write        00B7FA RLA    __DATA_LOAD__             00B7FD  LA    
+__DATA_RUN__              00B7FD  LA    __GENAREA_LAST__          00B7FD  LA    
+__RODATA_LOAD__           00B7FD  LA    __RODATA_RUN__            00B7FD  LA    
+__BB00AREA_LAST__         00BB00  LA    __BB00AREA_START__        00BB00  LA    
+__BB00SEG_LOAD__          00BB00  LA    __BB00SEG_RUN__           00BB00  LA    
+dos_disk_table            00BB00 RLA    __BBC0AREA_START__        00BBC0  LA    
+__BBC0SEG_LOAD__          00BBC0  LA    __BBC0SEG_RUN__           00BBC0  LA    
+syspart_start_sector      00BBC0 RLA    syspart_structure         00BBC0 RLA    
+syspart_freeze_area_start 00BBD0 RLA    syspart_freeze_slot_size_in_bytes 00BBD8 RLA    
+syspart_freeze_slot_count 00BBDC RLA    syspart_freeze_directory_sector_count 00BBDE RLA    
+syspart_service_slot_count 00BBEC RLA    __BBC0AREA_LAST__         00BBF0  LA    
+__BC00AREA_START__        00BC00  LA    __BC00SEG_LOAD__          00BC00  LA    
+__BC00SEG_RUN__           00BC00  LA    kickstart_scratchbyte0    00BC00 RLA    
+dos_disk_count            00BC01 RLA    dos_default_disk          00BC02 RLA    
+dos_disk_current_disk     00BC03 RLA    dos_disk_table_offset     00BC04 RLA    
+dos_disk_cwd_cluster      00BC05 RLA    dos_dirent_longfilename   00BC0F RLA    
+dos_dirent_longfilename_length 00BC4F RLA    dos_dirent_shortfilename  00BC50 RLA    
+dos_dirent_cluster        00BC5D RLA    dos_dirent_length         00BC61 RLA    
+dos_dirent_type_and_attribs 00BC65 RLA    dos_requested_filename_len 00BC66 RLA    
+dos_requested_filename    00BC67 RLA    dos_sectorsread           00BCA9 RLA    
+dos_current_sector        00BCAB RLA    dos_current_cluster       00BCAF RLA    
+dos_file_descriptors      00BCB4 RLA    dos_current_file_descriptor 00BCF4 RLA    
+dos_current_file_descriptor_offset 00BCF5 RLA    dos_error_code            00BCF6 RLA    
+syspart_error_code        00BCF7 RLA    syspart_present           00BCF8 RLA    
+__BC00AREA_LAST__         00BCF9  LA    __BD00AREA_START__        00BD00  LA    
+__BD00SEG_LOAD__          00BD00  LA    __BD00SEG_RUN__           00BD00  LA    
+currenttask_block         00BD00 RLA    currenttask_id            00BD00 RLA    
+__BD00AREA_LAST__         00BD11  LA    __BD80AREA_START__        00BD80  LA    
+__BD80SEG_LOAD__          00BD80  LA    __BD80SEG_RUN__           00BD80  LA    
+currenttask_filedescriptor0 00BD80 RLA    __BD80AREA_LAST__         00BDA0  LA    
+currenttask_filedescriptor1 00BDA0 REA    currenttask_filedescriptor2 00BDC0 REA    
+currenttask_filedescriptor3 00BDE0 REA    __BE00AREA_LAST__         00BE00  LA    
+__BE00AREA_START__        00BE00  LA    __STACK_LOAD__            00BE00  LA    
+__STACK_RUN__             00BE00  LA    __BF00AREA_START__        00BF00  LA    
+__ZEROPAGE_LOAD__         00BF00  LA    __ZEROPAGE_RUN__          00BF00  LA    
+dos_scratch_vector        00BF00 RLZ    dos_scratch_byte_1        00BF04 RLZ    
+dos_scratch_byte_2        00BF05 RLZ    hypervisor_userspace_copy_vector 00BF06 RLZ    
+dos_file_loadaddress      00BF18 RLZ    sdcounter                 00BF33 RLZ    
+__BF00AREA_LAST__         00BF36  LA    __CE00STUFF_LOAD__        00CE00  LA    
+__CE00STUFF_RUN__         00CE00  LA    d81_clusternumber         00CE08 RLA    
+d81_clustersneeded        00CE0C RLA    d81_clustercount          00CE0E RLA    
+
+
+
+Imports list:
+-------------
+__BB00AREA_FILEOFFS__ ([linker generated]):
+__BB00AREA_LAST__ ([linker generated]):
+__BB00AREA_SIZE__ ([linker generated]):
+__BB00AREA_START__ ([linker generated]):
+__BB00SEG_LOAD__ ([linker generated]):
+__BB00SEG_RUN__ ([linker generated]):
+__BB00SEG_SIZE__ ([linker generated]):
+__BBC0AREA_FILEOFFS__ ([linker generated]):
+__BBC0AREA_LAST__ ([linker generated]):
+__BBC0AREA_SIZE__ ([linker generated]):
+__BBC0AREA_START__ ([linker generated]):
+__BBC0SEG_LOAD__ ([linker generated]):
+__BBC0SEG_RUN__ ([linker generated]):
+__BBC0SEG_SIZE__ ([linker generated]):
+__BC00AREA_FILEOFFS__ ([linker generated]):
+__BC00AREA_LAST__ ([linker generated]):
+__BC00AREA_SIZE__ ([linker generated]):
+__BC00AREA_START__ ([linker generated]):
+__BC00SEG_LOAD__ ([linker generated]):
+__BC00SEG_RUN__ ([linker generated]):
+__BC00SEG_SIZE__ ([linker generated]):
+__BD00AREA_FILEOFFS__ ([linker generated]):
+__BD00AREA_LAST__ ([linker generated]):
+__BD00AREA_SIZE__ ([linker generated]):
+__BD00AREA_START__ ([linker generated]):
+__BD00SEG_LOAD__ ([linker generated]):
+__BD00SEG_RUN__ ([linker generated]):
+__BD00SEG_SIZE__ ([linker generated]):
+__BD80AREA_FILEOFFS__ ([linker generated]):
+__BD80AREA_LAST__ ([linker generated]):
+__BD80AREA_SIZE__ ([linker generated]):
+__BD80AREA_START__ ([linker generated]):
+__BD80SEG_LOAD__ ([linker generated]):
+__BD80SEG_RUN__ ([linker generated]):
+__BD80SEG_SIZE__ ([linker generated]):
+__BE00AREA_FILEOFFS__ ([linker generated]):
+__BE00AREA_LAST__ ([linker generated]):
+__BE00AREA_SIZE__ ([linker generated]):
+__BE00AREA_START__ ([linker generated]):
+__BF00AREA_FILEOFFS__ ([linker generated]):
+__BF00AREA_LAST__ ([linker generated]):
+__BF00AREA_SIZE__ ([linker generated]):
+__BF00AREA_START__ ([linker generated]):
+__CE00STUFF_LOAD__ ([linker generated]):
+__CE00STUFF_RUN__ ([linker generated]):
+__CE00STUFF_SIZE__ ([linker generated]):
+__CODE_LOAD__ ([linker generated]):
+__CODE_RUN__ ([linker generated]):
+__CODE_SIZE__ ([linker generated]):
+__DATA_LOAD__ ([linker generated]):
+__DATA_RUN__ ([linker generated]):
+__DATA_SIZE__ ([linker generated]):
+__GENAREA_FILEOFFS__ ([linker generated]):
+__GENAREA_LAST__ ([linker generated]):
+__GENAREA_SIZE__ ([linker generated]):
+__GENAREA_START__ ([linker generated]):
+__RODATA_LOAD__ ([linker generated]):
+__RODATA_RUN__ ([linker generated]):
+__RODATA_SIZE__ ([linker generated]):
+__STACK_LOAD__ ([linker generated]):
+__STACK_RUN__ ([linker generated]):
+__STACK_SIZE__ ([linker generated]):
+__TRAPAREA_FILEOFFS__ ([linker generated]):
+__TRAPAREA_LAST__ ([linker generated]):
+__TRAPAREA_SIZE__ ([linker generated]):
+__TRAPAREA_START__ ([linker generated]):
+__TRAP_LOAD__ ([linker generated]):
+__TRAP_RUN__ ([linker generated]):
+__TRAP_SIZE__ ([linker generated]):
+__VECAREA_FILEOFFS__ ([linker generated]):
+__VECAREA_LAST__ ([linker generated]):
+__VECAREA_SIZE__ ([linker generated]):
+__VECAREA_START__ ([linker generated]):
+__VEC_LOAD__ ([linker generated]):
+__VEC_RUN__ ([linker generated]):
+__VEC_SIZE__ ([linker generated]):
+__ZEROPAGE_LOAD__ ([linker generated]):
+__ZEROPAGE_RUN__ ([linker generated]):
+__ZEROPAGE_SIZE__ ([linker generated]):
+checkpoint (kickstart.o):
+    kickstart_sdfat.o         kickstart_sdfat.a65(449)
+    kickstart_dos.o           kickstart_dos.a65(3567)
+    kickstart_debug.o         kickstart_debug.a65(614)
+checkpoint_bytetohex (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+    kickstart_debug.o         kickstart_debug.a65(614)
+currenttask_block (kickstart_process_descriptor.o):
+    kickstart_task.o          kickstart_task.a65(251)
+    kickstart_freeze.o        kickstart_freeze.a65(490)
+currenttask_filedescriptor0 (kickstart_process_descriptor.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+currenttask_filedescriptor1 (kickstart_process_descriptor.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+currenttask_filedescriptor2 (kickstart_process_descriptor.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+currenttask_filedescriptor3 (kickstart_process_descriptor.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+currenttask_id (kickstart_process_descriptor.o):
+    kickstart_task.o          kickstart_task.a65(251)
+d81_clustercount (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+d81_clusternumber (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+d81_clustersneeded (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_and_process_trap (kickstart_dos.o):
+    kickstart.o               kickstart.a65(3304)
+dos_cdroot (kickstart_dos.o):
+    kickstart.o               kickstart.a65(3304)
+dos_clear_filedescriptors (kickstart_dos.o):
+    kickstart_task.o          kickstart_task.a65(251)
+dos_clearall (kickstart_dos.o):
+    kickstart.o               kickstart.a65(3304)
+dos_closefile (kickstart_dos.o):
+    kickstart.o               kickstart.a65(3304)
+dos_current_cluster (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_current_file_descriptor (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+    kickstart_debug.o         kickstart_debug.a65(614)
+dos_current_file_descriptor_offset (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+    kickstart_debug.o         kickstart_debug.a65(614)
+dos_current_sector (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_d81attach (kickstart_dos.o):
+    kickstart.o               kickstart.a65(3304)
+dos_default_disk (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_dirent_cluster (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_dirent_length (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_dirent_longfilename (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_dirent_longfilename_length (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_dirent_shortfilename (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_dirent_type_and_attribs (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_disk_count (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+    kickstart_debug.o         kickstart_debug.a65(614)
+dos_disk_current_disk (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_disk_cwd_cluster (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_disk_table (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+    kickstart_debug.o         kickstart_debug.a65(614)
+dos_disk_table_offset (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_error_code (kickstart.o):
+    kickstart_sdfat.o         kickstart_sdfat.a65(449)
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_file_descriptors (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+    kickstart_debug.o         kickstart_debug.a65(614)
+dos_file_loadaddress (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_findfile (kickstart_dos.o):
+    kickstart.o               kickstart.a65(3304)
+dos_get_file_descriptor_offset (kickstart_dos.o):
+    kickstart_debug.o         kickstart_debug.a65(614)
+dos_read_partitiontable (kickstart_dos.o):
+    kickstart.o               kickstart.a65(3304)
+dos_readfileintomemory (kickstart_dos.o):
+    kickstart.o               kickstart.a65(3304)
+dos_requested_filename (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_requested_filename_len (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_return_error (kickstart_dos.o):
+    kickstart.o               kickstart.a65(3304)
+dos_scratch_byte_1 (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_scratch_byte_2 (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+    kickstart_debug.o         kickstart_debug.a65(614)
+dos_scratch_vector (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_sectorsread (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dos_setname (kickstart_dos.o):
+    kickstart.o               kickstart.a65(3304)
+double_restore_trap (kickstart_task.o):
+    kickstart.o               kickstart.a65(3304)
+dump_disk_count (kickstart_debug.o):
+    kickstart.o               kickstart.a65(3304)
+dump_disk_table (kickstart_debug.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dumpcurrentfd (kickstart_debug.o):
+    kickstart.o               kickstart.a65(3304)
+dumpfddata (kickstart_debug.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+dumpsectoraddress (kickstart_debug.o):
+    kickstart_sdfat.o         kickstart_sdfat.a65(449)
+    kickstart_dos.o           kickstart_dos.a65(3567)
+f011_virtual_read (kickstart_virtual_f011.o):
+    kickstart.o               kickstart.a65(3304)
+f011_virtual_write (kickstart_virtual_f011.o):
+    kickstart.o               kickstart.a65(3304)
+freeze_to_slot (kickstart_freeze.o):
+    kickstart_task.o          kickstart_task.a65(251)
+hypervisor_setup_copy_region (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+hypervisor_userspace_copy_vector (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+invalid_subfunction (kickstart.o):
+    kickstart_mem.o           kickstart_mem.a65(130)
+    kickstart_dos.o           kickstart_dos.a65(3567)
+    kickstart_syspart.o       kickstart_syspart.a65(402)
+kickstart_scratchbyte0 (kickstart.o):
+    kickstart_task.o          kickstart_task.a65(251)
+longpeek (kickstart.o):
+    kickstart_task.o          kickstart_task.a65(251)
+matrix_mode_toggle (kickstart_task.o):
+    kickstart.o               kickstart.a65(3304)
+memory_trap (kickstart_mem.o):
+    kickstart.o               kickstart.a65(3304)
+msg_clusternumber (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+msg_diskdata (kickstart.o):
+    kickstart_debug.o         kickstart_debug.a65(614)
+msg_diskdata0 (kickstart.o):
+    kickstart_debug.o         kickstart_debug.a65(614)
+msg_foundsdcard (kickstart.o):
+    kickstart_sdfat.o         kickstart_sdfat.a65(449)
+msg_foundsdhccard (kickstart.o):
+    kickstart_sdfat.o         kickstart_sdfat.a65(449)
+msg_sdredoread (kickstart.o):
+    kickstart_sdfat.o         kickstart_sdfat.a65(449)
+msg_sectoraddress (kickstart.o):
+    kickstart_debug.o         kickstart_debug.a65(614)
+page_fault (kickstart_mem.o):
+    kickstart.o               kickstart.a65(3304)
+printhex (kickstart.o):
+    kickstart_mem.o           kickstart_mem.a65(130)
+    kickstart_dos.o           kickstart_dos.a65(3567)
+    kickstart_syspart.o       kickstart_syspart.a65(402)
+    kickstart_debug.o         kickstart_debug.a65(614)
+printmessage (kickstart.o):
+    kickstart_sdfat.o         kickstart_sdfat.a65(449)
+    kickstart_mem.o           kickstart_mem.a65(130)
+    kickstart_dos.o           kickstart_dos.a65(3567)
+    kickstart_syspart.o       kickstart_syspart.a65(402)
+    kickstart_debug.o         kickstart_debug.a65(614)
+protected_hardware_config (kickstart_task.o):
+    kickstart.o               kickstart.a65(3304)
+readmbr (kickstart_sdfat.o):
+    kickstart.o               kickstart.a65(3304)
+reset_machine_state (kickstart.o):
+    kickstart_mem.o           kickstart_mem.a65(130)
+return_from_trap_with_failure (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+return_from_trap_with_success (kickstart.o):
+    kickstart_mem.o           kickstart_mem.a65(130)
+    kickstart_dos.o           kickstart_dos.a65(3567)
+scankeyboard (kickstart_keyboard.o):
+    kickstart.o               kickstart.a65(3304)
+sd_fix_sectornumber (kickstart_sdfat.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+    kickstart_syspart.o       kickstart_syspart.a65(402)
+sd_inc_fixedsectornumber (kickstart_sdfat.o):
+    kickstart_syspart.o       kickstart_syspart.a65(402)
+    kickstart_freeze.o        kickstart_freeze.a65(490)
+sd_map_sectorbuffer (kickstart_sdfat.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+sd_readsector (kickstart_sdfat.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+    kickstart_syspart.o       kickstart_syspart.a65(402)
+sd_unmap_sectorbuffer (kickstart_sdfat.o):
+    kickstart.o               kickstart.a65(3304)
+sdcounter (kickstart.o):
+    kickstart_sdfat.o         kickstart_sdfat.a65(449)
+sdwaitawhile (kickstart_sdfat.o):
+    kickstart.o               kickstart.a65(3304)
+    kickstart_freeze.o        kickstart_freeze.a65(490)
+setup_for_ultimax_cartridge (kickstart_ultimax.o):
+    kickstart.o               kickstart.a65(3304)
+syspart_error_code (kickstart.o):
+    kickstart_syspart.o       kickstart_syspart.a65(402)
+    kickstart_freeze.o        kickstart_freeze.a65(490)
+syspart_freeze_area_start (kickstart.o):
+    kickstart_syspart.o       kickstart_syspart.a65(402)
+syspart_freeze_directory_sector_count (kickstart.o):
+    kickstart_syspart.o       kickstart_syspart.a65(402)
+syspart_freeze_slot_count (kickstart.o):
+    kickstart_syspart.o       kickstart_syspart.a65(402)
+syspart_freeze_slot_size_in_bytes (kickstart.o):
+    kickstart_syspart.o       kickstart_syspart.a65(402)
+syspart_locate_freezeslot (kickstart_syspart.o):
+    kickstart_freeze.o        kickstart_freeze.a65(490)
+syspart_open (kickstart_syspart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+syspart_present (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+    kickstart_syspart.o       kickstart_syspart.a65(402)
+    kickstart_freeze.o        kickstart_freeze.a65(490)
+syspart_service_slot_count (kickstart.o):
+    kickstart_syspart.o       kickstart_syspart.a65(402)
+syspart_start_sector (kickstart.o):
+    kickstart_syspart.o       kickstart_syspart.a65(402)
+syspart_structure (kickstart.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+    kickstart_syspart.o       kickstart_syspart.a65(402)
+syspart_trap (kickstart_syspart.o):
+    kickstart.o               kickstart.a65(3304)
+task_dummy_nmi_vector (kickstart_task.o):
+    kickstart.o               kickstart.a65(3304)
+task_set_c64_memorymap (kickstart_task.o):
+    kickstart.o               kickstart.a65(3304)
+task_set_pc_to_reset_vector (kickstart_task.o):
+    kickstart.o               kickstart.a65(3304)
+toupper (kickstart_sdfat.o):
+    kickstart_dos.o           kickstart_dos.a65(3567)
+trap_dos_d81attach (kickstart_dos.o):
+

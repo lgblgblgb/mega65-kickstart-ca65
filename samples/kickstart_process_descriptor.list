@@ -1,0 +1,138 @@
+ca65 V2.15
+Main file   : kickstart_process_descriptor.a65
+Current file: kickstart_process_descriptor.a65
+
+000000r 1               ; Process descriptor block (fixed 256 bytes)
+000000r 1               ;
+000000r 1               ; This needs to have information about the current running task,
+000000r 1               ; and also hold information about the current open files, if any.
+000000r 1               
+000000r 1               ; Process description (first 128 bytes)
+000000r 1               
+000000r 1               
+000000r 1               .SEGMENT "BD00SEG"
+000000r 1               
+000000r 1               .INCLUDE "kickstart.i65"
+000000r 2               ; My try to define some stuff can be included from every kickstart related sources.
+000000r 2               
+000000r 2               .SETCPU	"4510"	; Set CPU to "4510 mode"
+000000r 2               
+000000r 2               
+000000r 2               ; Try to make it clear that we want to use zero page addressing. The intended usage:
+000000r 2               ; LDA ZP(zp_temp_byte)
+000000r 2               ; I *think* it's may be better than this syntax which is even complained by ca65 as
+000000r 2               ; a warning:   LDA <zp_temp_byte
+000000r 2               
+000000r 2               .DEFINE ZP(n) .LOBYTE(n)
+000000r 2               
+000000r 2               .MACRO space label,bytes
+000000r 2               label: .res bytes
+000000r 2               .ENDMACRO
+000000r 2               
+000000r 2               
+000000r 1               
+000000r 1               .EXPORT currenttask_block
+000000r 1               currenttask_block:
+000000r 1               
+000000r 1               	; Tasks are idenfied by what amounts to an 8-bit process id.
+000000r 1               	; Process ID #$FF is special, and indicates that it is the operating system/hypervisor
+000000r 1               	; that is active.  This affects how results are return from system calls, so that they
+000000r 1               
+000000r 1               .EXPORT currenttask_id
+000000r 1               currenttask_id:
+000000r 1  FF           	.byte $FF
+000001r 1               
+000001r 1               	; Name of task (16 characters, unused characters should be null)
+000001r 1               
+000001r 1               currenttask_name:
+000001r 1  4F 50 45 52  	.byte "OPERATING SYSTEM"
+000005r 1  41 54 49 4E  
+000009r 1  47 20 53 59  
+000011r 1               
+000011r 1               ; Make sure we don't over-flow the available space
+000011r 1               ;	.checkpc currenttask_block+[$80]
+000011r 1               ;	.advance currenttask_block+[$80],$00
+000011r 1               
+000011r 1               
+000011r 1               .SEGMENT "BD80SEG"
+000000r 1               
+000000r 1               ; Now we have file control blocks for the open files/directories.
+000000r 1               ; We have only 128 bytes for these, so not many files can be open at a time!
+000000r 1               ; This also means that we don't keep much information about a file in here.
+000000r 1               ; For example, name, permissions/attributes and so on must be requested seprately
+000000r 1               ; using trap_dos_fstat.  As a result, we can fit a few more open files in here, to
+000000r 1               ; make life easy for programmers.  128 bytes / 32 bytes = 4 open files, which seems
+000000r 1               ; a fairly minimal number.
+000000r 1               
+000000r 1               .EXPORT currenttask_filedescriptor0
+000000r 1               currenttask_filedescriptor0:
+000000r 1               	; Which logical drive the file resides on
+000000r 1               	; (or $FF for a free descriptor block = closed file.
+000000r 1               	;  we put this in the first byte for convience for checking
+000000r 1               	;  if a file descriptor is free).
+000000r 1               currenttask_filedescriptor0_drivenumber:
+000000r 1  00           	.byte $00
+000001r 1               
+000001r 1               	; Starting cluster in file system
+000001r 1               	; (used so that we can seek around in the file)
+000001r 1               currenttask_filedescriptor0_startcluster:
+000001r 1  00 00 00 00  	.byte $00,$00,$00,$00
+000005r 1               
+000005r 1               	; Current cluster in file system
+000005r 1               currenttask_filedescriptor0_currentcluster:
+000005r 1  00 00 00 00  	.byte $00,$00,$00,$00
+000009r 1               
+000009r 1               	; Current sector within current cluster
+000009r 1               currenttask_filedescriptor0_sectorincluster:
+000009r 1  00           	.byte $00
+00000Ar 1               
+00000Ar 1               	; Length of file
+00000Ar 1               currenttask_filedescriptor0_filelength:
+00000Ar 1  00 00 00 00  	.byte $00,$00,$00,$00
+00000Er 1               
+00000Er 1               	; Position in file indicated by the buffer
+00000Er 1               currenttask_filedescriptor0_bufferposition:
+00000Er 1  00 00 00 00  	.byte $00,$00,$00,$00
+000012r 1               
+000012r 1               	; Cluster of the directory in which this file resides
+000012r 1               currenttask_filedescriptor0_directorycluster:
+000012r 1  00 00 00 00  	.byte $00,$00,$00,$00
+000016r 1               
+000016r 1               	; Which entry this file is within the containing directory
+000016r 1               currenttask_filedescriptor0_entryindirectory:
+000016r 1  00 00        	.word $0000
+000018r 1               
+000018r 1               	; Buffer address in target task used for this file
+000018r 1               	; (32-bit virtual address, so that the buffer can be paged out)
+000018r 1               currenttask_filedescriptor0_bufferaddress:
+000018r 1  00 00 00 00  	.byte $00,$00,$00,$00
+00001Cr 1               
+00001Cr 1               	; bytes loaded into buffer
+00001Cr 1               currenttask_filedescriptor0_bytesinbuffer:
+00001Cr 1  00 00        	.word $0000
+00001Er 1               
+00001Er 1               	; current offset within buffer
+00001Er 1               currenttask_filedescriptor0_offsetinbuffer:
+00001Er 1  00 00        	.word $0000
+000020r 1               
+000020r 1               ; The other three file descriptors follow the same format as the first
+000020r 1               
+000020r 1               ;	.checkpc currenttask_block+[$A0]
+000020r 1               ;	.advance currenttask_block+[$A0],$00
+000020r 1               .EXPORT currenttask_filedescriptor1
+000020r 1               currenttask_filedescriptor1 = currenttask_block+$A0
+000020r 1               
+000020r 1               ;	.checkpc currenttask_block+[$C0]
+000020r 1               ;	.advance currenttask_block+[$C0],$00
+000020r 1               .EXPORT currenttask_filedescriptor2
+000020r 1               currenttask_filedescriptor2 = currenttask_block+$C0
+000020r 1               
+000020r 1               ;	.checkpc currenttask_block+[$E0]
+000020r 1               ;	.advance currenttask_block+[$E0],$00
+000020r 1               .EXPORT currenttask_filedescriptor3
+000020r 1               currenttask_filedescriptor3 = currenttask_block+$E0
+000020r 1               
+000020r 1               ;	.checkpc currenttask_block+[$100]
+000020r 1               ;	.advance currenttask_block+[$100],$00
+000020r 1               
+000020r 1               

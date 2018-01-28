@@ -1,0 +1,2395 @@
+--- ../mega65-core/src/kickstart.a65	2018-01-27 14:56:15.469273184 +0100
++++ kickstart.a65	2018-01-28 04:20:42.489538594 +0100
+@@ -26,8 +26,12 @@
+ ;	; it also suggests some memory-map definitions
+ ;	;
+ 
++	.include "kickstart.i65"
+ 	.include "kickstart_machine.a65"
+ 
++.autoimport +
++
++
+ ;
+ ; scratch space in ZP space usually used by kernel
+ ; we try to use address space not normally used by C64 kernel, so that
+@@ -35,34 +39,38 @@
+ ; the desire is to have an SYS call that brings up a menu that lets
+ ; you choose a disk image from a list.
+ ;
+-	.data 
++
++.SEGMENT "CE00STUFF"
+ 
+ ;	========================
+-	.org $ce00
++;	.org $ce00
+ ;	========================
+ 
+-	.space romslab 1
+-	.space screenrow 1 
++	space romslab,1
++	space screenrow,1 
+ 
+-	.space checksum 4
+-	.space file_pagesread 2
++	space checksum,4
++	space file_pagesread,2
+ 
+ 	; variables for testing of D81 boot image
+ 	;
+-	.space d81_clusternumber 4
+-	.space d81_clustersneeded 2
+-	.space d81_clustercount 2
++.EXPORT d81_clusternumber, d81_clustersneeded, d81_clustercount
++	space d81_clusternumber,4
++	space d81_clustersneeded,2
++	space d81_clustercount,2
+ 
+ 	; make sure that we don't go past the 256 byte page reserved for hypervisor scratch space
+ 	;
+-	.checkpc $CEFF
++;	checkpc $CEFF
+ 
+-	.text
++;	.text
+ 
+ ;	========================
+-	.org $8000
++;	.org $8000
+ ;	========================
+ 
++.SEGMENT "TRAP"
++
+ ;;; ----------------------------------------------------------------------------
+ ;;; CPU Hypervisor Trap entry points.
+ ;;; 64 x 4 byte entries for user-land traps.
+@@ -271,8 +279,10 @@
+ 
+ 	; Leave room for relocated cpu vectors below
+ 	;
+-	.checkpc $81F8
+-	.advance $81F8
++;	.checkpc $81F8
++;	.advance $81F8
++
++.SEGMENT "VEC"
+ 
+ 	; Then we have relocated CPU vectors at $81F8-$81FF
+ 	; (which are 2-byte vectors for interrupts, not 4-byte
+@@ -284,8 +294,9 @@
+ 	.word reset_entry    ; RESET
+ 	.word hypervisor_irq ; IRQ
+ 
+-	.checkpc $8200
+-	.advance $8200
++;	.checkpc $8200
++;	.advance $8200
++.SEGMENT "CODE"
+ 
+ ;;; ----------------------------------------------------------------------------
+ ;;; Hypervisor traps
+@@ -322,6 +333,7 @@
+ 
+ ;	========================
+ 
++.EXPORT return_from_trap_with_success
+ return_from_trap_with_success:
+ 
+ 	; Return from trap with C flag clear to indicate success
+@@ -342,6 +354,7 @@
+ 
+ ;	========================
+ 
++.EXPORT return_from_trap_with_failure
+ return_from_trap_with_failure:
+ 
+ 	jsr sd_unmap_sectorbuffer	
+@@ -361,6 +374,7 @@
+ 
+ ;	========================
+ 
++.EXPORT invalid_subfunction
+ invalid_subfunction:
+ 
+ 	jmp nosuchtrap
+@@ -370,42 +384,43 @@
+ ;;; ----------------------------------------------------------------------------
+ ;;; System Partition functions
+ ;;; ----------------------------------------------------------------------------
+-		.include "kickstart_syspart.a65"
++;		.include "kickstart_syspart.a65"
+ 
+ ;;; ----------------------------------------------------------------------------
+ ;;; Freeze/Unfreeze functions
+ ;;; ----------------------------------------------------------------------------
+-		.include "kickstart_freeze.a65"
++;		.include "kickstart_freeze.a65"
+ 
+ ;;; ----------------------------------------------------------------------------
+ ;;; DOS, process control and related functions trap
+ ;;; ----------------------------------------------------------------------------
+-		.include "kickstart_dos.a65"
++;		.include "kickstart_dos.a65"
+ 
+ ;;; ----------------------------------------------------------------------------
+ ;;; Virtual memory and memory management
+ ;;; ----------------------------------------------------------------------------
+-		.include "kickstart_mem.a65"
++;		.include "kickstart_mem.a65"
+ 
+ ;;; ----------------------------------------------------------------------------
+ ;;; Task (process) management
+ ;;; ----------------------------------------------------------------------------
+-		.include "kickstart_task.a65"
++;		.include "kickstart_task.a65"
+ 
+ ;;; ----------------------------------------------------------------------------
+ ;;; sdcard and fat32 related functions
+ ;;; ----------------------------------------------------------------------------
+-		.include "kickstart_sdfat.a65"
++;		.include "kickstart_sdfat.a65"
+ 
+ ;;; ----------------------------------------------------------------------------
+ ;;; Virtualised F011 access (used for disk over serial monitor)
+ ;;; ----------------------------------------------------------------------------
+-		.include "kickstart_virtual_f011.a65"
++;		.include "kickstart_virtual_f011.a65"
+ 
+ ;;; ----------------------------------------------------------------------------
+ ;;; CPU Hypervisor Entry Point on reset
+ ;;; ----------------------------------------------------------------------------
+ 
++.EXPORT reset_machine_state
+ reset_machine_state:
+ 		; get CPU state sensible
+ 		sei
+@@ -546,7 +561,7 @@
+ 		lda #$03
+ 		sta $d680
+ foo:		jmp foo
+-.macend
++.endmacro
+ ;		.invoke sdtest
+ .macro f011test
+ 		; use real floppy drive
+@@ -596,7 +611,7 @@
+ 
+ 		; get next byte
+ 		jmp bytewait
+-.macend
++.endmacro
+ ;		.invoke f011test
+ 
+ 		jsr reset_machine_state
+@@ -642,7 +657,7 @@
+ 	; check for ALT key to jump to utility menu
+ 	lda $d611
+ 	and #$10
+-	bne utility_menu
++	lbne utility_menu
+ 
+ nokey1:
+ 
+@@ -663,7 +678,7 @@
+ 	jsr scankeyboard
+ 	bcs nokey2
+ 	cmp #$20
+-	beq utility_menu
++	lbeq utility_menu
+ nokey2:
+ 
+ 		; Oops, cant read MBR
+@@ -717,7 +732,7 @@
+ 
+ 		; If we have no disks, offer the utility menu
+ 		lda dos_disk_count
+-		beq utility_menu
++		lbeq utility_menu
+ 
+ 
+ 		; Go to root directory on default disk
+@@ -958,7 +973,7 @@
+ 		;
+ 		ldx dos_default_disk
+ 		jsr dos_cdroot
+-		bcc sdcarderror
++		lbcc sdcarderror
+ 
+ 		; Select PAL/NTSC mode based on presence of file called NTSC
+ 		ldx #<txt_NTSC
+@@ -1046,7 +1061,7 @@
+ 	jsr scankeyboard
+ 	bcs nokey3
+ 	cmp #$20
+-	beq utility_menu
++	lbeq utility_menu
+ nokey3:
+ 
+ 
+@@ -1188,13 +1203,13 @@
+ 		; i.e., that we have loaded $0200 x $100 = $20000 = 128KiB
+ 		lda file_pagesread+1
+ 		cmp #$00
+-		beq romfiletooshort
++		lbeq romfiletooshort
+ 		cmp #$01
+-		beq romfiletooshort
++		lbeq romfiletooshort
+ 		cmp #$02
+-		bne romfiletoolong
++		lbne romfiletoolong
+ 		lda file_pagesread
+-		bne romfiletoolong		
++		lbne romfiletoolong		
+ 
+ 		; the loaded ROM was OK in size
+ 
+@@ -1301,7 +1316,7 @@
+ 	jsr scankeyboard
+ 	bcs nokey4
+ 	cmp #$20
+-	beq utility_menu
++	lbeq utility_menu
+ nokey4:
+ 
+ 		jmp go64		
+@@ -1368,7 +1383,7 @@
+ 		; is invalid
+ 		;
+ 		lda txt_MEGA65ROM+6
+-		cmp #'.
++		cmp #'.'
+ 		bne checksumfails
+ 	
+ 		; calculate checksum of loaded ROM ...
+@@ -1899,6 +1914,7 @@
+ 
+ ;	========================
+ 
++.EXPORT printmessage
+ printmessage:	;HELPER routine
+ 		;
+ 		; This subroutine takes inputs from the X and Y registers,
+@@ -2019,7 +2035,8 @@
+ 		rts
+ 
+ ;	========================
+-		
++
++.EXPORT printhex		
+ printhex:
+ 		; helper function
+ 		;	
+@@ -2088,7 +2105,7 @@
+ 		; check for ALT key to jump to utility menu
+ 		lda $d611
+ 		and #$10
+-		bne utility_menu
++		lbne utility_menu
+ 
+ 		; and otherwise wait until CTRL is released
+ 		lda $d611
+@@ -2140,7 +2157,8 @@
+ 		; exit from hypervisor to start machine
+ 		sta hypervisor_enterexit_trigger
+ 
+-		.include "kickstart_ultimax.a65"		
++		;.include "kickstart_ultimax.a65"		
++		jmp setup_for_ultimax_cartridge
+ 
+ ;	========================
+ 
+@@ -2148,6 +2166,7 @@
+ ;     it gets called only from the kickstart_task file,
+ ;     so i suggest moving this subroutine to that file.
+ 
++.EXPORT longpeek
+ longpeek:
+ 		; Use DMAgic to read any byte of RAM in 28bit address space.
+ 		; Value gets read into $BC00 (kickstart_scratchbyte0)
+@@ -2307,7 +2326,7 @@
+ 
+ 
+ ;	========================
+-		.include "kickstart_keyboard.a65"
++		;.include "kickstart_keyboard.a65"
+ 
+ keyboardread:
+ 
+@@ -2317,7 +2336,7 @@
+ 		jsr scankeyboard		
+ 		bcs kr2  ; if an error occured
+ 		cmp #$20
+-		beq utility_menu
++		lbeq utility_menu
+ 		cmp #$30
+ 		bcc kr2
+ 		cmp #$39
+@@ -2333,16 +2352,16 @@
+ 		sta txt_MEGA65ROM,x
+ 		inx
+ default_rom:
+-		lda #'.
++		lda #'.'
+ 		sta txt_MEGA65ROM,x
+ 		inx
+-		lda #'R
++		lda #'R'
+ 		sta txt_MEGA65ROM,x
+ 		inx
+-		lda #'O
++		lda #'O'
+ 		sta txt_MEGA65ROM,x
+ 		inx
+-		lda #'M
++		lda #'M'
+ 		sta txt_MEGA65ROM,x
+ 		inx
+ 		lda #0
+@@ -2360,6 +2379,7 @@
+ 		sei
+ 		rti
+ 
++.EXPORT hypervisor_setup_copy_region
+ hypervisor_setup_copy_region:
+ 	; Hypervisor copy region sit entirely within the first 32KB of
+ 	; mapped address space. Since we allow a 256 byte copy region,
+@@ -2391,6 +2411,7 @@
+ 
+ ;	========================
+ 
++.EXPORT checkpoint
+ checkpoint:
+ 
+ 	; Routine to record the progress of code through the hypervisor for
+@@ -2413,10 +2434,10 @@
+ 	pla
+ 	clc
+ 	adc #$01
+-	sta checkpoint_pcl
++	sta ZP(checkpoint_pcl)
+ 	pla
+ 	adc #$00
+-	sta checkpoint_pch
++	sta ZP(checkpoint_pch)
+ 
+ 	; Only do checkpoints visibly if shift held during boot
+ 	lda $d611
+@@ -2449,12 +2470,12 @@
+ 	sty msg_checkpoint_p+0
+ 	stx msg_checkpoint_p+1
+ 
+-	ldx checkpoint_pch
++	ldx z:ZP(checkpoint_pch)
+ 	jsr checkpoint_bytetohex
+ 	sty msg_checkpoint_pc+0
+ 	stx msg_checkpoint_pc+1
+ 
+-	ldx checkpoint_pcl
++	ldx ZP(checkpoint_pcl)
+ 	jsr checkpoint_bytetohex
+ 	sty msg_checkpoint_pc+2
+ 	stx msg_checkpoint_pc+3
+@@ -2552,6 +2573,7 @@
+ 
+ ;	========================
+ 
++.EXPORT checkpoint_bytetohex
+ checkpoint_bytetohex:
+ 
+ 	; BG: this is a helper function to convert a HEX-byte to
+@@ -2788,22 +2810,22 @@
+ 	; Check for magic value
+ 	nop ; 32-bit pointer access follows
+ 	lda (<zptempv32),z
+-	cmp #'M
++	cmp #'M'
+ 	bne ulvc_fail
+ 	inz
+ 	nop ; 32-bit pointer access follows
+ 	lda (<zptempv32),z
+-	cmp #'6
++	cmp #'6'
+ 	bne ulvc_fail
+ 	inz
+ 	nop ; 32-bit pointer access follows
+ 	lda (<zptempv32),z
+-	cmp #'5
++	cmp #'5'
+ 	bne ulvc_fail
+ 	inz
+ 	nop ; 32-bit pointer access follows
+ 	lda (<zptempv32),z
+-	cmp #'U
++	cmp #'U'
+ 	bne ulvc_fail
+ 
+ 	; Check self address
+@@ -2871,16 +2893,21 @@
+ msg_charromloaded:    .byte "LOADED CHARROM.M65 ($$$$ PAGES)",0
+ msg_megaromloaded:    .byte "LOADED MEGA65ROM.M65 ($$$$ PAGES)",0
+ msg_tryingsdcard:     .byte "LOOKING FOR SDCARD...",0
++.EXPORT msg_foundsdcard
+ msg_foundsdcard:      .byte "FOUND AND RESET SD CARD",0
++.EXPORT msg_foundsdhccard
+ msg_foundsdhccard:    .byte "FOUND AND RESET SDHC CARD",0
+ msg_sdcarderror:      .byte "ERROR READING FROM SD CARD",0
++.EXPORT msg_sdredoread
+ msg_sdredoread:       .byte "RE-READING SDCARD",0
+ 
+ msg_badformat:	      .byte "BAD MBR OR DOS BOOT SECTOR.",0
+ msg_sdcardfound:      .byte "READ PARTITION TABLE FROM SDCARD",0
+ msg_foundromfile:     .byte "FOUND ROM FILE. START CLUSTER = $$$$$$$$",0
+ msg_diskcount:	      .byte "DISK-COUNT=$$, DEFAULT-DISK=$$",0
++.EXPORT msg_diskdata0
+ msg_diskdata0:	      .byte "DISK-TABLE:",0
++.EXPORT msg_diskdata
+ msg_diskdata:	      .byte "BB$$:$$.$$.$$.$$.$$.$$.$$.$$",0
+ 
+ msg_filelengths:      .byte "LOOKING FOR $$ BYTES, I SEE $$ BYTES",0
+@@ -2889,7 +2916,9 @@
+ msg_readingfile:      .BYTE "READING ROM FILE...",0
+ msg_romfilelongerror: .byte "ROM TOO LONG: (READ $$$$ PAGES)",0
+ msg_romfileshorterror:.byte "ROM TOO SHORT: (READ $$$$ PAGES)",0
++.EXPORT msg_clusternumber
+ msg_clusternumber:    .byte "CURRENT CLUSTER=$$$$$$$$",0
++.EXPORT msg_sectoraddress
+ msg_sectoraddress:    .byte "CURRENT SECTOR= $$$$$$$$",0
+ msg_nod81:	      .byte "CANNOT MOUNT MEGA65.D81 - (ERRNO: $$)",0
+ msg_d81mounted:	      .byte "MEGA65.D81 SUCCESSFULLY MOUNTED",0
+@@ -2946,12 +2975,14 @@
+ 
+ ;	========================
+ 
+-	.include "kickstart_debug.a65"
++;	.include "kickstart_debug.a65"
+ 
+ ;	========================
+ 
+-		.checkpc $BB00
+-		.advance $BB00
++;		.checkpc $BB00
++;		.advance $BB00
++
++.SEGMENT "BB00SEG"
+ 
+ ; Table of available disks.
+ ; This includes native FAT32 disks, as well as (in the future at least)
+@@ -2960,13 +2991,17 @@
+ ; See kickstart_dos.a65 for information on how the table is used.
+ ; Entries are 32 bytes long, so we can have 6 of them.
+ ;
+-		.alias dos_max_disks 6
++.EXPORT dos_disk_table
+ dos_disk_table:
+-		.checkpc $BBC0
+-		.advance $BBC0
++;		.checkpc $BBC0
++;		.advance $BBC0
++	;.RES $BBC0 - *	; LGB: well this is ugly maybe a new segment would be nicer?
++.SEGMENT "BBC0SEG"
+ 
++.EXPORT syspart_structure
+ syspart_structure:
+ 
++.EXPORT syspart_start_sector
+ syspart_start_sector:  .byte 0,0,0,0
+ syspart_size_in_sectors:   .byte 0,0,0,0
+ syspart_reserved:
+@@ -2978,23 +3013,27 @@
+ ; it has, and how many sectors are used at the start of the area
+ ; to hold a directory with 128 bytes per slot, the contains info
+ ; about the frozen program.
++.EXPORT syspart_freeze_area_start
+ syspart_freeze_area_start:
+ 		.byte 0,0,0,0
+ syspart_freeze_area_size_in_bytes:
+ 		.byte 0,0,0,0
++.EXPORT syspart_freeze_slot_size_in_bytes
+ syspart_freeze_slot_size_in_bytes:
+ 		.byte 0,0,0,0
++.EXPORT syspart_freeze_slot_count
+ syspart_freeze_slot_count:
+ 		.byte 0,0
++.EXPORT syspart_freeze_directory_sector_count
+ syspart_freeze_directory_sector_count:
+ 		.byte 0,0
+ 
+ ; The first 64 freeze slots are reserved for various purposes
+-	.alias syspart_freeze_slots_reserved 64
++	syspart_freeze_slots_reserved = 64
+ 	; Freeze slot 0 is used when the hypervisor needs to
+ 	; temporarily shove all or part of the active process out
+ 	; the way to do something
+-	.alias freeze_slot_temporary 0
++	freeze_slot_temporary = 0
+ 
+ 	; Freeze slots 1 - 63 are currently reserved
+ 	; They will likely get used for a service call-stack
+@@ -3010,6 +3049,7 @@
+ 		.byte 0,0,0,0
+ syspart_service_slot_size_in_bytes:
+ 		.byte 0,0,0,0
++.EXPORT syspart_service_slot_count
+ syspart_service_slot_count:
+ 		.byte 0,0
+ syspart_service_directory_sector_count:
+@@ -3020,34 +3060,44 @@
+ ;;; Hypervisor DOS work area and scratch pad at $BC00-$BCFF
+ ;;; ----------------------------------------------------------------------------
+ 
+-		.checkpc $BC00
+-		.advance $BC00
++;		.checkpc $BC00
++;		.advance $BC00
+ 
++.SEGMENT "BC00SEG"
++
++.EXPORT kickstart_scratchbyte0
+ kickstart_scratchbyte0:
+ 		.byte $00
+ 
+ 		; The number of disks we have
+ 		;
++
++.EXPORT dos_disk_count
+ dos_disk_count:
+ 		.byte $00
+ 
+ 		; The default disk
+ 		;
++.EXPORT dos_default_disk
+ dos_default_disk:
+ 		.byte $00
+ 
+ 		; The current disk
+ 		;
++.EXPORT dos_disk_current_disk
+ dos_disk_current_disk:
+ 		.byte $00
+ 
+ 		; Offset of current disk entry in disk table
+ 		;
++
++.EXPORT dos_disk_table_offset
+ dos_disk_table_offset:
+ 		.byte $00
+ 
+ 		; cluster of current directory of current disk
+ 		;
++.EXPORT dos_disk_cwd_cluster
+ dos_disk_cwd_cluster:
+ 		.byte 0,0,0,0
+ 
+@@ -3064,30 +3114,32 @@
+ 
+ ;	========================
+ 
+-		; WARNING: dos_readdir_read_next_entry uses carnal knowledge about the following
+-		;          structure, particularly the length as calculated here:
+-		;
+-		.alias dos_dirent_structure_length 64+1+11+4+4+1
+ 
+ 		; Current long filename (max 64 bytes)
+ 		;
++.EXPORT dos_dirent_longfilename
+ dos_dirent_longfilename:
+ 		.byte "Venezualen casaba melon productio" ; 33-chars
+ 		.byte "n statistics (2012-2015).txt  "    ; 30-chars
+ 		.byte 0
+ 
++.EXPORT dos_dirent_longfilename_length
+ dos_dirent_longfilename_length:
+ 		.byte 0
+ 
++.EXPORT dos_dirent_shortfilename
+ dos_dirent_shortfilename:
+ 		.byte "FILENAME.EXT",0		
+ 
++.EXPORT dos_dirent_cluster
+ dos_dirent_cluster:
+ 		.byte 0,0,0,0
+ 
++.EXPORT dos_dirent_length
+ dos_dirent_length:
+ 		.byte 0,0,0,0
+ 
++.EXPORT dos_dirent_type_and_attribs
+ dos_dirent_type_and_attribs:
+ 		.byte 0
+ 
+@@ -3095,9 +3147,12 @@
+ 
+ 		; Requested file name and length
+ 		;
++
++.EXPORT dos_requested_filename_len
+ dos_requested_filename_len:
+ 		.byte 0
+ 
++.EXPORT dos_requested_filename
+ dos_requested_filename:
+ 		.byte "Venezualen casaba melon productio"
+ 		.byte "n statistics (2007-2011).txt     "
+@@ -3106,34 +3161,18 @@
+ 
+ 		; Details about current DOS request
+ 		;
++
++.EXPORT dos_current_sector
++.EXPORT dos_current_cluster
++.EXPORT dos_sectorsread
++
+ dos_sectorsread:		.word 0
+ dos_current_sector:		.word 0,0
+ dos_current_cluster:		.word 0,0
+ dos_current_sector_in_cluster:	.byte 0
+ 
+-; Current file descriptors
+-; Each descriptor has:
+-;   disk id : 1 byte ($00-$07 = file open, $FF = file closed)
+-;   access mode : 1 byte ($00 = read only)
+-;   start cluster : 4 bytes
+-;   current cluster : 4 bytes
+-;   current sector in cluster : 1 byte
+-;   offset in sector: 2 bytes
+-;   file offset / $100 : 3 bytes
+-;
+-    .alias dos_filedescriptor_max 4
+-    .alias dos_filedescriptor_offset_diskid 0    
+-    .alias dos_filedescriptor_offset_mode 1    
+-    .alias dos_filedescriptor_offset_startcluster 2    
+-    .alias dos_filedescriptor_offset_currentcluster 6
+-;
+-; These last three fields must be contiguous, as dos_open_current_file
+-; relies on it.
+-;
+-    .alias dos_filedescriptor_offset_sectorincluster 10
+-    .alias dos_filedescriptor_offset_offsetinsector 11
+-    .alias dos_filedescriptor_offset_fileoffset 13
+ 
++.EXPORT dos_file_descriptors
+ dos_file_descriptors:
+ 	.byte $FF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0	; each is 16 bytes
+ 	.byte $FF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+@@ -3142,11 +3181,13 @@
+ 
+ 	; The current file descriptor
+ 	;
++.EXPORT dos_current_file_descriptor
+ dos_current_file_descriptor:
+ 	.byte 0
+ 
+ 	; Offset of current file descriptor
+ 	;
++.EXPORT dos_current_file_descriptor_offset
+ dos_current_file_descriptor_offset:
+ 	.byte 0
+ 
+@@ -3154,14 +3195,17 @@
+ 
+ 	; For providing feedback on why DOS calls have failed
+ 	; There is a set of error codes defined in kickstart_dos.a65
++.EXPORT dos_error_code
+ dos_error_code:
+ 		.byte $00
+ 
+ 	; Similarly for system partition related errors
++.EXPORT syspart_error_code
+ syspart_error_code:
+ 		.byte $00
+ 
+ 	; Non-zero if there is a valid system partition
++.EXPORT syspart_present
+ syspart_present:
+ 		.byte $00
+ 
+@@ -3169,37 +3213,48 @@
+ ;;; reserved space for Hypervisor Process work area $BD00-$BDFF
+ ;;; ----------------------------------------------------------------------------
+ 
+-		.checkpc $BD00
+-		.advance $BD00,$00
++;		.checkpc $BD00
++;		.advance $BD00,$00
++.SEGMENT "BD00SEG"
+ 
+-		.include "kickstart_process_descriptor.a65"
++;		.include "kickstart_process_descriptor.a65"
+ 
+ ;;; ----------------------------------------------------------------------------
+ ;;; reserved space for Kickstart stack (8-bit) $BE00-$BEFF
+ ;;; ----------------------------------------------------------------------------
+ 
+-		.checkpc $BE00
+-		.advance $BE00,$3d
++;		.checkpc $BE00
++;		.advance $BE00,$3d
++.SEGMENT "STACK"
+ 
+ ;;; ----------------------------------------------------------------------------
+ ;;; reserved space for Kickstart ZP at $BF00-$BFFF
+ ;;; ----------------------------------------------------------------------------
+ 
+-		.checkpc $BF00
+-		.advance $BF00,$3e
++;		.checkpc $BF00
++;		.advance $BF00,$3e
++.SEGMENT "ZEROPAGE"
+ 
+ 		; Temporary vector storage for DOS
+ 		;
++
++.EXPORT dos_scratch_vector
++
+ dos_scratch_vector: .word 0,0
++.EXPORT dos_scratch_byte_1, dos_scratch_byte_2
+ dos_scratch_byte_1: .byte 0
+ dos_scratch_byte_2: .byte 0
+ 
+ 		; Vectors for copying data between hypervisor and user-space
+ 		;
++.EXPORT hypervisor_userspace_copy_vector
+ hypervisor_userspace_copy_vector:    .word 0
+     
+ 		; general kickstart temporary variables
+ 		;
++
++.EXPORT dos_file_loadaddress
++
+ zptempv:		.word 0
+ zptempv2:		.word 0
+ zptempp:		.word 0
+@@ -3220,7 +3275,7 @@
+ SimultaneousKeys:   .byte 0
+ 
+     ; // Operational Variables
+-   .alias MaxKeyRollover 3
++   MaxKeyRollover = 3
+ 
+ 		; Used for checkpoint debug system of hypervisor
+ 		;
+@@ -3234,14 +3289,16 @@
+ 
+ 		; SD card timeout handling
+ 		;
++
++.EXPORT sdcounter
+ sdcounter:		.byte 0,0,0
+ 
+ ;;; ----------------------------------------------------------------------------
+ ;;; end of KICKUP-rom
+ ;;; ----------------------------------------------------------------------------
+ 
+-			.checkpc $C000
+-			.advance $C000, $3f
++;			.checkpc $C000
++;			.advance $C000, $3f
+ 
+-			.outfile "bin/KICKUP.M65"
++;			.outfile "bin/KICKUP.M65"
+ 
+--- ../mega65-core/src/kickstart_debug.a65	2017-12-21 09:52:00.874575409 +0100
++++ kickstart_debug.a65	2018-01-28 04:20:42.489538594 +0100
+@@ -15,6 +15,16 @@
+ ;
+ ;	========================
+ 
++
++.INCLUDE "kickstart.i65"
++.INCLUDE "kickstart_machine.a65"
++
++.SEGMENT "CODE"
++
++.AUTOIMPORT +
++
++
++.EXPORT dumpcurrentfd
+ dumpcurrentfd:
+ 
+ 	; this function prints to Checkpoint the current_file_descriptor and the offset.
+@@ -39,6 +49,7 @@
+ 
+ ;	========================
+ 
++.EXPORT dumpfddata
+ dumpfddata:
+ 
+ 	; this function prints to Checkpoint the file-descriptor[0].
+@@ -135,6 +146,7 @@
+ 
+ ;	========================
+ 
++.EXPORT dumpsectoraddress
+ dumpsectoraddress:
+ 
+ 	; print out this message to Checkpoint
+@@ -307,6 +319,7 @@
+ 
+ ;	========================
+ 
++.EXPORT dump_disk_table
+ dump_disk_table:
+ 
+ 	; this function prints to Checkpoint the dos_disk_table[0].
+@@ -499,6 +512,7 @@
+ 
+ ;	========================
+ 
++.EXPORT dump_disk_count
+ dump_disk_count:
+ 
+ 	lda dos_disk_count
+--- ../mega65-core/src/kickstart_dos.a65	2018-01-24 02:13:04.633896319 +0100
++++ kickstart_dos.a65	2018-01-28 04:20:42.489538594 +0100
+@@ -1,92 +1,101 @@
+-		
++        .include "kickstart.i65"
++        .include "kickstart_machine.a65"
++
++.SEGMENT "CODE"
++
++
++.autoimport +
++
++
+ 
+ ; XXX - Track down why 2nd and subsequent LFN blocks are not used.
+ 
+-	.alias os_version  $0102
+-	.alias dos_version $0102
+-	.alias constant_partition_type_fat32_chs $0b
+-	.alias constant_partition_type_fat32_lba $0c
+-	.alias constant_partition_type_megea65_sys $41
++	 os_version  = $0102
++	 dos_version = $0102
++	 constant_partition_type_fat32_chs = $0b
++	 constant_partition_type_fat32_lba = $0c
++	 constant_partition_type_megea65_sys =$41
+ 
+ 	; DOS error codes
+ 	;
+-	.alias dos_errorcode_partition_not_interesting $01
+-	.alias dos_errorcode_bad_signature $02
+-	.alias dos_errorcode_is_small_fat $03
+-	.alias dos_errorcode_too_many_reserved_clusters $04
+-	.alias dos_errorcode_not_two_fats $05
+-	.alias dos_errorcode_too_few_clusters $06
+-	.alias dos_errorcode_read_timeout $07
+-	.alias dos_errorcode_partition_error $08
+-
+-	.alias dos_errorcode_invalid_address $10
+-	.alias dos_errorcode_illegal_value $11
+-
+-	.alias dos_errorcode_no_such_disk $80
+-	.alias dos_errorcode_name_too_long $81
+-	.alias dos_errorcode_not_implemented $82
+-	.alias dos_errorcode_file_too_long $83
+-	.alias dos_errorcode_too_many_open_files $84
+-	.alias dos_errorcode_invalid_cluster $85
+-	.alias dos_errorcode_is_a_directory $86
+-	.alias dos_errorcode_not_a_directory $87
+-	.alias dos_errorcode_file_not_found $88
+-	.alias dos_errorcode_invalid_file_descriptor $89
+-	.alias dos_errorcode_image_wrong_length $8A
+-	.alias dos_errorcode_image_fragmented $8B
++	 dos_errorcode_partition_not_interesting = $01
++	 dos_errorcode_bad_signature = $02
++	 dos_errorcode_is_small_fat = $03
++	 dos_errorcode_too_many_reserved_clusters = $04
++	 dos_errorcode_not_two_fats = $05
++	 dos_errorcode_too_few_clusters = $06
++	 ;dos_errorcode_read_timeout = $07
++	 dos_errorcode_partition_error = $08
++
++	 ;dos_errorcode_invalid_address = $10
++	 dos_errorcode_illegal_value = $11
++
++	 dos_errorcode_no_such_disk = $80
++	 dos_errorcode_name_too_long = $81
++	 dos_errorcode_not_implemented = $82
++	 dos_errorcode_file_too_long = $83
++	 dos_errorcode_too_many_open_files = $84
++	 dos_errorcode_invalid_cluster = $85
++	 dos_errorcode_is_a_directory = $86
++	 dos_errorcode_not_a_directory = $87
++	 dos_errorcode_file_not_found = $88
++	 dos_errorcode_invalid_file_descriptor = $89
++	 dos_errorcode_image_wrong_length = $8A
++	 dos_errorcode_image_fragmented = $8B
+ 
+-	.alias dos_errorcode_eof $FF
++	 dos_errorcode_eof = $FF
+ 
+ 	; FAT directory entry constants
+ 	;
+ 	; these seem to be offsets into the STANDARD FAT32 header (DO NOT CHANGE)
+ 	;
+-	.alias fs_fat32_dirent_offset_attributes 11
+-	.alias fs_fat32_dirent_offset_shortname 0
+-	.alias fs_fat32_dirent_offset_create_tenthsofseconds 13
+-	.alias fs_fat32_dirent_offset_create_time 14
+-	.alias fs_fat32_dirent_offset_create_date 16
+-	.alias fs_fat32_dirent_offset_access_date 18
+-	.alias fs_fat32_dirent_offset_clusters_high 20
+-	.alias fs_fat32_dirent_offset_modify_time 22
+-	.alias fs_fat32_dirent_offset_modify_date 24
+-	.alias fs_fat32_dirent_offset_clusters_low 26
+-	.alias fs_fat32_dirent_offset_file_length 28
++	 fs_fat32_dirent_offset_attributes = 11
++	 fs_fat32_dirent_offset_shortname = 0
++	 fs_fat32_dirent_offset_create_tenthsofseconds = 13
++	 fs_fat32_dirent_offset_create_time = 14
++	 fs_fat32_dirent_offset_create_date = 16
++	 fs_fat32_dirent_offset_access_date = 18
++	 fs_fat32_dirent_offset_clusters_high = 20
++	 fs_fat32_dirent_offset_modify_time = 22
++	 fs_fat32_dirent_offset_modify_date = 24
++	 fs_fat32_dirent_offset_clusters_low = 26
++	 fs_fat32_dirent_offset_file_length = 28
+ 
+ 	; VFAT long file name entry constants
+ 	;
+ 	; these seem to be offsets into the STANDARD FAT32 header (DO NOT CHANGE)
+ 	;
+-	.alias fs_fat32_dirent_offset_lfn_part_number 0
+-	.alias fs_fat32_dirent_offset_lfn_type 12
+-	.alias fs_fat32_dirent_offset_lfn_checksum 13
+-	.alias fs_fat32_dirent_offset_lfn_part1_chars 5
+-	.alias fs_fat32_dirent_offset_lfn_part1_start 1
+-	.alias fs_fat32_dirent_offset_lfn_part2_chars 6
+-	.alias fs_fat32_dirent_offset_lfn_part2_start 14
+-	.alias fs_fat32_dirent_offset_lfn_part3_chars 2
+-	.alias fs_fat32_dirent_offset_lfn_part3_start 28
+-
+-	.alias fs_fat32_attribute_isreadonly $01
+-	.alias fs_fat32_attribute_ishidden $02
+-	.alias fs_fat32_attribute_issystem $04
+-	.alias fs_fat32_attribute_isvolumelabel $08
+-	.alias fs_fat32_attribute_isdirectory $10
+-	.alias fs_fat32_attribute_archiveset $20
++	 fs_fat32_dirent_offset_lfn_part_number = 0
++	 fs_fat32_dirent_offset_lfn_type = 12
++	 fs_fat32_dirent_offset_lfn_checksum = 13
++	 fs_fat32_dirent_offset_lfn_part1_chars = 5
++	 fs_fat32_dirent_offset_lfn_part1_start = 1
++	 fs_fat32_dirent_offset_lfn_part2_chars = 6
++	 fs_fat32_dirent_offset_lfn_part2_start = 14
++	 fs_fat32_dirent_offset_lfn_part3_chars = 2
++	 fs_fat32_dirent_offset_lfn_part3_start = 28
++
++	 fs_fat32_attribute_isreadonly = $01
++	 fs_fat32_attribute_ishidden = $02
++	 fs_fat32_attribute_issystem = $04
++	 fs_fat32_attribute_isvolumelabel = $08
++	 fs_fat32_attribute_isdirectory = $10
++	 fs_fat32_attribute_archiveset = $20
+ 
+ 	; Possible file modes
+ 	;
+-	.alias dos_filemode_directoryaccess $80
+-	.alias dos_filemode_end_of_directory $81
+-	.alias dos_filemode_readonly 0
+-	.alias dos_filemode_readwrite 1
++	 dos_filemode_directoryaccess = $80
++	 dos_filemode_end_of_directory = $81
++	 dos_filemode_readonly = 0
++	 dos_filemode_readwrite = 1
+ 
+ 	; 256-byte fixed size records for REL emulaton
+ 	;
+-	.alias dos_filemode_relative 2
++	 dos_filemode_relative = 2
+ 	
+ ;	========================
+ 
++.EXPORT dos_and_process_trap
+ dos_and_process_trap:
+ 
+ 	; XXX - Machine is being updated to automatically disable IRQs on trapping
+@@ -234,8 +243,8 @@
+ 
+ return_from_trap_with_carry_flag:
+ 
+-	bcs return_from_trap_with_success
+-	bcc return_from_trap_with_failure
++	lbcs return_from_trap_with_success
++	lbcc return_from_trap_with_failure
+ 
+ trap_dos_closeall:
+ 
+@@ -274,7 +283,7 @@
+ 	.byte 0,"trap_dos_setname",0
+ 
+ 	jsr hypervisor_setup_copy_region
+-	bcc tdsnfailure
++	lbcc tdsnfailure
+ 
+ 	ldy #$3f
+ tdsn1:	lda (<hypervisor_userspace_copy_vector),y
+@@ -343,7 +352,7 @@
+ 
+ 	tza
+ 	tay
+-	lda #'\)
++	lda #')'			; ) ????
+ 	sta setnamemsgname,y
+ 
+ 	jsr checkpoint
+@@ -563,6 +572,7 @@
+ 
+ ;	========================
+ 
++.EXPORT trap_dos_d81attach
+ trap_dos_d81attach:
+ 
+ 	jsr checkpoint
+@@ -648,6 +658,7 @@
+ ; which indicates "no such drive"
+ ; Drive number field is first byte of file descriptor for convenience
+ 
++.EXPORT dos_clear_filedescriptors
+ dos_clear_filedescriptors:
+ 
+ 	; XXX - This doesn't close the underlying file descriptors!
+@@ -672,6 +683,8 @@
+ ; XXX - We don't support extended partition tables! Only the old-fashion
+ ; 4 DOS partitions.  We might get excited and add support for them later
+ ;
++
++.EXPORT dos_read_partitiontable
+ dos_read_partitiontable:
+ 
+ 	; clear error code
+@@ -684,7 +697,7 @@
+ 	jsr dos_initialise_disklist
+ 
+ 	jsr dos_read_mbr
+-	bcc drpt_fail
++	lbcc drpt_fail
+ 
+ 	; Make the sector buffer visible
+ 	;
+@@ -695,12 +708,12 @@
+ 
+ 	; check for $55, $AA MBR signature
+ 	;
+-	lda [sd_sectorbuffer+$1FE]
++	lda sd_sectorbuffer+$1FE
+ 	cmp #$55
+-	bne drpt_fail
+-	lda [sd_sectorbuffer+$1FF]
++	lbne drpt_fail
++	lda sd_sectorbuffer+$1FF
+ 	cmp #$AA
+-	bne drpt_fail
++	lbne drpt_fail
+ 
+ 	; yes, $55AA MBR signature was found
+ 
+@@ -715,33 +728,33 @@
+ 	; partition entries as we see fit.
+ 	;
+ 
+-	lda #<[sd_sectorbuffer+$1BE]
++	lda #<(sd_sectorbuffer+$1BE)
+ 	sta dos_scratch_vector
+-	lda #>[sd_sectorbuffer+$1BE]
++	lda #>(sd_sectorbuffer+$1BE)
+ 	sta dos_scratch_vector+1
+ 		jsr checkpoint
+ 		.byte 0,"=== Checking Partition #1 at $01BE",0
+ 	jsr dos_consider_partition_entry
+ 	
+ 	jsr dos_read_mbr
+-	bcc drpt_fail
+-	lda #<[sd_sectorbuffer+$1CE]
++	lbcc drpt_fail
++	lda #<(sd_sectorbuffer+$1CE)
+ 	sta dos_scratch_vector
+ 		jsr checkpoint
+ 		.byte 0,"=== Checking Partition #2 at $01CE",0
+ 	jsr dos_consider_partition_entry
+ 
+ 	jsr dos_read_mbr
+-	bcc drpt_fail
+-	lda #<[sd_sectorbuffer+$1DE]
++	lbcc drpt_fail
++	lda #<(sd_sectorbuffer+$1DE)
+ 	sta dos_scratch_vector
+ 		jsr checkpoint
+ 		.byte 0,"=== Checking Partition #3 at $01DE",0
+ 	jsr dos_consider_partition_entry
+ 
+ 	jsr dos_read_mbr
+-	bcc drpt_fail
+-	lda #<[sd_sectorbuffer+$1EE]
++	lbcc drpt_fail
++	lda #<(sd_sectorbuffer+$1EE)
+ 	sta dos_scratch_vector
+ 		jsr checkpoint
+ 		.byte 0,"=== Checking Partition #4 at $01EE",0
+@@ -771,7 +784,7 @@
+ 	; Read sector
+ 	;
+ 	jsr sd_readsector
+-	bcc drpt_fail
++	lbcc drpt_fail
+ 	rts
+ 
+ ;	========================
+@@ -826,7 +839,7 @@
+ 
+ 	; Only one system partition
+ 	lda syspart_present
+-	bne partitionerror
++	lbne partitionerror
+ 
+ 	; Store start and length of System partition
+ 	; (These are the first two fields of the syspart structure
+@@ -866,7 +879,7 @@
+ 	; Make sure we have a spare disk slot
+ 	lda dos_disk_count
+ 	cmp #dos_max_disks
+-	beq partitionerror	
++	lbeq partitionerror	
+ 
+ 	; Partition is FAT32 (either 0B or 0C), so add it to the list
+ 
+@@ -902,7 +915,7 @@
+ 	;
+ 
+ 	jsr dos_disk_openpartition
+-	bcc partitionerror
++	lbcc partitionerror
+ 
+ 	jsr dump_disk_table
+ 
+@@ -1015,40 +1028,40 @@
+ ; Each disk entry consists of;
+ ;
+ ; Offset $00 - starting sector (4 bytes)
+-  	 .alias fs_start_sector $00
++  	 fs_start_sector = $00
+ 
+ ; Offset $04 - sector count (4 bytes)
+-  	 .alias fs_sector_count $04
++  	  fs_sector_count = $04
+ 
+ ; Offset $08 - Filesystem type & media source ($0x = FAT32, $xF = SD card, others reserved for now)
+-  	 .alias fs_type_and_source $08
++  	  fs_type_and_source = $08
+ 
+ 		; Remaining bytes are filesystem dependent:
+ 		; For FAT32:
+ 		;
+ ; Offset $09 - length of fat (4 bytes) (FAT starts at fs_fat32_system_sectors)
+-  	 .alias fs_fat32_length_of_fat $09
++  	  fs_fat32_length_of_fat = $09
+ 
+ ; Offset $0D - system sectors (2 bytes)
+-  	 .alias fs_fat32_system_sectors $0D
++  	  fs_fat32_system_sectors = $0D
+ 
+ ; Offset $0F - reserved clusters (1 byte)
+-  	 .alias fs_fat32_reserved_clusters $0F
++  	  fs_fat32_reserved_clusters = $0F
+ 
+ ; Offset $10 - root dir cluster (2 bytes) 
+-  	 .alias fs_fat32_root_dir_cluster $10
++  	  fs_fat32_root_dir_cluster = $10
+ 
+ ; Offset $12 - cluster count (4 bytes)
+-  	 .alias fs_fat32_cluster_count $12
++  	  fs_fat32_cluster_count = $12
+ 
+ ; Offset $16 - sectors per cluster
+-  	 .alias fs_fat32_sectors_per_cluster $16
++  	  fs_fat32_sectors_per_cluster = $16
+ 
+ ; Offset $17 - copies of FAT
+-  	 .alias fs_fat32_fat_copies $17
++  	  fs_fat32_fat_copies = $17
+ 
+ ; Offset $18 - first sector of cluster zero (4 bytes)
+-  	 .alias fs_fat32_cluster0_sector $18
++  	  fs_fat32_cluster0_sector = $18
+ 
+ ; Offset $1C - Four spare bytes.
+ 
+@@ -1116,12 +1129,12 @@
+ 	lda #dos_errorcode_bad_signature
+ 	sta dos_error_code
+ 
+-	lda [sd_sectorbuffer+$1FE]
++	lda sd_sectorbuffer+$1FE
+ 	cmp #$55
+ 	beq ddop1a
+ 	jmp partitionerror
+ ddop1a:
+-	lda [sd_sectorbuffer+$1FF]	
++	lda sd_sectorbuffer+$1FF
+ 	cmp #$AA
+ 	beq ddop1b
+ 	jmp partitionerror
+@@ -1144,8 +1157,8 @@
+ 	;
+ 	; for fat32, the 11'th entry is unused, http://www.easeus.com/resource/fat32-disk-structure.htm
+ 	;
+-	lda [sd_sectorbuffer+$11]	; this is NOT the MBSyte of the number of FATs
+-	bne partitionerror
++	lda sd_sectorbuffer+$11	; this is NOT the MBSyte of the number of FATs
++	lbne partitionerror
+ 
+ ;	========================
+ 
+@@ -1154,7 +1167,7 @@
+ 	lda dos_disk_table_offset
+ 	ora #fs_fat32_fat_copies	; is $17
+ 	tay
+-	lda [sd_sectorbuffer+$10]	; should be 2
++	lda sd_sectorbuffer+$10	; should be 2
+ 	sta dos_disk_table,y
+ 
+ ;	========================
+@@ -1182,7 +1195,7 @@
+ 	tay
+ 	ldx #$00
+ 
+-ddop10:	lda [sd_sectorbuffer+$0E],x
++ddop10:	lda sd_sectorbuffer+$0E,x
+ 	sta dos_disk_table,y
+ 	iny
+ 	inx
+@@ -1198,7 +1211,7 @@
+ 	tay
+ 	ldx #$00
+ 
+-ddop11:	lda [sd_sectorbuffer+$24],x	; sectors_per_fat
++ddop11:	lda sd_sectorbuffer+$24,x	; sectors_per_fat
+ 	sta dos_disk_table,y
+ 	iny
+ 	inx
+@@ -1216,9 +1229,9 @@
+ 	lda #dos_errorcode_too_many_reserved_clusters
+ 	sta dos_error_code
+ 
+-	lda [sd_sectorbuffer+$2C+1]
+-	ora [sd_sectorbuffer+$2C+2]
+-	ora [sd_sectorbuffer+$2C+3]
++	lda sd_sectorbuffer+$2C+1
++	ora sd_sectorbuffer+$2C+2
++	ora sd_sectorbuffer+$2C+3
+ 
+ 	; XXX - 16 bit BNE should be fine here! Why doesn't it work?
+ 	;	bne partitionerror
+@@ -1239,8 +1252,8 @@
+ 	; RootDirFirstCluster[3..0] not equal to $00000002
+ 	;
+ 	ldy dos_disk_table_offset
+-	lda [sd_sectorbuffer+$2C]	; 2c is the ClusterNumberOfFirstRootDir
+-	sta [dos_disk_table + fs_fat32_reserved_clusters],y
++	lda sd_sectorbuffer+$2C	; 2c is the ClusterNumberOfFirstRootDir
++	sta dos_disk_table + fs_fat32_reserved_clusters,y
+ 
+ ;jsr checkpoint
+ ;.byte 0,"dos_disk_table-1",0
+@@ -1284,8 +1297,8 @@
+ 	;
+ 	; BG: why tza, just do lda#$00
+ 	tza
+-	sta [dos_disk_table+0],x
+-	sta [dos_disk_table+1],x
++	sta dos_disk_table+0,x
++	sta dos_disk_table+1,x
+ 
+ ;jsr checkpoint
+ ;.byte 0,"dos_disk_table-2",0
+@@ -1306,10 +1319,10 @@
+ 
+ 	; BG #FATs should be sourced from dos_disk_table[17], not from buffer+$10
+ 
+-	ldz [sd_sectorbuffer+$10]     ; # of FAT copies
+-	beq partitionerror ; There must be at least one copy of the FAT!
++	ldz sd_sectorbuffer+$10     ; # of FAT copies
++	lbeq partitionerror ; There must be at least one copy of the FAT!
+ 	cpz #2
+-	bne partitionerror
++	lbne partitionerror
+ 
+ ddop_addnextfatsectors:
+ 
+@@ -1322,7 +1335,7 @@
+ 
+ ddop12:	plp	; pull processor-status
+ 	lda dos_disk_table,y           ; cluster0_sector
+-	adc [sd_sectorbuffer+$24],x    ; sectors per fat ;BG should load from dos_disk_table[09]
++	adc sd_sectorbuffer+$24,x    ; sectors per fat ;BG should load from dos_disk_table[09]
+ 	sta dos_disk_table,y           ; cluster0_sector
+ 	php
+ 	iny
+@@ -1363,18 +1376,18 @@
+ 	ora #fs_fat32_cluster_count	; is $12
+ 	tay
+ 	sec
+-	lda [sd_sectorbuffer+$20+0]	; from FAT spec, this is number of sectors in partition
+-	sbc [dos_disk_table+0],x	; x=$18 initially
+-	sta [dos_disk_table+0],y	; y=$12 initially
+-	lda [sd_sectorbuffer+$20+1]
+-	sbc [dos_disk_table+1],x
+-	sta [dos_disk_table+1],y
+-	lda [sd_sectorbuffer+$20+2]
+-	sbc [dos_disk_table+2],x
+-	sta [dos_disk_table+2],y
+-	lda [sd_sectorbuffer+$20+3]
+-	sbc [dos_disk_table+3],x
+-	sta [dos_disk_table+3],y
++	lda sd_sectorbuffer+$20+0	; from FAT spec, this is number of sectors in partition
++	sbc dos_disk_table+0,x	; x=$18 initially
++	sta dos_disk_table+0,y	; y=$12 initially
++	lda sd_sectorbuffer+$20+1
++	sbc dos_disk_table+1,x
++	sta dos_disk_table+1,y
++	lda sd_sectorbuffer+$20+2
++	sbc dos_disk_table+2,x
++	sta dos_disk_table+2,y
++	lda sd_sectorbuffer+$20+3
++	sbc dos_disk_table+3,x
++	sta dos_disk_table+3,y
+ 
+ ;	========================
+ 
+@@ -1385,7 +1398,7 @@
+ 	lda dos_disk_table_offset
+ 	ora #fs_fat32_sectors_per_cluster	; is $16
+ 	tay
+-	lda [sd_sectorbuffer+$0D]
++	lda sd_sectorbuffer+$0D
+ 	sta dos_disk_table,y
+ 
+ ;jsr checkpoint
+@@ -1410,7 +1423,7 @@
+ 	; Put number of sectors per cluster into Z, and don't shift if there is only
+ 	; one sector per cluster.
+ 	;
+-	lda [sd_sectorbuffer+$0D]	; because of the checkpoint message above
++	lda sd_sectorbuffer+$0D		; because of the checkpoint message above
+ 	taz				; why store .A in .Z anyway
+ 
+ 	and #$fe	; #%1111.1110
+@@ -1466,7 +1479,7 @@
+ 	lda dos_disk_table_offset
+ 	ora #fs_fat32_sectors_per_cluster	; is $16
+ 	tay
+-	lda [sd_sectorbuffer+$0D]
++	lda sd_sectorbuffer+$0D
+ 	sta dos_disk_table,y
+ 
+ ;jsr checkpoint
+@@ -1492,7 +1505,7 @@
+ 
+ 	lda dos_disk_table+3,y	; BG this seems to creep-out-of-bounds from +16 to +19
+ 	ora dos_disk_table+2,y
+-	beq partitionerror
++	lbeq partitionerror
+ 
+ 	; Now get cluster of root directory.
+ 	;
+@@ -1501,7 +1514,7 @@
+ 	tay
+ 
+ 	ldx #$03
+-ddop16:	lda [sd_sectorbuffer+$2C],x	; +$2c is rootDirFirstCluster[3..0]
++ddop16:	lda sd_sectorbuffer+$2C,x	; +$2c is rootDirFirstCluster[3..0]
+ 	sta dos_disk_table,y
+ 	dex
+ ; BG should there be a "dey" here somewhere?
+@@ -1569,6 +1582,7 @@
+ ;	========================
+ ;	========================
+ 
++.EXPORT dos_return_error
+ dos_return_error:
+ 
+ 	sta dos_error_code
+@@ -1590,7 +1604,7 @@
+ 	sta dos_error_code
+ 
+ 	cpx dos_disk_count
+-	bcs partitionerror	; BG shouldnt this be bmi?
++	lbcs partitionerror	; BG shouldnt this be bmi?
+ 
+ 	stx dos_disk_current_disk
+ 	txa
+@@ -1617,6 +1631,7 @@
+ 
+ ;	========================
+ 
++.EXPORT dos_cdroot
+ dos_cdroot:
+ 
+ 	; Change to root directory on specified disk
+@@ -1630,9 +1645,9 @@
+ 	; get offset of disk entry
+ 	;
+ 	ldx dos_disk_table_offset
+-	lda [dos_disk_table + fs_fat32_root_dir_cluster +0],x
++	lda dos_disk_table + fs_fat32_root_dir_cluster +0,x
+ 	sta dos_disk_cwd_cluster
+-	lda [dos_disk_table + fs_fat32_root_dir_cluster +1],x
++	lda dos_disk_table + fs_fat32_root_dir_cluster +1,x
+ 	sta dos_disk_cwd_cluster+1
+ 
+ 	lda #$00
+@@ -1740,7 +1755,7 @@
+ 	asl
+ 	asl
+ 	tay
+-	lda [dos_file_descriptors+dos_filedescriptor_offset_diskid],y
++	lda dos_file_descriptors+dos_filedescriptor_offset_diskid,y
+ 	cmp #$FF
+ 	beq dgfd_found_free
+ 	inx
+@@ -1777,6 +1792,7 @@
+ 
+ ;	========================
+ 
++.EXPORT dos_clearall
+ dos_clearall:
+ 
+ 	; Free all file descriptors with extreme prejudice
+@@ -1802,6 +1818,7 @@
+ 
+ ;	========================
+ 
++.EXPORT dos_closefile
+ dos_closefile:
+ 
+ 	; Close the current file/directory
+@@ -1857,12 +1874,13 @@
+ dof_not_a_directory:
+ 
+ 	jsr dos_set_current_file_from_dirent
+-	bcc dos_return_error_already_set
++	lbcc dos_return_error_already_set
+ 
+ 	jmp dos_open_current_file
+ 
+ ;	========================
+ 
++.EXPORT dos_findfile
+ dos_findfile:
+ 
+ 	; Convenience wrapper around dos_findfirst to make sure that we don't
+@@ -1872,7 +1890,7 @@
+ 	php
+ 	jsr dos_closefile
+ 	plp
+-	bcc dos_return_error_already_set
++	lbcc dos_return_error_already_set
+ 	sec
+ 	rts
+ 
+@@ -1885,10 +1903,10 @@
+ 	; Convert name to upper case for searching
+ 	;
+ 	jsr dos_requested_filename_to_uppercase
+-	bcc dos_return_error_already_set
++	lbcc dos_return_error_already_set
+ 
+ 	jsr dos_opendir
+-	bcc dos_return_error_already_set
++	lbcc dos_return_error_already_set
+ 
+ 	; Directory is now open, and we can now iterate through directory entries
+ 	;
+@@ -1936,7 +1954,7 @@
+ 	; Open the current directory as a file
+ 	;
+ 	jsr dos_get_free_descriptor
+-	bcc dos_return_error_already_set
++	lbcc dos_return_error_already_set
+ 
+ 	; get offset in file descriptor table
+ 	;
+@@ -1957,8 +1975,8 @@
+ 	ldx #$00
+ 
+ dff1:	lda dos_disk_cwd_cluster,x
+-	sta [dos_file_descriptors+dos_filedescriptor_offset_startcluster],y
+-	sta [dos_file_descriptors+dos_filedescriptor_offset_currentcluster],y
++	sta dos_file_descriptors+dos_filedescriptor_offset_startcluster,y
++	sta dos_file_descriptors+dos_filedescriptor_offset_currentcluster,y
+ 	iny
+ 	inx
+ 	cpx #$04
+@@ -1968,10 +1986,10 @@
+ 	;
+ 	ldx dos_current_file_descriptor_offset
+ 	lda #dos_filemode_directoryaccess
+-	sta [dos_file_descriptors + dos_filedescriptor_offset_mode],x
++	sta dos_file_descriptors + dos_filedescriptor_offset_mode,x
+ 
+ 	jsr dos_open_current_file
+-	bcc dos_return_error_already_set
++	lbcc dos_return_error_already_set
+ 	rts
+ 
+ ;	========================
+@@ -2026,7 +2044,7 @@
+ ; end of debug
+ 
+ 	ldx dos_current_file_descriptor_offset
+-	lda [dos_file_descriptors + dos_filedescriptor_offset_mode] ,x
++	lda dos_file_descriptors + dos_filedescriptor_offset_mode ,x
+ 	cmp #dos_filemode_directoryaccess
+ 	beq drd_isdir
+ 	cmp #dos_filemode_end_of_directory
+@@ -2051,7 +2069,7 @@
+ 	; WARNING - Uses carnal knowledge to know that dirent structure is
+ 	; 64+1+11+4+4+1 = 85 contiguous bytes
+ 	;
+-	ldx #[dos_dirent_structure_length-1]
++	ldx #dos_dirent_structure_length-1
+ 	lda #$00
+ 
+ drce1:	sta dos_dirent_longfilename,x
+@@ -2061,7 +2079,7 @@
+ 	; Read current sector
+ 	;
+ 	jsr dos_file_read_current_sector
+-	bcc dos_return_error_already_set
++	lbcc dos_return_error_already_set
+ 
+ 	jsr sd_map_sectorbuffer
+ 	
+@@ -2133,11 +2151,11 @@
+ 	ldy #fs_fat32_dirent_offset_shortname	; Y=0 (first char of entry)
+ 	lda (<dos_scratch_vector),y
+ 	cmp #$00
+-	beq drd_end_of_directory
++	lbeq drd_end_of_directory
+ 
+ 	; then check if the entry begins with $E5, suggesting deleted
+ 	cmp #$e5
+-	beq drd_deleted_or_invalid_entry
++	lbeq drd_deleted_or_invalid_entry
+ 
+ 	; now check the attrib
+ 
+@@ -2241,7 +2259,7 @@
+ 	;
+ 	ldy #fs_fat32_dirent_offset_lfn_type
+ 	lda (<dos_scratch_vector),y
+-	bne drce_normalrecord
++	lbne drce_normalrecord
+ 	
+ 	; verify checksum of long name
+ 	; XXX - Actually, we need to keep the checksum, and then compare it with the
+@@ -2265,7 +2283,7 @@
+ 	; piece number >4 can be ignored
+ 	;
+ 	cmp #5
+-	bcs drce_ignore_lfn_piece
++	lbcs drce_ignore_lfn_piece
+ 	tax
+ 	lda lfn_piece_offsets,x
+ 	tax
+@@ -2390,7 +2408,7 @@
+ drce_cont_next_part:
+ 
+ 	jsr dos_readdir_advance_to_next_entry
+-	bcs dos_readdir
++	lbcs dos_readdir
+ 	jmp dos_return_error_already_set
+ 
+ ;	========================
+@@ -2446,7 +2464,7 @@
+ 
+ drce_insert_dot:
+ 	dex
+-	lda #'.
++	lda #'.'
+ 	sta dos_dirent_longfilename,x
+ 	stx dos_dirent_longfilename_length
+ 	inx
+@@ -2468,7 +2486,7 @@
+ 	;
+ 	cmp #$20
+ 	beq drce_copied_extension
+-	cpx #[8+1+3]
++	cpx #8+1+3
+ 	bne drce6
+ 
+ drce_copied_extension:
+@@ -2543,7 +2561,7 @@
+ 	sta dos_file_descriptors + dos_filedescriptor_offset_mode ,x
+ 
+ 	ldx dos_current_file_descriptor_offset
+-	lda [dos_file_descriptors + dos_filedescriptor_offset_mode],x
++	lda dos_file_descriptors + dos_filedescriptor_offset_mode,x
+ 
+ 	sec
+ 	rts
+@@ -2557,15 +2575,15 @@
+ 	;
+ 	lda dos_dirent_longfilename_length
+ 	cmp #0
+-	beq dos_readdir
++	lbeq dos_readdir
+ 
+ 	jsr checkpoint
+ 	.byte 0," drce_not_eof CHECK<2/3>",0
+ 
+ 	lda dos_dirent_shortfilename
+-	beq dos_readdir
++	lbeq dos_readdir
+ 	cmp #$20
+-	beq dos_readdir
++	lbeq dos_readdir
+ 
+ 	jsr checkpoint
+ 	.byte 0," drce_not_eof CHECK<3/3>",0
+@@ -2621,7 +2639,7 @@
+ ddie:	.byte "xx drd_deleted_or_invalid_entry",0
+ 
+ 	jsr dos_readdir_advance_to_next_entry
+-	bcs dos_readdir
++	lbcs dos_readdir
+ 	jmp dos_return_error_already_set
+ 
+ ;	========================
+@@ -2713,7 +2731,7 @@
+ 	;
+ 	jsr dos_get_free_descriptor
+ 	jsr dos_get_file_descriptor_offset
+-	bcc dos_return_error_already_set
++	lbcc dos_return_error_already_set
+ 
+ 	; set disk id
+ 	;
+@@ -2733,7 +2751,7 @@
+ 	bne dscffd1
+ 
+ 	jsr dos_get_file_descriptor_offset
+-	bcc dos_return_error_already_set
++	lbcc dos_return_error_already_set
+ 
+ 	; set disk id
+ 	;
+@@ -2765,7 +2783,7 @@
+ 	; copy start cluster to current cluster, and zero position in file
+ 	;
+ 	jsr dos_get_file_descriptor_offset
+-	bcc dos_return_error_already_set
++	lbcc dos_return_error_already_set
+ 
+ 	; Copy start cluster to current cluster
+ 	;
+@@ -2798,6 +2816,7 @@
+ 	; Load A & X with the offset of the current file descriptor, relative to
+ 	; dos_file_descriptors.
+ 
++.EXPORT dos_get_file_descriptor_offset
+ dos_get_file_descriptor_offset:
+ 
+ 	lda dos_current_file_descriptor
+@@ -2825,7 +2844,7 @@
+ 	; copy cluster number in file to current cluster
+ 	;
+ 	jsr dos_get_file_descriptor_offset
+-	bcc dos_return_error_already_set
++	lbcc dos_return_error_already_set
+ 
+ 	ldy #$00
+ dfrcs1:	lda dos_file_descriptors+dos_filedescriptor_offset_currentcluster,x
+@@ -2847,7 +2866,7 @@
+ 	; Add sector within cluster
+ 	;
+ 	jsr dos_get_file_descriptor_offset
+-	bcc dos_return_error_already_set
++	lbcc dos_return_error_already_set
+ 
+ 	; Set A to the offset of the sectorincluster field of the current
+ 	; file descriptor
+@@ -3008,7 +3027,7 @@
+ 	; read FAT sector
+ 	;
+ 	jsr sd_readsector
+-	bcc dos_return_error_already_set
++	lbcc dos_return_error_already_set
+ 
+ 	jsr sd_map_sectorbuffer
+ 
+@@ -3134,7 +3153,8 @@
+ 	rts
+ 
+ ;	========================
+-	
++
++.EXPORT dos_readfileintomemory	
+ dos_readfileintomemory:
+ 
+ 	; assumes that filename is already set using "dos_setname", which 
+@@ -3163,10 +3183,10 @@
+ 
+ 	; ... but report if we hit an error
+ 	;
+-	bcc dos_return_error_already_set
++	lbcc dos_return_error_already_set
+ 
+ 	jsr dos_openfile
+-	bcc dos_return_error_already_set
++	lbcc dos_return_error_already_set
+ 
+ 	jsr sd_map_sectorbuffer
+ 
+@@ -3236,6 +3256,7 @@
+ 
+ ;	========================
+ 
++.EXPORT dos_setname
+ dos_setname:
+ 
+ 	; INPUT: .X .Y = pointer to filename,
+@@ -3267,6 +3288,7 @@
+ 
+ ;	========================
+ 
++.EXPORT dos_d81attach
+ dos_d81attach:
+ 
+ 	jsr checkpoint
+@@ -3292,10 +3314,10 @@
+ 		; Start by opening the file
+ 		;
+ 		jsr dos_set_current_file_from_dirent
+-		bcc nod81
++		lbcc nod81
+ 
+ 		jsr dos_openfile
+-		bcc nod81
++		lbcc nod81
+ 		
+ 		; work out how many clusters we need
+ 		; We need 1600 sectors, so halve for every zero tail
+@@ -3351,7 +3373,7 @@
+ 
+ l94a:		lda dos_file_descriptors+dos_filedescriptor_offset_currentcluster,x
+ 		cmp d81_clusternumber,y
+-		bne d81isfragged
++		lbne d81isfragged
+ 		inx
+ 		iny
+ 		cpy #4
+--- ../mega65-core/src/kickstart_freeze.a65	2018-01-27 14:56:15.469273184 +0100
++++ kickstart_freeze.a65	2018-01-28 04:20:42.489538594 +0100
+@@ -1,3 +1,11 @@
++.INCLUDE "kickstart.i65"
++.INCLUDE "kickstart_machine.a65"
++
++.SEGMENT "CODE"
++
++.AUTOIMPORT +
++
++.EXPORT freeze_to_slot
+ freeze_to_slot:
+ 	; Freeze current running process to the specified slot
+ 
+@@ -308,12 +316,12 @@
+ 	jmp (freeze_prep_jump_table,x)
+ 
+ freeze_prep_jump_table:
+-	.alias freeze_prep_none 0
++	freeze_prep_none = 0
+ 	.word do_freeze_prep_sdcard_regs_to_scratch
+-	.alias freeze_prep_palette0 2
+-	.alias freeze_prep_palette1 4
+-	.alias freeze_prep_palette2 6
+-	.alias freeze_prep_palette3 8
++	freeze_prep_palette0 = 2
++	freeze_prep_palette1 = 4
++	freeze_prep_palette2 = 6
++	freeze_prep_palette3 = 8
+ 	.word do_freeze_prep_palette_select
+ 	.word do_freeze_prep_palette_select
+ 	.word do_freeze_prep_palette_select
+@@ -479,4 +487,4 @@
+ 	.dword $FFFFFFFF
+ 	.word $FFFF
+ 	.byte $FF
+-	.byte $FF
+\ No newline at end of file
++	.byte $FF
+--- ../mega65-core/src/kickstart_keyboard.a65	2017-12-05 01:18:38.427023896 +0100
++++ kickstart_keyboard.a65	2018-01-28 04:20:42.489538594 +0100
+@@ -1,3 +1,10 @@
++.INCLUDE "kickstart.i65"
++
++.SEGMENT "CODE"
++
++
++.EXPORT scankeyboard
++
+ peekkeyboard:
+ 	; We now use hardware-accelerated keyboard reading
+ 	lda $d610
+@@ -12,4 +19,4 @@
+ scankeyboard:
+ 	jsr peekkeyboard
+ 	sta $d610 ; clear key from buffer
+-	rts
+\ No newline at end of file
++	rts
+--- ../mega65-core/src/kickstart_machine.a65	2018-01-20 06:49:30.398672459 +0100
++++ kickstart_machine.a65	2018-01-28 04:20:42.493538444 +0100
+@@ -1,67 +1,67 @@
+ 
+-	.alias reset_vector $fffc
+-	.alias irq_vector $fffe
+-	.alias nmi_vector $fffa
+-
+-
+-	.alias hypervisor_a $d640
+-	.alias hypervisor_x $d641
+-	.alias hypervisor_y $d642
+-	.alias hypervisor_z $d643
+-	.alias hypervisor_b $d644
+-	.alias hypervisor_spl $d645
+-	.alias hypervisor_sph $d646
+-	.alias hypervisor_flags $d647
+-	.alias hypervisor_pcl $d648
+-	.alias hypervisor_pch $d649
+-	.alias hypervisor_maplolo $d64a
+-	.alias hypervisor_maplohi $d64b
+-	.alias hypervisor_maphilo $d64c
+-	.alias hypervisor_maphihi $d64d
+-	.alias hypervisor_maplomb $d64e
+-	.alias hypervisor_maphimb $d64f
+-	.alias hypervisor_cpuport00 $d650
+-	.alias hypervisor_cpuport01 $d651
+-	.alias hypervisor_iomode $d652
+-	.alias hypervisor_dmagic_srcmb $d653
+-	.alias hypervisor_dmagic_dstmb $d654
+-	.alias hypervisor_dmagic_list0 $d655
+-	.alias hypervisor_dmagic_list1 $d656
+-	.alias hypervisor_dmagic_list2 $d657
+-	.alias hypervisor_dmagic_list3 $d658
+-	.alias hypervisor_hardware_virtualisation $d659
++	reset_vector = $fffc
++	irq_vector = $fffe
++	nmi_vector = $fffa
++
++
++	hypervisor_a = $d640
++	hypervisor_x = $d641
++	hypervisor_y = $d642
++	hypervisor_z = $d643
++	hypervisor_b = $d644
++	hypervisor_spl = $d645
++	hypervisor_sph = $d646
++	hypervisor_flags = $d647
++	hypervisor_pcl = $d648
++	hypervisor_pch = $d649
++	hypervisor_maplolo = $d64a
++	hypervisor_maplohi = $d64b
++	hypervisor_maphilo = $d64c
++	hypervisor_maphihi = $d64d
++	hypervisor_maplomb = $d64e
++	hypervisor_maphimb = $d64f
++	hypervisor_cpuport00 = $d650
++	hypervisor_cpuport01 = $d651
++	hypervisor_iomode = $d652
++	hypervisor_dmagic_srcmb = $d653
++	hypervisor_dmagic_dstmb = $d654
++	hypervisor_dmagic_list0 = $d655
++	hypervisor_dmagic_list1 = $d656
++	hypervisor_dmagic_list2 = $d657
++	hypervisor_dmagic_list3 = $d658
++	hypervisor_hardware_virtualisation = $d659
+ 
+ 	; d65a
+ 	; d65b
+ 	; d65c
+ 
+-	.alias hypervisor_vm_currentpage_lo $d65d
+-	.alias hypervisor_vm_currentpage_mid $d65e
+-	.alias hypervisor_vm_currentpage_hi $d65f
+-
+-	.alias hypervisor_vm_pagetable $d660
+-	.alias hypervisor_vm_pagetable0_logicalpage_lo $d660
+-	.alias hypervisor_vm_pagetable0_logicalpage_hi $d661
+-	.alias hypervisor_vm_pagetable0_physicalpage_lo $d662
+-	.alias hypervisor_vm_pagetable0_physicalpage_hi $d663
+-	.alias hypervisor_vm_pagetable1_logicalpage_lo $d664
+-	.alias hypervisor_vm_pagetable1_logicalpage_hi $d665
+-	.alias hypervisor_vm_pagetable1_physicalpage_lo $d666
+-	.alias hypervisor_vm_pagetable1_physicalpage_hi $d667
+-	.alias hypervisor_vm_pagetable2_logicalpage_lo $d668
+-	.alias hypervisor_vm_pagetable2_logicalpage_hi $d669
+-	.alias hypervisor_vm_pagetable2_physicalpage_lo $d66a
+-	.alias hypervisor_vm_pagetable2_physicalpage_hi $d66b
+-	.alias hypervisor_vm_pagetable3_logicalpage_lo $d66c
+-	.alias hypervisor_vm_pagetable3_logicalpage_hi $d66d
+-	.alias hypervisor_vm_pagetable3_physicalpage_lo $d66e
+-	.alias hypervisor_vm_pagetable3_physicalpage_hi $d66f
++	hypervisor_vm_currentpage_lo = $d65d
++	hypervisor_vm_currentpage_mid = $d65e
++	hypervisor_vm_currentpage_hi = $d65f
++
++	hypervisor_vm_pagetable = $d660
++	hypervisor_vm_pagetable0_logicalpage_lo = $d660
++	hypervisor_vm_pagetable0_logicalpage_hi = $d661
++	hypervisor_vm_pagetable0_physicalpage_lo = $d662
++	hypervisor_vm_pagetable0_physicalpage_hi = $d663
++	hypervisor_vm_pagetable1_logicalpage_lo = $d664
++	hypervisor_vm_pagetable1_logicalpage_hi = $d665
++	hypervisor_vm_pagetable1_physicalpage_lo = $d666
++	hypervisor_vm_pagetable1_physicalpage_hi = $d667
++	hypervisor_vm_pagetable2_logicalpage_lo = $d668
++	hypervisor_vm_pagetable2_logicalpage_hi = $d669
++	hypervisor_vm_pagetable2_physicalpage_lo = $d66a
++	hypervisor_vm_pagetable2_physicalpage_hi = $d66b
++	hypervisor_vm_pagetable3_logicalpage_lo = $d66c
++	hypervisor_vm_pagetable3_logicalpage_hi = $d66d
++	hypervisor_vm_pagetable3_physicalpage_lo = $d66e
++	hypervisor_vm_pagetable3_physicalpage_hi = $d66f
+ 
+-	.alias hypervisor_georam_base_mb $d670
+-	.alias hypervsior_georam_block_mask $d671
++	hypervisor_georam_base_mb = $d670
++	hypervsior_georam_block_mask = $d671
+ 
+ 	; d672 110 010
+-	.alias hypervisor_secure_mode_flags $d672
++	hypervisor_secure_mode_flags = $d672
+ 	
+ 	; d673
+ 	; d674
+@@ -73,21 +73,61 @@
+ 	; d67a
+ 	; d67b
+ 
+-	.alias hypervisor_write_char_to_serial_monitor $d67c
++	hypervisor_write_char_to_serial_monitor = $d67c
+ 
+-	.alias hypervisor_feature_enables $d67d
+-	.alias hypervisor_kickedup_flag $d67e
+-	.alias hypervisor_cartridge_flags $d67e
+-	.alias hypervisor_enterexit_trigger $d67f
+-
+-	; Where sector buffer maps (over $DE00-$DFFF IO expansion space)
+-	.alias sd_sectorbuffer $DE00
+-	.alias sd_address_byte0 $D681
+-	.alias sd_address_byte1 $D682
+-	.alias sd_address_byte2 $D683
+-	.alias sd_address_byte3 $D684
++	hypervisor_feature_enables = $d67d
++	hypervisor_kickedup_flag = $d67e
++	hypervisor_cartridge_flags = $d67e
++	hypervisor_enterexit_trigger = $d67f
++
++	; Where sector buffer maps (over = $DE00-$DFFF IO expansion space)
++	sd_sectorbuffer = $DE00
++	sd_address_byte0 = $D681
++	sd_address_byte1 = $D682
++	sd_address_byte2 = $D683
++	sd_address_byte3 = $D684
++
++	fpga_switches_low = $d6ec
++	fpga_switches_high = $d6ed
++
++	VICIV_MAGIC = $d02f
++
++; LGB moved here
++
++; Current file descriptors
++; Each descriptor has:
++;   disk id : 1 byte ($00-$07 = file open, $FF = file closed)
++;   access mode : 1 byte ($00 = read only)
++;   start cluster : 4 bytes
++;   current cluster : 4 bytes
++;   current sector in cluster : 1 byte
++;   offset in sector: 2 bytes
++;   file offset / $100 : 3 bytes
++;
++
++    dos_filedescriptor_max = 4
++    dos_filedescriptor_offset_diskid = 0
++    dos_filedescriptor_offset_mode = 1
++    dos_filedescriptor_offset_startcluster = 2
++    dos_filedescriptor_offset_currentcluster = 6
++;
++; These last three fields must be contiguous, as dos_open_current_file
++; relies on it.
++;
++    dos_filedescriptor_offset_sectorincluster = 10
++    dos_filedescriptor_offset_offsetinsector = 11
++    dos_filedescriptor_offset_fileoffset = 13
++
++;
++                ; WARNING: dos_readdir_read_next_entry uses carnal knowledge about the following
++                ;          structure, particularly the length as calculated here:
++                ;
++                dos_dirent_structure_length =  64+1+11+4+4+1
+ 
+-	.alias fpga_switches_low $d6ec
+-	.alias fpga_switches_high $d6ed
++dos_max_disks = 6
++
++dos_errorcode_invalid_address = $10
++dos_errorcode_read_timeout = $07
++
++syspart_error_nosyspart = $ff
+ 
+-	.alias viciv_magic $d02f
+\ No newline at end of file
+--- ../mega65-core/src/kickstart_mem.a65	2017-12-05 01:18:38.427023896 +0100
++++ kickstart_mem.a65	2018-01-28 04:20:42.493538444 +0100
+@@ -1,4 +1,10 @@
++.INCLUDE "kickstart.i65"
++.INCLUDE "kickstart_machine.a65"
++
++.AUTOIMPORT +
++
+ ; Display error and infinite loop on page fault
++.EXPORT page_fault
+ page_fault:
+ 		jsr reset_machine_state
+ 		ldx #<msg_pagefault
+@@ -23,6 +29,7 @@
+ 
+ msg_pagefault:        .byte "PAGE FAULT: PC=$$$$, MAP=$$.$$$$.00     "
+ 
++.EXPORT memory_trap
+ memory_trap:
+ 	sei
+ 	cld
+--- ../mega65-core/src/kickstart_process_descriptor.a65	2017-12-05 01:18:38.427023896 +0100
++++ kickstart_process_descriptor.a65	2018-01-28 04:20:42.493538444 +0100
+@@ -5,12 +5,19 @@
+ 
+ ; Process description (first 128 bytes)
+ 
++
++.SEGMENT "BD00SEG"
++
++.INCLUDE "kickstart.i65"
++
++.EXPORT currenttask_block
+ currenttask_block:
+ 
+ 	; Tasks are idenfied by what amounts to an 8-bit process id.
+ 	; Process ID #$FF is special, and indicates that it is the operating system/hypervisor
+ 	; that is active.  This affects how results are return from system calls, so that they
+ 
++.EXPORT currenttask_id
+ currenttask_id:
+ 	.byte $FF
+ 
+@@ -20,8 +27,11 @@
+ 	.byte "OPERATING SYSTEM"
+ 
+ ; Make sure we don't over-flow the available space
+-	.checkpc currenttask_block+[$80]
+-	.advance currenttask_block+[$80],$00
++;	.checkpc currenttask_block+[$80]
++;	.advance currenttask_block+[$80],$00
++
++
++.SEGMENT "BD80SEG"
+ 
+ ; Now we have file control blocks for the open files/directories.
+ ; We have only 128 bytes for these, so not many files can be open at a time!
+@@ -31,6 +41,7 @@
+ ; make life easy for programmers.  128 bytes / 32 bytes = 4 open files, which seems
+ ; a fairly minimal number.
+ 
++.EXPORT currenttask_filedescriptor0
+ currenttask_filedescriptor0:
+ 	; Which logical drive the file resides on
+ 	; (or $FF for a free descriptor block = closed file.
+@@ -83,18 +94,21 @@
+ 
+ ; The other three file descriptors follow the same format as the first
+ 
+-	.checkpc currenttask_block+[$A0]
+-	.advance currenttask_block+[$A0],$00
+-currenttask_filedescriptor1:
+-
+-	.checkpc currenttask_block+[$C0]
+-	.advance currenttask_block+[$C0],$00
+-currenttask_filedescriptor2:
+-
+-	.checkpc currenttask_block+[$E0]
+-	.advance currenttask_block+[$E0],$00
+-currenttask_filedescriptor3:
++;	.checkpc currenttask_block+[$A0]
++;	.advance currenttask_block+[$A0],$00
++.EXPORT currenttask_filedescriptor1
++currenttask_filedescriptor1 = currenttask_block+$A0
++
++;	.checkpc currenttask_block+[$C0]
++;	.advance currenttask_block+[$C0],$00
++.EXPORT currenttask_filedescriptor2
++currenttask_filedescriptor2 = currenttask_block+$C0
++
++;	.checkpc currenttask_block+[$E0]
++;	.advance currenttask_block+[$E0],$00
++.EXPORT currenttask_filedescriptor3
++currenttask_filedescriptor3 = currenttask_block+$E0
+ 
+-	.checkpc currenttask_block+[$100]
+-	.advance currenttask_block+[$100],$00
++;	.checkpc currenttask_block+[$100]
++;	.advance currenttask_block+[$100],$00
+ 
+--- ../mega65-core/src/kickstart_sdfat.a65	2018-01-27 14:56:15.469273184 +0100
++++ kickstart_sdfat.a65	2018-01-28 04:20:42.493538444 +0100
+@@ -4,10 +4,21 @@
+ ; These routines provide support for FAT32 and SDCARD support.
+ 
+ 
++        .include "kickstart.i65"
++        .include "kickstart_machine.a65"
++
++.SEGMENT "CODE"
++
++
++.autoimport +
++
++
++
+ ;;; ----------------------------------------------------------------------------
+ ;;; FAT file system routines
+ ;;; ----------------------------------------------------------------------------
+ ;
++.EXPORT toupper
+ toupper:	; convert ASCII character to upper case
+ 		;
+ 		; INPUT:  .A is the ASCII char to convert up uppercase
+@@ -30,6 +41,7 @@
+ ;
+ ; read master boot record. Does not sanity check anything.
+ ;
++.EXPORT readmbr
+ readmbr:
+ 		; begin by resetting SD card
+ 		;
+@@ -152,6 +164,7 @@
+ 		; this allows loading of code into the hypervisor for testing and
+ 		; bare-metal operation.
+ 		;
++.EXPORT sdwaitawhile
+ sdwaitawhile:
+ 		jsr sdtimeoutreset
+ 
+@@ -204,7 +217,7 @@
+ 		rts
+ 
+ ;	========================
+-
++.EXPORT sd_map_sectorbuffer
+ sd_map_sectorbuffer:
+ 
+ ; BG this clobbers .A, maybe we should protect .A as the UNMAP-function does? (see below)
+@@ -216,6 +229,7 @@
+ 
+ ;	========================
+ 
++.EXPORT sd_unmap_sectorbuffer
+ sd_unmap_sectorbuffer:
+ 
+ 		pha
+@@ -232,6 +246,7 @@
+ ;====below function is self-contained==================================================
+ ;======================================================================================
+ 
++.EXPORT sd_readsector
+ sd_readsector:
+ 		; Assumes fixed sector number (or byte address in case of SD cards)
+ 		; is loaded into $D681 - $D684
+@@ -323,6 +338,7 @@
+ ;====above function is self-contained==================================================
+ ;======================================================================================
+ 
++.EXPORT sd_inc_fixedsectornumber
+ sd_inc_fixedsectornumber:
+ 
+ 		; increment fixed sector number.
+@@ -366,6 +382,7 @@
+ 
+ ;	========================
+ 
++.EXPORT sd_fix_sectornumber
+ sd_fix_sectornumber:
+ 		; assumes sector number has been loaded into 
+ 		; $D681 - $D684
+--- ../mega65-core/src/kickstart_syspart.a65	2018-01-27 14:56:15.469273184 +0100
++++ kickstart_syspart.a65	2018-01-28 04:20:42.493538444 +0100
+@@ -1,3 +1,11 @@
++.INCLUDE "kickstart.i65"
++.INCLUDE "kickstart_machine.a65"
++
++.AUTOIMPORT +
++
++.SEGMENT "CODE"
++
++
+ ;
+ ; MEGA65 System Partition functions
+ ;
+@@ -14,9 +22,9 @@
+ ;    header.
+ ;
+ 
+-	.alias syspart_error_readerror $01
+-	.alias syspart_error_badmagic  $42
+-	.alias syspart_error_nosyspart $ff
++	syspart_error_readerror = $01
++	syspart_error_badmagic  = $42
++	;syspart_error_nosyspart = $ff
+ 
+ ; HEADER - First sector of partition
+ ; $000-$00A "MEGA65SYS00" - Magic string and version indication
+@@ -40,6 +48,7 @@
+ ; byte sector.
+ ; If the first byte of a direectory is $00, then the entry is assumed to be free.
+ 
++.EXPORT syspart_open
+ syspart_open:
+ 	; Open a system partition.
+ 	; At this point, only syspart_start_sector and
+@@ -150,6 +159,7 @@
+ 	jsr syspart_locate_freezeslot
+ 	sta hypervisor_enterexit_trigger
+ 
++.EXPORT syspart_locate_freezeslot
+ syspart_locate_freezeslot:
+ 	; Get the first sector of a given freeze slot
+ 	; X = low byte of slot #
+@@ -302,6 +312,7 @@
+ 	.byte "SYSPART CONFIG INVALID. PLEASE SET.",0
+ 
+ 
++.EXPORT syspart_trap
+ syspart_trap:
+ 	sei
+ 	cld
+--- ../mega65-core/src/kickstart_task.a65	2018-01-23 02:10:50.832217201 +0100
++++ kickstart_task.a65	2018-01-28 04:20:42.493538444 +0100
+@@ -1,3 +1,11 @@
++.INCLUDE "kickstart.i65"
++.INCLUDE "kickstart_machine.a65"
++
++.SEGMENT "CODE"
++
++.AUTOIMPORT +
++
++
+ ;	========================
+ 
+ ; Return the next free task ID
+@@ -13,6 +21,7 @@
+ 
+ ;	========================
+ 
++.EXPORT task_set_c64_memorymap
+ task_set_c64_memorymap:
+ 
+ 	; set contents of CPU registers for exit from hypervisor mode
+@@ -56,6 +65,7 @@
+ 	
+ ;	========================
+ 
++.EXPORT task_set_pc_to_reset_vector
+ task_set_pc_to_reset_vector:
+ 
+ 	; Set PC from $FFFC in ROM, i.e., $802FFFC
+@@ -83,6 +93,7 @@
+ ; This avoid a nasty crash if NMI is called during kickstart
+ ; Points to a RTI instruction in $FEC1
+ 
++.EXPORT task_dummy_nmi_vector
+ task_dummy_nmi_vector:
+ 
+ 	lda #<$FEC1
+@@ -106,7 +117,7 @@
+ 	ldx #<hypervisor_vm_currentpage_lo
+ tcp1:	sta $d600,x
+ 	inx
+-	cpx #[<hypervisor_vm_pagetable3_physicalpage_hi+1]
++	cpx #<hypervisor_vm_pagetable3_physicalpage_hi+1
+ 	bne tcp1
+ 	rts	
+ 
+@@ -150,6 +161,7 @@
+ 
+ ;	========================
+ 
++.EXPORT double_restore_trap
+ double_restore_trap:
+ 
+ 	; Freeze to slot 0
+@@ -191,6 +203,7 @@
+ 
+ ;	========================
+ 
++.EXPORT protected_hardware_config
+ protected_hardware_config:
+ 
+         ; store config info passed from register a 
+@@ -209,6 +222,7 @@
+ 
+ ;	========================
+ 
++.EXPORT matrix_mode_toggle
+ matrix_mode_toggle:
+ 
+ 	lda hypervisor_secure_mode_flags
+--- ../mega65-core/src/kickstart_ultimax.a65	2018-01-20 13:21:16.938262662 +0100
++++ kickstart_ultimax.a65	2018-01-28 04:20:42.493538444 +0100
+@@ -1,4 +1,12 @@
++.INCLUDE "kickstart.i65"
++.INCLUDE "kickstart_machine.a65"
+ 
++.AUTOIMPORT +
++
++.SEGMENT "CODE"
++
++
++.EXPORT setup_for_ultimax_cartridge
+ setup_for_ultimax_cartridge:
+ 
+ 		lda hypervisor_cartridge_flags
+--- ../mega65-core/src/kickstart_virtual_f011.a65	2018-01-14 17:32:45.513049092 +0100
++++ kickstart_virtual_f011.a65	2018-01-28 04:20:42.493538444 +0100
+@@ -1,3 +1,11 @@
++.INCLUDE "kickstart.i65"
++.INCLUDE "kickstart_machine.a65"
++
++.AUTOIMPORT +
++
++.SEGMENT "CODE"
++
++.EXPORT f011_virtual_read
+ f011_virtual_read:
+ 
+ 	; Let monitor_load fill in the requeated block.
+@@ -51,7 +59,7 @@
+ vfr_last_sec:		.byte	0
+ vfr_last_side:		.byte	0
+ 
+-
++.EXPORT f011_virtual_write
+ f011_virtual_write:
+ 
+ 	; XXX - We ignore virtualised writes to F011 for now
+--- ../mega65-core/src/version.a65	2018-01-26 03:27:10.761700846 +0100
++++ version.a65	2018-01-28 04:20:42.493538444 +0100
+@@ -1 +1,3 @@
+-msg_gitcommit: .byte "GIT: px100m,94c613b,20180126.03",0
++;msg_gitcommit: .byte "GIT: px100m,94c613b,20180126.03",0
++msg_gitcommit:  .byte "LGB-CA65-LGB-CA65-LGB-CA65-LGB!",0
++

@@ -1,0 +1,3636 @@
+ca65 V2.15
+Main file   : kickstart.a65
+Current file: kickstart.a65
+
+000000r 1               ; MEGA65 Kick Start ROM.
+000000r 1               ; Paul Gardner-Stephen, 2014-2016.
+000000r 1               ;
+000000r 1               ; Purpose:
+000000r 1               ; 1. Verify checksum of ROM area of slow RAM.
+000000r 1               ; 1. If checksum fails, load complete ROM from SD card.
+000000r 1               ; 2. Select default disk image for F011 emulation.
+000000r 1               ;
+000000r 1               ; The kickstart ROM is 16KB in length, and maps at $8000-$BFFF
+000000r 1               ; in hypervisor mode.
+000000r 1               ;
+000000r 1               ; Kickstart modifies RAM from $0000-$07FFF (ZP, stack, 40-column
+000000r 1               ; screen, 16-bit text mode) during normal boot.
+000000r 1               ;
+000000r 1               ;
+000000r 1               ; BG: is the below true still, I dont think so.
+000000r 1               ; If Kickstart needs to load the ROM from SD card, then it may
+000000r 1               ; modify the first 64KB of fast ram.
+000000r 1               ;
+000000r 1               ;
+000000r 1               ; We will use the convention of C=0 means failure, ie CLC/RTS,
+000000r 1               ;                           and C=1 means success, ie SEC/RTS.
+000000r 1               ;
+000000r 1               ;
+000000r 1               ;	; this included file defines many of the alias used throughout
+000000r 1               ;	; it also suggests some memory-map definitions
+000000r 1               ;	;
+000000r 1               
+000000r 1               	.include "kickstart.i65"
+000000r 2               ; My try to define some stuff can be included from every kickstart related sources.
+000000r 2               
+000000r 2               .SETCPU	"4510"	; Set CPU to "4510 mode"
+000000r 2               
+000000r 2               
+000000r 2               ; Try to make it clear that we want to use zero page addressing. The intended usage:
+000000r 2               ; LDA ZP(zp_temp_byte)
+000000r 2               ; I *think* it's may be better than this syntax which is even complained by ca65 as
+000000r 2               ; a warning:   LDA <zp_temp_byte
+000000r 2               
+000000r 2               .DEFINE ZP(n) .LOBYTE(n)
+000000r 2               
+000000r 2               .MACRO space label,bytes
+000000r 2               label: .res bytes
+000000r 2               .ENDMACRO
+000000r 2               
+000000r 2               
+000000r 1               	.include "kickstart_machine.a65"
+000000r 2               
+000000r 2               	reset_vector = $fffc
+000000r 2               	irq_vector = $fffe
+000000r 2               	nmi_vector = $fffa
+000000r 2               
+000000r 2               
+000000r 2               	hypervisor_a = $d640
+000000r 2               	hypervisor_x = $d641
+000000r 2               	hypervisor_y = $d642
+000000r 2               	hypervisor_z = $d643
+000000r 2               	hypervisor_b = $d644
+000000r 2               	hypervisor_spl = $d645
+000000r 2               	hypervisor_sph = $d646
+000000r 2               	hypervisor_flags = $d647
+000000r 2               	hypervisor_pcl = $d648
+000000r 2               	hypervisor_pch = $d649
+000000r 2               	hypervisor_maplolo = $d64a
+000000r 2               	hypervisor_maplohi = $d64b
+000000r 2               	hypervisor_maphilo = $d64c
+000000r 2               	hypervisor_maphihi = $d64d
+000000r 2               	hypervisor_maplomb = $d64e
+000000r 2               	hypervisor_maphimb = $d64f
+000000r 2               	hypervisor_cpuport00 = $d650
+000000r 2               	hypervisor_cpuport01 = $d651
+000000r 2               	hypervisor_iomode = $d652
+000000r 2               	hypervisor_dmagic_srcmb = $d653
+000000r 2               	hypervisor_dmagic_dstmb = $d654
+000000r 2               	hypervisor_dmagic_list0 = $d655
+000000r 2               	hypervisor_dmagic_list1 = $d656
+000000r 2               	hypervisor_dmagic_list2 = $d657
+000000r 2               	hypervisor_dmagic_list3 = $d658
+000000r 2               	hypervisor_hardware_virtualisation = $d659
+000000r 2               
+000000r 2               	; d65a
+000000r 2               	; d65b
+000000r 2               	; d65c
+000000r 2               
+000000r 2               	hypervisor_vm_currentpage_lo = $d65d
+000000r 2               	hypervisor_vm_currentpage_mid = $d65e
+000000r 2               	hypervisor_vm_currentpage_hi = $d65f
+000000r 2               
+000000r 2               	hypervisor_vm_pagetable = $d660
+000000r 2               	hypervisor_vm_pagetable0_logicalpage_lo = $d660
+000000r 2               	hypervisor_vm_pagetable0_logicalpage_hi = $d661
+000000r 2               	hypervisor_vm_pagetable0_physicalpage_lo = $d662
+000000r 2               	hypervisor_vm_pagetable0_physicalpage_hi = $d663
+000000r 2               	hypervisor_vm_pagetable1_logicalpage_lo = $d664
+000000r 2               	hypervisor_vm_pagetable1_logicalpage_hi = $d665
+000000r 2               	hypervisor_vm_pagetable1_physicalpage_lo = $d666
+000000r 2               	hypervisor_vm_pagetable1_physicalpage_hi = $d667
+000000r 2               	hypervisor_vm_pagetable2_logicalpage_lo = $d668
+000000r 2               	hypervisor_vm_pagetable2_logicalpage_hi = $d669
+000000r 2               	hypervisor_vm_pagetable2_physicalpage_lo = $d66a
+000000r 2               	hypervisor_vm_pagetable2_physicalpage_hi = $d66b
+000000r 2               	hypervisor_vm_pagetable3_logicalpage_lo = $d66c
+000000r 2               	hypervisor_vm_pagetable3_logicalpage_hi = $d66d
+000000r 2               	hypervisor_vm_pagetable3_physicalpage_lo = $d66e
+000000r 2               	hypervisor_vm_pagetable3_physicalpage_hi = $d66f
+000000r 2               
+000000r 2               	hypervisor_georam_base_mb = $d670
+000000r 2               	hypervsior_georam_block_mask = $d671
+000000r 2               
+000000r 2               	; d672 110 010
+000000r 2               	hypervisor_secure_mode_flags = $d672
+000000r 2               
+000000r 2               	; d673
+000000r 2               	; d674
+000000r 2               	; d675
+000000r 2               	; d676
+000000r 2               	; d677
+000000r 2               	; d678
+000000r 2               	; d679
+000000r 2               	; d67a
+000000r 2               	; d67b
+000000r 2               
+000000r 2               	hypervisor_write_char_to_serial_monitor = $d67c
+000000r 2               
+000000r 2               	hypervisor_feature_enables = $d67d
+000000r 2               	hypervisor_kickedup_flag = $d67e
+000000r 2               	hypervisor_cartridge_flags = $d67e
+000000r 2               	hypervisor_enterexit_trigger = $d67f
+000000r 2               
+000000r 2               	; Where sector buffer maps (over = $DE00-$DFFF IO expansion space)
+000000r 2               	sd_sectorbuffer = $DE00
+000000r 2               	sd_address_byte0 = $D681
+000000r 2               	sd_address_byte1 = $D682
+000000r 2               	sd_address_byte2 = $D683
+000000r 2               	sd_address_byte3 = $D684
+000000r 2               
+000000r 2               	fpga_switches_low = $d6ec
+000000r 2               	fpga_switches_high = $d6ed
+000000r 2               
+000000r 2               	VICIV_MAGIC = $d02f
+000000r 2               
+000000r 2               ; LGB moved here
+000000r 2               
+000000r 2               ; Current file descriptors
+000000r 2               ; Each descriptor has:
+000000r 2               ;   disk id : 1 byte ($00-$07 = file open, $FF = file closed)
+000000r 2               ;   access mode : 1 byte ($00 = read only)
+000000r 2               ;   start cluster : 4 bytes
+000000r 2               ;   current cluster : 4 bytes
+000000r 2               ;   current sector in cluster : 1 byte
+000000r 2               ;   offset in sector: 2 bytes
+000000r 2               ;   file offset / $100 : 3 bytes
+000000r 2               ;
+000000r 2               
+000000r 2                   dos_filedescriptor_max = 4
+000000r 2                   dos_filedescriptor_offset_diskid = 0
+000000r 2                   dos_filedescriptor_offset_mode = 1
+000000r 2                   dos_filedescriptor_offset_startcluster = 2
+000000r 2                   dos_filedescriptor_offset_currentcluster = 6
+000000r 2               ;
+000000r 2               ; These last three fields must be contiguous, as dos_open_current_file
+000000r 2               ; relies on it.
+000000r 2               ;
+000000r 2                   dos_filedescriptor_offset_sectorincluster = 10
+000000r 2                   dos_filedescriptor_offset_offsetinsector = 11
+000000r 2                   dos_filedescriptor_offset_fileoffset = 13
+000000r 2               
+000000r 2               ;
+000000r 2                               ; WARNING: dos_readdir_read_next_entry uses carnal knowledge about the following
+000000r 2                               ;          structure, particularly the length as calculated here:
+000000r 2                               ;
+000000r 2                               dos_dirent_structure_length =  64+1+11+4+4+1
+000000r 2               
+000000r 2               dos_max_disks = 6
+000000r 2               
+000000r 2               dos_errorcode_invalid_address = $10
+000000r 2               dos_errorcode_read_timeout = $07
+000000r 2               
+000000r 2               syspart_error_nosyspart = $ff
+000000r 2               
+000000r 2               
+000000r 1               
+000000r 1               .autoimport +
+000000r 1               
+000000r 1               
+000000r 1               ;
+000000r 1               ; scratch space in ZP space usually used by kernel
+000000r 1               ; we try to use address space not normally used by C64 kernel, so that
+000000r 1               ; it is possible to make calls to kickstart after boot.  Eventually
+000000r 1               ; the desire is to have an SYS call that brings up a menu that lets
+000000r 1               ; you choose a disk image from a list.
+000000r 1               ;
+000000r 1               
+000000r 1               .SEGMENT "CE00STUFF"
+000000r 1               
+000000r 1               ;	========================
+000000r 1               ;	.org $ce00
+000000r 1               ;	========================
+000000r 1               
+000000r 1  xx           	space romslab,1
+000001r 1  xx           	space screenrow,1
+000002r 1               
+000002r 1  xx xx xx xx  	space checksum,4
+000006r 1  xx xx        	space file_pagesread,2
+000008r 1               
+000008r 1               	; variables for testing of D81 boot image
+000008r 1               	;
+000008r 1               .EXPORT d81_clusternumber, d81_clustersneeded, d81_clustercount
+000008r 1  xx xx xx xx  	space d81_clusternumber,4
+00000Cr 1  xx xx        	space d81_clustersneeded,2
+00000Er 1  xx xx        	space d81_clustercount,2
+000010r 1               
+000010r 1               	; make sure that we don't go past the 256 byte page reserved for hypervisor scratch space
+000010r 1               	;
+000010r 1               ;	checkpc $CEFF
+000010r 1               
+000010r 1               ;	.text
+000010r 1               
+000010r 1               ;	========================
+000010r 1               ;	.org $8000
+000010r 1               ;	========================
+000010r 1               
+000010r 1               .SEGMENT "TRAP"
+000000r 1               
+000000r 1               ;;; ----------------------------------------------------------------------------
+000000r 1               ;;; CPU Hypervisor Trap entry points.
+000000r 1               ;;; 64 x 4 byte entries for user-land traps.
+000000r 1               ;;; some more x 4 byte entries for system traps (reset, page fault etc)
+000000r 1               ;;; ----------------------------------------------------------------------------
+000000r 1               
+000000r 1               trap_entry_points:
+000000r 1               
+000000r 1               	; Traps $00-$07 (user callable)
+000000r 1               	;
+000000r 1  4C rr rr     	jmp dos_and_process_trap	; Trap #$00 (unsure what to call it)
+000003r 1  EA           	nop				; refer: kickstart_dos.a65
+000004r 1  4C rr rr     	jmp memory_trap                 ; Trap #$01
+000007r 1  EA           	nop                             ; refer: kickstart_mem.a65
+000008r 1  4C rr rr     	jmp syspart_trap		; Trap #$02
+00000Br 1  EA           	nop                             ; refer: kickstart_syspart.a65
+00000Cr 1  4C rr rr     	jmp nosuchtrap
+00000Fr 1  EA           	nop
+000010r 1  4C rr rr     	jmp nosuchtrap
+000013r 1  EA           	nop
+000014r 1  4C rr rr     	jmp nosuchtrap
+000017r 1  EA           	nop
+000018r 1  4C rr rr     	jmp nosuchtrap
+00001Br 1  EA           	nop
+00001Cr 1  4C rr rr     	jmp nosuchtrap
+00001Fr 1  EA           	nop
+000020r 1               
+000020r 1               	; Traps $08-$0F (user callable)
+000020r 1               	;
+000020r 1  4C rr rr     	jmp nosuchtrap
+000023r 1  EA           	nop
+000024r 1  4C rr rr     	jmp nosuchtrap
+000027r 1  EA           	nop
+000028r 1  4C rr rr     	jmp nosuchtrap
+00002Br 1  EA           	nop
+00002Cr 1  4C rr rr     	jmp nosuchtrap
+00002Fr 1  EA           	nop
+000030r 1  4C rr rr     	jmp nosuchtrap
+000033r 1  EA           	nop
+000034r 1  4C rr rr     	jmp nosuchtrap
+000037r 1  EA           	nop
+000038r 1  4C rr rr     	jmp nosuchtrap
+00003Br 1  EA           	nop
+00003Cr 1  4C rr rr     	jmp nosuchtrap
+00003Fr 1  EA           	nop
+000040r 1               
+000040r 1               	; Traps $10-$17 (user callable)
+000040r 1               	;
+000040r 1  4C rr rr     	jmp nosuchtrap
+000043r 1  EA           	nop
+000044r 1  4C rr rr     	jmp nosuchtrap
+000047r 1  EA           	nop
+000048r 1  4C rr rr     	jmp nosuchtrap
+00004Br 1  EA           	nop
+00004Cr 1  4C rr rr     	jmp nosuchtrap
+00004Fr 1  EA           	nop
+000050r 1  4C rr rr     	jmp nosuchtrap
+000053r 1  EA           	nop
+000054r 1  4C rr rr     	jmp nosuchtrap
+000057r 1  EA           	nop
+000058r 1  4C rr rr     	jmp nosuchtrap
+00005Br 1  EA           	nop
+00005Cr 1  4C rr rr     	jmp nosuchtrap
+00005Fr 1  EA           	nop
+000060r 1               
+000060r 1               	; Traps $18-$1F (user callable)
+000060r 1               	;
+000060r 1  4C rr rr     	jmp nosuchtrap
+000063r 1  EA           	nop
+000064r 1  4C rr rr     	jmp nosuchtrap
+000067r 1  EA           	nop
+000068r 1  4C rr rr     	jmp nosuchtrap
+00006Br 1  EA           	nop
+00006Cr 1  4C rr rr     	jmp nosuchtrap
+00006Fr 1  EA           	nop
+000070r 1  4C rr rr     	jmp nosuchtrap
+000073r 1  EA           	nop
+000074r 1  4C rr rr     	jmp nosuchtrap
+000077r 1  EA           	nop
+000078r 1  4C rr rr     	jmp nosuchtrap
+00007Br 1  EA           	nop
+00007Cr 1  4C rr rr     	jmp nosuchtrap
+00007Fr 1  EA           	nop
+000080r 1               
+000080r 1               	; Traps $20-$27 (user callable)
+000080r 1               	;
+000080r 1  4C rr rr     	jmp nosuchtrap
+000083r 1  EA           	nop
+000084r 1  4C rr rr     	jmp nosuchtrap
+000087r 1  EA           	nop
+000088r 1  4C rr rr     	jmp nosuchtrap
+00008Br 1  EA           	nop
+00008Cr 1  4C rr rr     	jmp nosuchtrap
+00008Fr 1  EA           	nop
+000090r 1  4C rr rr     	jmp nosuchtrap
+000093r 1  EA           	nop
+000094r 1  4C rr rr     	jmp nosuchtrap
+000097r 1  EA           	nop
+000098r 1  4C rr rr     	jmp nosuchtrap
+00009Br 1  EA           	nop
+00009Cr 1  4C rr rr     	jmp nosuchtrap
+00009Fr 1  EA           	nop
+0000A0r 1               
+0000A0r 1               	; Traps $28-$2F (user callable)
+0000A0r 1               	;
+0000A0r 1  4C rr rr     	jmp nosuchtrap
+0000A3r 1  EA           	nop
+0000A4r 1  4C rr rr     	jmp nosuchtrap
+0000A7r 1  EA           	nop
+0000A8r 1  4C rr rr     	jmp nosuchtrap
+0000ABr 1  EA           	nop
+0000ACr 1  4C rr rr     	jmp nosuchtrap
+0000AFr 1  EA           	nop
+0000B0r 1  4C rr rr     	jmp nosuchtrap
+0000B3r 1  EA           	nop
+0000B4r 1  4C rr rr     	jmp nosuchtrap
+0000B7r 1  EA           	nop
+0000B8r 1  4C rr rr     	jmp nosuchtrap
+0000BBr 1  EA           	nop
+0000BCr 1  4C rr rr     	jmp nosuchtrap
+0000BFr 1  EA           	nop
+0000C0r 1               
+0000C0r 1               	; Traps $30-$37
+0000C0r 1               	;
+0000C0r 1  4C rr rr     	jmp nosuchtrap
+0000C3r 1  EA           	nop
+0000C4r 1  4C rr rr     	jmp nosuchtrap
+0000C7r 1  EA           	nop
+0000C8r 1               
+0000C8r 1  4C rr rr     	jmp protected_hardware_config	; Trap #$32 (Protected Hardware Configuration)
+0000CBr 1  EA           	nop			  	; refer: kickstart_task
+0000CCr 1               
+0000CCr 1               
+0000CCr 1  4C rr rr     	jmp nosuchtrap
+0000CFr 1  EA           	nop
+0000D0r 1  4C rr rr     	jmp nosuchtrap
+0000D3r 1  EA           	nop
+0000D4r 1  4C rr rr     	jmp nosuchtrap
+0000D7r 1  EA           	nop
+0000D8r 1  4C rr rr     	jmp nosuchtrap
+0000DBr 1  EA           	nop
+0000DCr 1  4C rr rr     	jmp nosuchtrap
+0000DFr 1  EA           	nop
+0000E0r 1               
+0000E0r 1               	; Traps $38-$3F (user callable)
+0000E0r 1               	;
+0000E0r 1  4C rr rr     	jmp nosuchtrap
+0000E3r 1  EA           	nop
+0000E4r 1  4C rr rr     	jmp nosuchtrap
+0000E7r 1  EA           	nop
+0000E8r 1  4C rr rr     	jmp nosuchtrap
+0000EBr 1  EA           	nop
+0000ECr 1  4C rr rr     	jmp nosuchtrap
+0000EFr 1  EA           	nop
+0000F0r 1  4C rr rr     	jmp nosuchtrap
+0000F3r 1  EA           	nop
+0000F4r 1  4C rr rr     	jmp nosuchtrap
+0000F7r 1  EA           	nop
+0000F8r 1  4C rr rr     	jmp nosuchtrap
+0000FBr 1  EA           	nop
+0000FCr 1  4C rr rr     	jmp nosuchtrap
+0000FFr 1  EA           	nop
+000100r 1               
+000100r 1               ;	========================
+000100r 1               
+000100r 1               	; Traps $40-$4F (reset, page fault and other system-generated traps)
+000100r 1  4C rr rr     	jmp reset_entry			; Trap #$40 (power on / reset)
+000103r 1  EA           	nop				; refer: below in this file
+000104r 1               
+000104r 1  4C rr rr     	jmp page_fault			; Trap #$41 (page fault)
+000107r 1  EA           	nop				; refer: kickstart_mem
+000108r 1               
+000108r 1  4C rr rr     	jmp double_restore_trap		; Trap #$42 (double-tap RESTORE key)
+00010Br 1  EA           	nop				; refer: kickstart_task "1000010" x"42"
+00010Cr 1               
+00010Cr 1  4C rr rr     	jmp matrix_mode_toggle          ; Trap #$43 (C= + TAB combination)
+00010Fr 1  EA           	nop				; refer: kickstart_task
+000110r 1               
+000110r 1  4C rr rr     	jmp f011_virtual_read           ; Trap #$44 (virtualised F011 sector read)
+000113r 1  EA           	nop
+000114r 1               
+000114r 1  4C rr rr     	jmp f011_virtual_write	        ; Trap #$44 (virtualised F011 sector write)
+000117r 1  EA           	nop
+000118r 1               
+000118r 1  4C rr rr     	jmp nosuchtrap			; common-trap (catch all)
+00011Br 1  EA           	nop				; refer: below in this file
+00011Cr 1  4C rr rr     	jmp nosuchtrap
+00011Fr 1  EA           	nop
+000120r 1  4C rr rr     	jmp nosuchtrap
+000123r 1  EA           	nop
+000124r 1  4C rr rr     	jmp nosuchtrap
+000127r 1  EA           	nop
+000128r 1  4C rr rr     	jmp nosuchtrap
+00012Br 1  EA           	nop
+00012Cr 1  4C rr rr     	jmp nosuchtrap
+00012Fr 1  EA           	nop
+000130r 1  4C rr rr     	jmp nosuchtrap
+000133r 1  EA           	nop
+000134r 1  4C rr rr     	jmp nosuchtrap
+000137r 1  EA           	nop
+000138r 1  4C rr rr     	jmp nosuchtrap
+00013Br 1  EA           	nop
+00013Cr 1  4C rr rr     	jmp nosuchtrap
+00013Fr 1  EA           	nop
+000140r 1               
+000140r 1               
+000140r 1               	; Leave room for relocated cpu vectors below
+000140r 1               	;
+000140r 1               ;	.checkpc $81F8
+000140r 1               ;	.advance $81F8
+000140r 1               
+000140r 1               .SEGMENT "VEC"
+000000r 1               
+000000r 1               	; Then we have relocated CPU vectors at $81F8-$81FF
+000000r 1               	; (which are 2-byte vectors for interrupts, not 4-byte
+000000r 1               	; trap addresses).
+000000r 1               	; These are used to catch interrupts in hypervisor mode
+000000r 1               	; (although the need for them may have since been removed)
+000000r 1  rr rr        	.word reset_entry    ; unused vector
+000002r 1  rr rr        	.word hypervisor_nmi ; NMI
+000004r 1  rr rr        	.word reset_entry    ; RESET
+000006r 1  rr rr        	.word hypervisor_irq ; IRQ
+000008r 1               
+000008r 1               ;	.checkpc $8200
+000008r 1               ;	.advance $8200
+000008r 1               .SEGMENT "CODE"
+000000r 1               
+000000r 1               ;;; ----------------------------------------------------------------------------
+000000r 1               ;;; Hypervisor traps
+000000r 1               ;;; ----------------------------------------------------------------------------
+000000r 1               
+000000r 1               
+000000r 1               ;;; ----------------------------------------------------------------------------
+000000r 1               ;;; Illegal trap / trap sub-function handlers
+000000r 1               ;;; ----------------------------------------------------------------------------
+000000r 1               ;
+000000r 1               ; Traps are triggered by writing to $D640-$D67F
+000000r 1               ; and trap to $8000+((address & $3F)*4) in the hypervisor
+000000r 1               
+000000r 1               ; Routine for unimplemented/reserved traps
+000000r 1               ; (Consider replacing with trap to hypervisor error screen with option
+000000r 1               ;  to return?)
+000000r 1               ;
+000000r 1               nosuchtrap:
+000000r 1               
+000000r 1               	; Clear C flag for caller to indicate failure
+000000r 1               	;
+000000r 1  AD 47 D6     	lda hypervisor_flags
+000003r 1  29 FE        	and #$FE   ; C flag is bit 0
+000005r 1  8D 47 D6     	sta hypervisor_flags
+000008r 1               
+000008r 1               	; set A to $FF
+000008r 1               	;
+000008r 1  A9 FF        	lda #$ff
+00000Ar 1  8D 40 D6     	sta hypervisor_a
+00000Dr 1               
+00000Dr 1               	; return from hypervisor
+00000Dr 1               	;
+00000Dr 1  8D 7F D6     	sta hypervisor_enterexit_trigger
+000010r 1               
+000010r 1               ;	========================
+000010r 1               
+000010r 1               .EXPORT return_from_trap_with_success
+000010r 1               return_from_trap_with_success:
+000010r 1               
+000010r 1               	; Return from trap with C flag clear to indicate success
+000010r 1               
+000010r 1  20 rr rr     	jsr sd_unmap_sectorbuffer
+000013r 1               
+000013r 1               	; set C flag for caller to indicate success
+000013r 1               	;
+000013r 1  AD 47 D6     	lda hypervisor_flags
+000016r 1  09 01        	ora #$01   ; C flag is bit 0
+000018r 1  8D 47 D6     	sta hypervisor_flags
+00001Br 1               
+00001Br 1  20 rr rr     	jsr checkpoint
+00001Er 1  00 72 65 74  	.byte 0,"return_from_trap_with_success",0
+000022r 1  75 72 6E 5F  
+000026r 1  66 72 6F 6D  
+00003Dr 1               
+00003Dr 1               	; return from hypervisor
+00003Dr 1  8D 7F D6     	sta hypervisor_enterexit_trigger
+000040r 1               
+000040r 1               ;	========================
+000040r 1               
+000040r 1               .EXPORT return_from_trap_with_failure
+000040r 1               return_from_trap_with_failure:
+000040r 1               
+000040r 1  20 rr rr     	jsr sd_unmap_sectorbuffer
+000043r 1               
+000043r 1               	; report error in A
+000043r 1               	;
+000043r 1  8D 40 D6     	sta hypervisor_a
+000046r 1  AD 47 D6     	lda hypervisor_flags
+000049r 1  29 FE        	and #$fe   ; C flag is bit 0 (ie clear bit-0)
+00004Br 1  8D 47 D6     	sta hypervisor_flags
+00004Er 1               
+00004Er 1  20 rr rr     	jsr checkpoint
+000051r 1  00 72 65 74  	.byte 0,"return_from_trap_with_failure",0
+000055r 1  75 72 6E 5F  
+000059r 1  66 72 6F 6D  
+000070r 1               
+000070r 1               	; return from hypervisor
+000070r 1  8D 7F D6     	sta hypervisor_enterexit_trigger
+000073r 1               
+000073r 1               ;	========================
+000073r 1               
+000073r 1               .EXPORT invalid_subfunction
+000073r 1               invalid_subfunction:
+000073r 1               
+000073r 1  4C rr rr     	jmp nosuchtrap
+000076r 1               
+000076r 1               ;	========================
+000076r 1               
+000076r 1               ;;; ----------------------------------------------------------------------------
+000076r 1               ;;; System Partition functions
+000076r 1               ;;; ----------------------------------------------------------------------------
+000076r 1               ;		.include "kickstart_syspart.a65"
+000076r 1               
+000076r 1               ;;; ----------------------------------------------------------------------------
+000076r 1               ;;; Freeze/Unfreeze functions
+000076r 1               ;;; ----------------------------------------------------------------------------
+000076r 1               ;		.include "kickstart_freeze.a65"
+000076r 1               
+000076r 1               ;;; ----------------------------------------------------------------------------
+000076r 1               ;;; DOS, process control and related functions trap
+000076r 1               ;;; ----------------------------------------------------------------------------
+000076r 1               ;		.include "kickstart_dos.a65"
+000076r 1               
+000076r 1               ;;; ----------------------------------------------------------------------------
+000076r 1               ;;; Virtual memory and memory management
+000076r 1               ;;; ----------------------------------------------------------------------------
+000076r 1               ;		.include "kickstart_mem.a65"
+000076r 1               
+000076r 1               ;;; ----------------------------------------------------------------------------
+000076r 1               ;;; Task (process) management
+000076r 1               ;;; ----------------------------------------------------------------------------
+000076r 1               ;		.include "kickstart_task.a65"
+000076r 1               
+000076r 1               ;;; ----------------------------------------------------------------------------
+000076r 1               ;;; sdcard and fat32 related functions
+000076r 1               ;;; ----------------------------------------------------------------------------
+000076r 1               ;		.include "kickstart_sdfat.a65"
+000076r 1               
+000076r 1               ;;; ----------------------------------------------------------------------------
+000076r 1               ;;; Virtualised F011 access (used for disk over serial monitor)
+000076r 1               ;;; ----------------------------------------------------------------------------
+000076r 1               ;		.include "kickstart_virtual_f011.a65"
+000076r 1               
+000076r 1               ;;; ----------------------------------------------------------------------------
+000076r 1               ;;; CPU Hypervisor Entry Point on reset
+000076r 1               ;;; ----------------------------------------------------------------------------
+000076r 1               
+000076r 1               .EXPORT reset_machine_state
+000076r 1               reset_machine_state:
+000076r 1               		; get CPU state sensible
+000076r 1  78           		sei
+000077r 1  D8           		cld
+000078r 1  03           		see
+000079r 1               
+000079r 1               		; Clear system partition present flag
+000079r 1  A9 00        		lda #$00
+00007Br 1  8D rr rr     		sta syspart_present
+00007Er 1               
+00007Er 1               		; disable IRQ/NMI sources
+00007Er 1  A9 7F        		lda #$7f
+000080r 1  8D 0D DC     		sta $DC0D
+000083r 1  8D 0D DD     		sta $DD0D
+000086r 1  A9 00        		LDA #$00
+000088r 1  8D 19 D0     		STA $D019
+00008Br 1               
+00008Br 1  38           		sec
+00008Cr 1               		; determine VIC mode and set it accordingly in VICIV_MAGIC
+00008Cr 1  20 rr rr     		jsr enhanced_io
+00008Fr 1               
+00008Fr 1               		; clear UART interrupt status
+00008Fr 1  AD 0D D6     		lda $d60d
+000092r 1               
+000092r 1               		; switch to fast mode
+000092r 1               		; 1. C65 fast-mode enable
+000092r 1  AD 31 D0     		lda $d031
+000095r 1  09 40        		ora #$40
+000097r 1  8D 31 D0     		sta $d031
+00009Ar 1               		; 2. MEGA65 48MHz enable (requires C65 or C128 fast mode to truly enable, hence the above)
+00009Ar 1  A9 40        		lda #$40
+00009Cr 1  0C 54 D0     		tsb $d054
+00009Fr 1               
+00009Fr 1               		; sprites off, and normal mode
+00009Fr 1  A9 00        		lda #$00
+0000A1r 1  8D 15 D0     		sta $d015
+0000A4r 1  8D 55 D0     		sta $d055
+0000A7r 1  8D 6B D0     		sta $d06b
+0000AAr 1  8D 57 D0     		sta $d057
+0000ADr 1  AD 49 D0     		lda $d049
+0000B0r 1  29 0F        		and #$f
+0000B2r 1  8D 49 D0     		sta $d049
+0000B5r 1  AD 4B D0     		lda $d04b
+0000B8r 1  29 0F        		and #$f
+0000BAr 1  8D 4B D0     		sta $d04b
+0000BDr 1  AD 4D D0     		lda $d04d
+0000C0r 1  29 0F        		and #$f
+0000C2r 1  8D 4D D0     		sta $d04d
+0000C5r 1  AD 4F D0     		lda $d04f
+0000C8r 1  29 0F        		and #$f
+0000CAr 1  8D 4F D0     		sta $d04f
+0000CDr 1               
+0000CDr 1               
+0000CDr 1               		; disable CIA interrupts
+0000CDr 1  A9 7F        		lda #$7f
+0000CFr 1  8D 0D DC     		sta $DC0D
+0000D2r 1  8D 0D DD     		sta $DD0D
+0000D5r 1               
+0000D5r 1               		; disable video interrupts
+0000D5r 1  A9 00        		lda #$00
+0000D7r 1  8D 1A D0     		sta $D01A
+0000DAr 1               
+0000DAr 1               		; enable audio amplifier
+0000DAr 1  A9 01        		lda #$01
+0000DCr 1  8D F9 D6     		sta $d6f9
+0000DFr 1               
+0000DFr 1               		; We DO NOT need to mess with $01, because
+0000DFr 1               		; the 4510 starts up with kickstart mapped at $8000-$BFFF
+0000DFr 1               		; enhanced ($FFD3xxx) IO page mapped at $D000,
+0000DFr 1               		; and fast RAM elsewhere.
+0000DFr 1               
+0000DFr 1               		; Disable reset watchdog (this happens simply by writing anything to
+0000DFr 1               		; this register)
+0000DFr 1               		; Enable /EXROM and /GAME from cartridge port (bit 0)
+0000DFr 1               		; enable flat 32-bit addressing (bit 1)
+0000DFr 1               		; do not engage ROM write protect (yet) (bit 2)
+0000DFr 1               		; do make ASC/DIN / CAPS LOCK control CPU speed (bit 3)
+0000DFr 1               		; do not force CPU to full speed (bit 4)
+0000DFr 1               		; also force 4502 CPU personality (6502 personality is still incomplete) (bit 5)
+0000DFr 1               		; and clear any pending IRQ or NMI event (bit 6)
+0000DFr 1               		;
+0000DFr 1               		; (The watchdog was added to catch reset problems where the machine
+0000DFr 1               		; would run off somewhere odd instead of resetting properly. Now it
+0000DFr 1               		; will auto-reset after 65535 cycles if the watchdog is not cleared).
+0000DFr 1               		;
+0000DFr 1               
+0000DFr 1  A9 6B        		lda #$6b    ; 01101011
+0000E1r 1  8D 7D D6     		sta hypervisor_feature_enables
+0000E4r 1               
+0000E4r 1               		; Map SD card sector buffer
+0000E4r 1  A9 80        		lda #$80
+0000E6r 1  8D 89 D6     		sta $d689
+0000E9r 1               
+0000E9r 1               		; Access cartridge IO area to force EXROM probe on R1 PCBs
+0000E9r 1               		; XXX DONT READ $DExx ! This is a known crash causer for Action Replay
+0000E9r 1               		; cartridges.  $DF00 should be okay, however.
+0000E9r 1  AD 00 DF     		lda $df00
+0000ECr 1               
+0000ECr 1  20 rr rr     		jsr resetdisplay
+0000EFr 1  20 rr rr     		jsr erasescreen
+0000F2r 1  20 rr rr     		jsr resetpalette
+0000F5r 1               
+0000F5r 1               ;note that this first message does not get displayed correctly
+0000F5r 1  20 rr rr     		jsr checkpoint
+0000F8r 1  00 72 65 73  		.byte 0,"reset_machine_state",0
+0000FCr 1  65 74 5F 6D  
+000100r 1  61 63 68 69  
+00010Dr 1               ;but this second message does
+00010Dr 1  20 rr rr     		jsr checkpoint
+000110r 1  00 72 65 73  		.byte 0,"reset_machine_state",0
+000114r 1  65 74 5F 6D  
+000118r 1  61 63 68 69  
+000125r 1               
+000125r 1  60           		rts
+000126r 1               
+000126r 1               ;;; ----------------------------------------------------------------------------
+000126r 1               ;;; CPU Hypervisor reset/trap routines
+000126r 1               ;;; ----------------------------------------------------------------------------
+000126r 1               ;
+000126r 1               reset_entry:
+000126r 1  78           		sei
+000127r 1               
+000127r 1               .macro sdtest
+000127r 1               		; Reset SD card
+000127r 1               		lda #$00
+000127r 1               		sta $d680
+000127r 1               		lda #$01
+000127r 1               		sta $d680
+000127r 1               		; map sector buffer
+000127r 1               		lda #$81
+000127r 1               		sta $d680
+000127r 1               		; put some data in sector buffer
+000127r 1               		ldx #$01
+000127r 1               		stx $de00
+000127r 1               		inx
+000127r 1               		stx $de01
+000127r 1               		inx
+000127r 1               		stx $de02
+000127r 1               		inx
+000127r 1               		stx $de03
+000127r 1               		; Issue write block command
+000127r 1               		lda #$03
+000127r 1               		sta $d680
+000127r 1               foo:		jmp foo
+000127r 1               .endmacro
+000127r 1               ;		.invoke sdtest
+000127r 1               .macro f011test
+000127r 1               		; use real floppy drive
+000127r 1               		lda #$01
+000127r 1               		sta $d6a1
+000127r 1               
+000127r 1               		; 10x MFM speed for simulation data
+000127r 1               		lda #$0a
+000127r 1               		sta $d6a2
+000127r 1               
+000127r 1               		lda #$68 ; floppy motor + LED on, head side 1
+000127r 1               		sta $d080
+000127r 1               
+000127r 1               		; Request sector T39,S1,H1
+000127r 1               		lda #0
+000127r 1               		sta $d084
+000127r 1               		lda #1
+000127r 1               		sta $d085
+000127r 1               		sta $d086
+000127r 1               
+000127r 1               		lda $d087 ; clear DRQ flag
+000127r 1               		; reset buffer pointers
+000127r 1               		lda #$01
+000127r 1               		sta $d081
+000127r 1               
+000127r 1               		; Test sector buffer access
+000127r 1               		lda #$11
+000127r 1               		sta $d087
+000127r 1               		lda #$22
+000127r 1               		sta $d087
+000127r 1               		lda #$01
+000127r 1               		sta $d081
+000127r 1               		lda $d087
+000127r 1               		lda $d087
+000127r 1               
+000127r 1               		; Issue read request
+000127r 1               		lda #$40
+000127r 1               		sta $d081
+000127r 1               
+000127r 1               bytewait:
+000127r 1               		lda $d082
+000127r 1               		and #$20
+000127r 1               		bne bytewait
+000127r 1               
+000127r 1               		; read next byte
+000127r 1               		lda $d087
+000127r 1               
+000127r 1               		; get next byte
+000127r 1               		jmp bytewait
+000127r 1               .endmacro
+000127r 1               ;		.invoke f011test
+000127r 1               
+000127r 1  20 rr rr     		jsr reset_machine_state
+00012Ar 1               
+00012Ar 1               		; display welcome screen
+00012Ar 1               		;
+00012Ar 1  A2 rr        		ldx #<msg_kickstart
+00012Cr 1  A0 rr        		ldy #>msg_kickstart
+00012Er 1  20 rr rr     		jsr printmessage
+000131r 1               
+000131r 1               		; leave a blank line below kickstart banner
+000131r 1               		;
+000131r 1  A2 rr        		ldx #<msg_blankline
+000133r 1  A0 rr        		ldy #>msg_blankline
+000135r 1  20 rr rr     		jsr printmessage
+000138r 1               
+000138r 1               		; Display GIT commit
+000138r 1               		;
+000138r 1  A2 rr        		ldx #<msg_gitcommit
+00013Ar 1  A0 rr        		ldy #>msg_gitcommit
+00013Cr 1  20 rr rr     		jsr printmessage
+00013Fr 1               
+00013Fr 1               		; Display help text
+00013Fr 1               		;
+00013Fr 1  A2 rr        		ldx #<msg_kickstarthelp
+000141r 1  A0 rr        		ldy #>msg_kickstarthelp
+000143r 1  20 rr rr     		jsr printmessage
+000146r 1               
+000146r 1               		; check keyboard for 0-9 down to select alternate rom
+000146r 1               		;
+000146r 1  20 rr rr     		jsr keyboardread
+000149r 1               
+000149r 1               		; Magic instruction used by monitor_load to work out where
+000149r 1               		; to patch. Monitor_load changes bit to JMP when patching for
+000149r 1               		; SD-cardless operation
+000149r 1  2C rr rr     		bit go64
+00014Cr 1  2C 34 12     		bit $1234
+00014Fr 1               
+00014Fr 1               ;	========================
+00014Fr 1               
+00014Fr 1               normalboot:
+00014Fr 1               
+00014Fr 1               	; check for ALT key to jump to utility menu
+00014Fr 1  AD 11 D6     	lda $d611
+000152r 1  29 10        	and #$10
+000154r 1  D3 0E 0B     	lbne utility_menu
+000157r 1               
+000157r 1               nokey1:
+000157r 1               
+000157r 1  20 rr rr     	jsr dump_disk_count	; debugging to Checkpoint
+00015Ar 1  20 rr rr     	jsr dumpcurrentfd	; debugging to Checkpoint
+00015Dr 1               
+00015Dr 1               		; Try to read the MBR from the SD card to ensure SD card is happy
+00015Dr 1               		;
+00015Dr 1  A2 rr        		ldx #<msg_tryingsdcard
+00015Fr 1  A0 rr        		ldy #>msg_tryingsdcard
+000161r 1  20 rr rr     		jsr printmessage
+000164r 1               
+000164r 1               tryreadmbr:
+000164r 1  20 rr rr     		jsr readmbr
+000167r 1  B0 3A        		bcs gotmbr
+000169r 1               
+000169r 1               	; check for keyboard input to jump to utility menu
+000169r 1  20 rr rr     	jsr scankeyboard
+00016Cr 1  B0 05        	bcs nokey2
+00016Er 1  C9 20        	cmp #$20
+000170r 1  F3 F2 0A     	lbeq utility_menu
+000173r 1               nokey2:
+000173r 1               
+000173r 1               		; Oops, cant read MBR
+000173r 1               		; display debug message to screen
+000173r 1               		;
+000173r 1  A2 rr        		ldx #<msg_retryreadmbr
+000175r 1  A0 rr        		ldy #>msg_retryreadmbr
+000177r 1  20 rr rr     		jsr printmessage
+00017Ar 1               
+00017Ar 1               		; put sd card sector buffer back after scanning
+00017Ar 1               		; keyboard
+00017Ar 1  A9 81        		lda #$81
+00017Cr 1  0C 80 D6     		tsb $d680
+00017Fr 1               
+00017Fr 1               		; display debug message to uart
+00017Fr 1               		;
+00017Fr 1  20 rr rr     		jsr checkpoint
+000182r 1  00 72 65 2D  		.byte 0,"re-try reading MBR of sdcard",0
+000186r 1  74 72 79 20  
+00018Ar 1  72 65 61 64  
+0001A0r 1               
+0001A0r 1  4C rr rr     		jmp tryreadmbr
+0001A3r 1               
+0001A3r 1               ;	========================
+0001A3r 1               
+0001A3r 1               gotmbr:
+0001A3r 1               		; good, was able to read the MBR
+0001A3r 1               
+0001A3r 1               		; Scan SD card for partitions and mount them.
+0001A3r 1               		;
+0001A3r 1  20 rr rr     		jsr dos_clearall
+0001A6r 1  20 rr rr     		jsr dos_read_partitiontable
+0001A9r 1               
+0001A9r 1               		; then print out some useful information
+0001A9r 1               		;
+0001A9r 1  A2 rr        		ldx #<msg_diskcount
+0001ABr 1  A0 rr        		ldy #>msg_diskcount
+0001ADr 1  20 rr rr     		jsr printmessage
+0001B0r 1               		;
+0001B0r 1  A0 00        		ldy #$00
+0001B2r 1  AB rr rr     		ldz dos_disk_count
+0001B5r 1  20 rr rr     		jsr printhex
+0001B8r 1               		;
+0001B8r 1  A0 00        		ldy #$00
+0001BAr 1  AB rr rr     		ldz dos_default_disk
+0001BDr 1  20 rr rr     		jsr printhex
+0001C0r 1               
+0001C0r 1  20 rr rr     	jsr dump_disk_count	; debugging to Checkpoint
+0001C3r 1  20 rr rr     	jsr dumpcurrentfd	; debugging to Checkpoint
+0001C6r 1               ;	jsr print_disk_table	; debugging to Screen
+0001C6r 1               
+0001C6r 1               ;	========================
+0001C6r 1               
+0001C6r 1               		; If we have no disks, offer the utility menu
+0001C6r 1  AD rr rr     		lda dos_disk_count
+0001C9r 1  F3 99 0A     		lbeq utility_menu
+0001CCr 1               
+0001CCr 1               
+0001CCr 1               		; Go to root directory on default disk
+0001CCr 1               		;
+0001CCr 1  AE rr rr     		ldx dos_default_disk
+0001CFr 1  20 rr rr     		jsr dos_cdroot
+0001D2r 1  B0 21        		bcs mountsystemdiskok
+0001D4r 1               
+0001D4r 1               		; failed
+0001D4r 1               		;
+0001D4r 1  A2 rr        		ldx #<msg_cdrootfailed
+0001D6r 1  A0 rr        		ldy #>msg_cdrootfailed
+0001D8r 1  20 rr rr     		jsr printmessage
+0001DBr 1  A0 00        		ldy #$00
+0001DDr 1  AB rr rr     		ldz dos_error_code
+0001E0r 1  20 rr rr     		jsr printhex
+0001E3r 1               
+0001E3r 1  20 rr rr     		jsr checkpoint
+0001E6r 1  00 46 41 49  		.byte 0,"FAILED CDROOT",0
+0001EAr 1  4C 45 44 20  
+0001EEr 1  43 44 52 4F  
+0001F5r 1               		;
+0001F5r 1               		; BG: should probably JMP to reset or something, and not fall through
+0001F5r 1               
+0001F5r 1               
+0001F5r 1               mountsystemdiskok:
+0001F5r 1               
+0001F5r 1               		; Load and display boot logo
+0001F5r 1               		; Prepare 32-bit pointer for loading boot logo @ $0003D00
+0001F5r 1               		; (palette is $3D00-$3FFF, logo $4000-$8FFF)
+0001F5r 1  A9 3D        		lda #$3d
+0001F7r 1  85 rr        		sta <dos_file_loadaddress+1
+0001F9r 1  A9 00        		lda #$00
+0001FBr 1  85 rr        		sta <dos_file_loadaddress+0
+0001FDr 1               		; lda #$00
+0001FDr 1  85 rr        		sta <dos_file_loadaddress+2
+0001FFr 1               		; lda #$00
+0001FFr 1  85 rr        		sta <dos_file_loadaddress+3
+000201r 1               
+000201r 1  A2 rr        		ldx #<txt_BOOTLOGOM65
+000203r 1  A0 rr        		ldy #>txt_BOOTLOGOM65
+000205r 1  20 rr rr     		jsr dos_setname
+000208r 1               
+000208r 1               		; print debug message
+000208r 1               		;
+000208r 1  20 rr rr     		jsr checkpoint
+00020Br 1  00 20 20 74  		.byte 0,"  try-loading BOOTLOGO",0
+00020Fr 1  72 79 2D 6C  
+000213r 1  6F 61 64 69  
+000223r 1               
+000223r 1  20 rr rr     		jsr dos_readfileintomemory
+000226r 1  B0 49        		bcs logook
+000228r 1               
+000228r 1               ;	========================
+000228r 1               
+000228r 1               		; FAILED: print debug message
+000228r 1               		;
+000228r 1  20 rr rr     		jsr checkpoint
+00022Br 1  00 20 20 46  		.byte 0,"  FAILED-loading BOOTLOGO",0
+00022Fr 1  41 49 4C 45  
+000233r 1  44 2D 6C 6F  
+000246r 1               
+000246r 1               		; print debug message
+000246r 1               		;
+000246r 1  A2 rr        		ldx #<msg_nologo
+000248r 1  A0 rr        		ldy #>msg_nologo
+00024Ar 1  20 rr rr     		jsr printmessage
+00024Dr 1  A0 00        		ldy #$00
+00024Fr 1  AB rr rr     		ldz dos_error_code
+000252r 1  20 rr rr     		jsr printhex
+000255r 1               
+000255r 1  20 rr rr     		jsr checkpoint
+000258r 1  00 46 41 49  		.byte 0,"FAILED loading BOOTLOGO",0
+00025Cr 1  4C 45 44 20  
+000260r 1  6C 6F 61 64  
+000271r 1               
+000271r 1               ;	========================
+000271r 1               
+000271r 1               logook:
+000271r 1               		; Loaded banner, so copy palette into place
+000271r 1  20 rr rr     		jsr setbannerpalette
+000274r 1               
+000274r 1               		; iterate through directory entries looking for ordinary file
+000274r 1               		; KICKUP.M65 to load into hypervisor memory ...
+000274r 1               		; ... but only if we are not running a kick-up'd kickstart now.
+000274r 1               		;
+000274r 1  AD 7E D6     		lda hypervisor_kickedup_flag	;$d67e = register for kickup-state (00=virgin, else already-kicked)
+000277r 1  10 0A        		bpl allowkickup
+000279r 1               
+000279r 1               		; already kicked
+000279r 1               		;
+000279r 1  A2 rr        		ldx #<msg_alreadykicked
+00027Br 1  A0 rr        		ldy #>msg_alreadykicked
+00027Dr 1  20 rr rr     		jsr printmessage
+000280r 1               
+000280r 1  4C rr rr     		jmp postkickup
+000283r 1               
+000283r 1               ;	========================
+000283r 1               
+000283r 1               allowkickup:	; BG was label nextdirectoryentry3:
+000283r 1               
+000283r 1               		; Prepare 32-bit pointer for loading kickup @ $0004000
+000283r 1               		;
+000283r 1               		; We load it at $4000, which is mapped to first 64KB RAM, and then
+000283r 1               		; have a routine also in RAM that we use to copy the loaded data
+000283r 1               		; back onto the Kickstart "ROM" space, so that there are no problems
+000283r 1               		; with the copying code being changed while it being replaced.
+000283r 1               		;
+000283r 1  A9 00        		lda #$00
+000285r 1  85 rr        		sta <dos_file_loadaddress+0
+000287r 1  A9 40        		lda #$40
+000289r 1  85 rr        		sta <dos_file_loadaddress+1
+00028Br 1  A9 00        		lda #$00
+00028Dr 1  85 rr        		sta <dos_file_loadaddress+2
+00028Fr 1  A9 00        		lda #$00
+000291r 1  85 rr        		sta <dos_file_loadaddress+3
+000293r 1               
+000293r 1  A2 rr        		ldx #<txt_KICKUPM65
+000295r 1  A0 rr        		ldy #>txt_KICKUPM65
+000297r 1  20 rr rr     		jsr dos_setname
+00029Ar 1               
+00029Ar 1               		; print debug message
+00029Ar 1               		;
+00029Ar 1  20 rr rr     		jsr checkpoint
+00029Dr 1  00 20 20 74  		.byte 0,"  try-loading KICKUP",0
+0002A1r 1  72 79 2D 6C  
+0002A5r 1  6F 61 64 69  
+0002B3r 1               
+0002B3r 1  20 rr rr     		jsr dos_readfileintomemory
+0002B6r 1  90 71        		bcc nokickup
+0002B8r 1               
+0002B8r 1               ;	========================
+0002B8r 1               
+0002B8r 1               		; We have loaded a kickup file, so jump into it.
+0002B8r 1               
+0002B8r 1               
+0002B8r 1               		; print debug message
+0002B8r 1               		;
+0002B8r 1  20 rr rr     		jsr checkpoint
+0002BBr 1  00 20 20 6C  		.byte 0,"  loaded OK KICKUP",0
+0002BFr 1  6F 61 64 65  
+0002C3r 1  64 20 4F 4B  
+0002CFr 1               
+0002CFr 1               
+0002CFr 1  A2 rr        		ldx #<msg_kickuploaded
+0002D1r 1  A0 rr        		ldy #>msg_kickuploaded
+0002D3r 1  20 rr rr     		jsr printmessage
+0002D6r 1               
+0002D6r 1  A0 00        		ldy #$00
+0002D8r 1  AB rr rr     		ldz <zptempv32+3	; BG what is in this register? Where is the data set?
+0002DBr 1  20 rr rr     		jsr printhex
+0002DEr 1  AB rr rr     		ldz <zptempv32+2
+0002E1r 1  20 rr rr     		jsr printhex
+0002E4r 1  AB rr rr     		ldz <zptempv32+1
+0002E7r 1  20 rr rr     		jsr printhex
+0002EAr 1  AB rr rr     		ldz <zptempv32+0
+0002EDr 1  20 rr rr     		jsr printhex
+0002F0r 1               
+0002F0r 1               dokickup:
+0002F0r 1               		; Use DMAgic to copy $0004000-$0007FFF to $FFF8000-$FFFBFFF
+0002F0r 1               		; (We have to copy the routine to do this to RAM, since we will
+0002F0r 1               		; be replacing ourselves)
+0002F0r 1  A2 00        		ldx #$00
+0002F2r 1  BD rr rr     krc:		lda kickuproutine,x
+0002F5r 1  9D 00 30     		sta $3000,x
+0002F8r 1  E8           		inx
+0002F9r 1  D0 F7        		bne krc
+0002FBr 1  4C 00 30     		jmp $3000
+0002FEr 1               
+0002FEr 1               ;	========================
+0002FEr 1               
+0002FEr 1               kickuproutine:
+0002FEr 1               		; The following routine gets copied as-is to $3000 and run from there.
+0002FEr 1               		; The DMA list is still available in the kickstart ROM when it gets
+0002FEr 1               		; called, so we can just use it there, instead of working out where
+0002FEr 1               		; it gets copied to
+0002FEr 1               
+0002FEr 1               		; NOTE that only 256-bytes are copied, so the kickuproutine and kickupdmalist
+0002FEr 1               		;      cannot exceed this limit, else revise the krc routine.
+0002FEr 1               
+0002FEr 1               		; Set bottom 22 bits of DMA list address as for C65
+0002FEr 1               		; (8MB address range).  Kickstart ROM is at $FFF8000, so $FF goes
+0002FEr 1               		; in high-byte area
+0002FEr 1               		;
+0002FEr 1  A9 FF        		lda #$ff
+000300r 1  8D 02 D7     		sta $d702
+000303r 1  A9 FF        		lda #$ff
+000305r 1  8D 04 D7     		sta $d704  ; dma list is in top MB of address space
+000308r 1  A9 rr        		lda #>kickupdmalist
+00030Ar 1  8D 01 D7     		sta $d701
+00030Dr 1               		; Trigger enhanced DMA
+00030Dr 1  A9 rr        		lda #<kickupdmalist
+00030Fr 1  8D 05 D7     		sta $d705
+000312r 1               
+000312r 1               		; copy complete, so mark ourselves upgraded, and jump into hypervisor
+000312r 1               		; as though we were just reset.
+000312r 1               
+000312r 1               		; BG: here we should store non-zero, not ZERO ?
+000312r 1               		;
+000312r 1  8D 7E D6     		sta hypervisor_kickedup_flag	; mark ourselves as having kicked up, (00=virgin, else already-kicked)
+000315r 1  4C 00 81     		jmp $8100
+000318r 1               
+000318r 1               ;	========================
+000318r 1               
+000318r 1               kickupdmalist:
+000318r 1               		; MEGA65 Enhanced DMA options
+000318r 1  0A           		.byte $0A  ; Request format is F018A
+000319r 1  80 00        		.byte $80,$00 ; Source is $00xxxxx
+00031Br 1  81 FF        		.byte $81,$FF ; Destination is $FF
+00031Dr 1  00           		.byte $00  ; No more options
+00031Er 1               		; copy $0004000-$0007FFF to $FFF8000-$FFFBFFF
+00031Er 1               		; F018A DMA list
+00031Er 1               		; (MB offsets get set in routine)
+00031Er 1  00           		.byte $00 ; copy + last request in chain
+00031Fr 1  00 40        		.word $4000 ; size of copy is 16KB
+000321r 1  00 40        		.word $4000 ; starting at $4000
+000323r 1  00           		.byte $00   ; of bank $0
+000324r 1  00 80        		.word $8000 ; destination address is $8000
+000326r 1  0F           		.byte $0F   ; of bank $F
+000327r 1  00 00        		.word $0000 ; modulo (unused)
+000329r 1               
+000329r 1               ;	========================
+000329r 1               
+000329r 1               couldntopenkickup:
+000329r 1               
+000329r 1               nokickup:
+000329r 1  A2 rr        		ldx #<msg_nokickup
+00032Br 1  A0 rr        		ldy #>msg_nokickup
+00032Dr 1  20 rr rr     		jsr printmessage
+000330r 1               
+000330r 1               postkickup:
+000330r 1               
+000330r 1               		; MILESTONE: Have file system properties.
+000330r 1               
+000330r 1               		; Look for MEGA65.D81 to mount for F011 emulation
+000330r 1               
+000330r 1               		; print debug message
+000330r 1               		;
+000330r 1  20 rr rr     		jsr checkpoint
+000333r 1  00 20 20 48  		.byte 0,"  Here we are POST-KICKUP",0
+000337r 1  65 72 65 20  
+00033Br 1  77 65 20 61  
+00034Er 1               
+00034Er 1  20 rr rr     	jsr dumpcurrentfd	; debugging to Checkpoint
+000351r 1               
+000351r 1               		; for now indicate that there is no disk in drive
+000351r 1               		;
+000351r 1  A9 00        		lda #$00
+000353r 1  8D 8B D6     		sta $d68b	; f011 emulation, BG: should have an alias
+000356r 1               
+000356r 1               		; Go to root directory on default disk
+000356r 1               		;
+000356r 1  AE rr rr     		ldx dos_default_disk
+000359r 1  20 rr rr     		jsr dos_cdroot
+00035Cr 1  93 26 03     		lbcc sdcarderror
+00035Fr 1               
+00035Fr 1               		; Select PAL/NTSC mode based on presence of file called NTSC
+00035Fr 1  A2 rr        		ldx #<txt_NTSC
+000361r 1  A0 rr        		ldy #>txt_NTSC
+000363r 1  20 rr rr     		jsr dos_setname
+000366r 1  20 rr rr     		jsr dos_findfile
+000369r 1  90 08        		bcc setpal
+00036Br 1               setntsc:
+00036Br 1  A9 80        		lda #$80
+00036Dr 1  0C 6F D0     		tsb $d06f
+000370r 1  4C rr rr     		jmp setpalntsc
+000373r 1               setpal:
+000373r 1  A9 80        		lda #$80
+000375r 1  1C 6F D0     		trb $d06f
+000378r 1               
+000378r 1               setpalntsc:
+000378r 1               		; Re-set virtual screen row length after touching $D06F
+000378r 1  A9 50        		lda #80
+00037Ar 1  8D 58 D0     		sta $d058
+00037Dr 1               
+00037Dr 1               		; set name of file we are looking for
+00037Dr 1               		;
+00037Dr 1  A2 rr        		ldx #<txt_MEGA65D81
+00037Fr 1  A0 rr        		ldy #>txt_MEGA65D81
+000381r 1  20 rr rr     		jsr dos_setname
+000384r 1               
+000384r 1               		; print debug message
+000384r 1               		;
+000384r 1  20 rr rr     		jsr checkpoint
+000387r 1  00 20 20 74  		.byte 0,"  try-mounting MEGA65.D81",0
+00038Br 1  72 79 2D 6D  
+00038Fr 1  6F 75 6E 74  
+0003A2r 1               
+0003A2r 1  20 rr rr     		jsr dos_findfile
+0003A5r 1  90 2B        		bcc d81attachfail
+0003A7r 1  20 rr rr     		jsr dos_closefile
+0003AAr 1               
+0003AAr 1  20 rr rr     		jsr dos_d81attach
+0003ADr 1  90 23        		bcc d81attachfail
+0003AFr 1               
+0003AFr 1  A2 rr        		ldx #<msg_d81mounted
+0003B1r 1  A0 rr        		ldy #>msg_d81mounted
+0003B3r 1  20 rr rr     		jsr printmessage
+0003B6r 1               
+0003B6r 1               		; print debug message
+0003B6r 1               		;
+0003B6r 1  20 rr rr     		jsr checkpoint
+0003B9r 1  00 20 20 6D  		.byte 0,"  mounted MEGA65.D81",0
+0003BDr 1  6F 75 6E 74  
+0003C1r 1  65 64 20 4D  
+0003CFr 1               
+0003CFr 1               		; all done, move on to loading the ROM
+0003CFr 1               		;
+0003CFr 1               
+0003CFr 1  4C rr rr     		jmp findrom
+0003D2r 1               
+0003D2r 1               ;	========================
+0003D2r 1               
+0003D2r 1               d81attachfail:
+0003D2r 1               		; we couldn't find the D81 file, so tell the user
+0003D2r 1               		;
+0003D2r 1  A2 rr        		ldx #<msg_nod81
+0003D4r 1  A0 rr        		ldy #>msg_nod81
+0003D6r 1  20 rr rr     		jsr printmessage
+0003D9r 1  A0 00        		ldy #$00
+0003DBr 1  AB rr rr     		ldz dos_error_code
+0003DEr 1  20 rr rr     		jsr printhex
+0003E1r 1               
+0003E1r 1               	; debug
+0003E1r 1  20 rr rr     	jsr checkpoint
+0003E4r 1  00 20 63 6F  	.byte 0," couldnt mount/attach MEGA65.D81",0
+0003E8r 1  75 6C 64 6E  
+0003ECr 1  74 20 6D 6F  
+000406r 1               
+000406r 1               findrom:
+000406r 1               		; Check state of current ROM
+000406r 1               		;
+000406r 1  20 rr rr     		jsr checkromok
+000409r 1  90 2E        		bcc loadrom
+00040Br 1               
+00040Br 1               		; ROM is loaded and ready, so transfer control to it.
+00040Br 1               		;
+00040Br 1  A2 rr        		ldx #<msg_romok
+00040Dr 1  A0 rr        		ldy #>msg_romok
+00040Fr 1  20 rr rr     		jsr printmessage
+000412r 1               
+000412r 1  20 rr rr     		jsr checkpoint
+000415r 1  00 4A 55 4D  		.byte 0,"JUMPing into ROM-code",0
+000419r 1  50 69 6E 67  
+00041Dr 1  20 69 6E 74  
+00042Cr 1               
+00042Cr 1               	; check for keyboard input to jump to utility menu
+00042Cr 1  20 rr rr     	jsr scankeyboard
+00042Fr 1  B0 05        	bcs nokey3
+000431r 1  C9 20        	cmp #$20
+000433r 1  F3 2F 08     	lbeq utility_menu
+000436r 1               nokey3:
+000436r 1               
+000436r 1               
+000436r 1  4C rr rr     		jmp go64
+000439r 1               
+000439r 1               ;	========================
+000439r 1               
+000439r 1               loadrom:
+000439r 1               
+000439r 1  20 rr rr     	jsr dumpcurrentfd	; debugging to Checkpoint
+00043Cr 1               
+00043Cr 1               		; ROMs are not loaded, so try to load them, or prompt
+00043Cr 1               		; for user to insert SD card
+00043Cr 1               		;
+00043Cr 1  A2 rr        		ldx #<msg_rombad
+00043Er 1  A0 rr        		ldy #>msg_rombad
+000440r 1  20 rr rr     		jsr printmessage
+000443r 1               
+000443r 1               		; print debug message
+000443r 1               		;
+000443r 1  20 rr rr     		jsr checkpoint
+000446r 1  00 20 20 74  		.byte 0,"  try-loading CHAR-ROM",0
+00044Ar 1  72 79 2D 6C  
+00044Er 1  6F 61 64 69  
+00045Er 1               
+00045Er 1               		; Load CHARROM.M65 into character ROM
+00045Er 1               		;
+00045Er 1  A2 rr        		ldx #<txt_CHARROMM65
+000460r 1  A0 rr        		ldy #>txt_CHARROMM65
+000462r 1  20 rr rr     		jsr dos_setname
+000465r 1               
+000465r 1               		; Prepare 32-bit pointer for loading whole ROM ($FF7E000)
+000465r 1               		;
+000465r 1  A9 00        		lda #$00
+000467r 1  85 rr        		sta <dos_file_loadaddress+0
+000469r 1  A9 E0        		lda #$E0
+00046Br 1  85 rr        		sta <dos_file_loadaddress+1
+00046Dr 1  A9 F7        		lda #$F7
+00046Fr 1  85 rr        		sta <dos_file_loadaddress+2
+000471r 1  A9 0F        		lda #$0F
+000473r 1  85 rr        		sta <dos_file_loadaddress+3
+000475r 1               
+000475r 1  20 rr rr     		jsr dos_readfileintomemory
+000478r 1  B0 28        		bcs loadedcharromok
+00047Ar 1               
+00047Ar 1               ;	========================
+00047Ar 1               
+00047Ar 1               		; FAILED
+00047Ar 1  A2 rr        		ldx #<msg_charrombad
+00047Cr 1  A0 rr        		ldy #>msg_charrombad
+00047Er 1  20 rr rr     		jsr printmessage
+000481r 1               
+000481r 1               		; print debug message
+000481r 1               		;
+000481r 1  20 rr rr     		jsr checkpoint
+000484r 1  00 20 63 6F  		.byte 0," couldnt load CHARROM.M65",0
+000488r 1  75 6C 64 6E  
+00048Cr 1  74 20 6C 6F  
+00049Fr 1               
+00049Fr 1  4C rr rr     		jmp loadc65rom
+0004A2r 1               
+0004A2r 1               ;	========================
+0004A2r 1               
+0004A2r 1               loadedcharromok:
+0004A2r 1               		; print debug message
+0004A2r 1               		;
+0004A2r 1  20 rr rr     		jsr checkpoint
+0004A5r 1  00 20 20 4F  		.byte 0,"  OK-loading CHARROM",0
+0004A9r 1  4B 2D 6C 6F  
+0004ADr 1  61 64 69 6E  
+0004BBr 1               
+0004BBr 1               		; prepare debug message
+0004BBr 1               		;
+0004BBr 1  AE rr rr     		ldx dos_current_file_descriptor_offset
+0004BEr 1  BD rr rr     		lda dos_file_descriptors + dos_filedescriptor_offset_fileoffset+0,x
+0004C1r 1  8D rr rr     		sta file_pagesread
+0004C4r 1  BD rr rr     		lda dos_file_descriptors + dos_filedescriptor_offset_fileoffset+1,x
+0004C7r 1  8D rr rr     		sta file_pagesread+1
+0004CAr 1               
+0004CAr 1  A2 rr        		ldx #<msg_charromloaded
+0004CCr 1  A0 rr        		ldy #>msg_charromloaded
+0004CEr 1  20 rr rr     		jsr printmessage
+0004D1r 1  A0 00        		ldy #$00
+0004D3r 1  AB rr rr     		ldz file_pagesread+1
+0004D6r 1  20 rr rr     		jsr printhex
+0004D9r 1  AB rr rr     		ldz file_pagesread
+0004DCr 1  20 rr rr     		jsr printhex
+0004DFr 1               
+0004DFr 1               loadc65rom:
+0004DFr 1               
+0004DFr 1  20 rr rr     	jsr dumpcurrentfd	; debugging to Checkpoint
+0004E2r 1               
+0004E2r 1               		; print debug message
+0004E2r 1               		;
+0004E2r 1  20 rr rr     		jsr checkpoint
+0004E5r 1  00 20 20 74  		.byte 0,"  try-loading MEGA65-ROM",0
+0004E9r 1  72 79 2D 6C  
+0004EDr 1  6F 61 64 69  
+0004FFr 1               
+0004FFr 1  A2 rr        		ldx #<txt_MEGA65ROM
+000501r 1  A0 rr        		ldy #>txt_MEGA65ROM
+000503r 1  20 rr rr     		jsr dos_setname
+000506r 1               
+000506r 1               		; Prepare 32-bit pointer for loading whole ROM ($0020000)
+000506r 1               		;
+000506r 1  A9 00        		lda #$00
+000508r 1  85 rr        		sta <dos_file_loadaddress+0
+00050Ar 1  85 rr        		sta <dos_file_loadaddress+1
+00050Cr 1  85 rr        		sta <dos_file_loadaddress+3
+00050Er 1  A9 02        		lda #$02
+000510r 1  85 rr        		sta <dos_file_loadaddress+2
+000512r 1               
+000512r 1  20 rr rr     		jsr dos_readfileintomemory
+000515r 1  B0 21        		bcs loadedok
+000517r 1               
+000517r 1               ;	========================
+000517r 1               
+000517r 1               		; ROM not found: indicate which ROM we were looking for
+000517r 1               		;
+000517r 1  A2 0B        		ldx #$0b
+000519r 1  BD rr rr     l17d:		lda txt_MEGA65ROM,x
+00051Cr 1  9D rr rr     		sta msg_romnotfound+19,x
+00051Fr 1  CA           		dex
+000520r 1  D0 F7        		bne l17d
+000522r 1  A2 rr        		ldx #<msg_romnotfound
+000524r 1  A0 rr        		ldy #>msg_romnotfound
+000526r 1  20 rr rr     		jsr printmessage
+000529r 1               
+000529r 1  20 rr rr     		jsr sdwaitawhile
+00052Cr 1  20 rr rr     		jsr sdwaitawhile
+00052Fr 1  20 rr rr     		jsr sdwaitawhile
+000532r 1  20 rr rr     		jsr sdwaitawhile
+000535r 1               
+000535r 1  4C rr rr     		jmp sdcarderror
+000538r 1               
+000538r 1               ;	========================
+000538r 1               
+000538r 1               		; ROM was found and loaded
+000538r 1               loadedok:
+000538r 1  AE rr rr     		ldx dos_current_file_descriptor_offset
+00053Br 1  BD rr rr     		lda dos_file_descriptors + dos_filedescriptor_offset_fileoffset +0,x
+00053Er 1  8D rr rr     		sta file_pagesread
+000541r 1  BD rr rr     		lda dos_file_descriptors + dos_filedescriptor_offset_fileoffset +1,x
+000544r 1  8D rr rr     		sta file_pagesread+1
+000547r 1               
+000547r 1               		; check the size of the loaded file
+000547r 1               		; i.e., that we have loaded $0200 x $100 = $20000 = 128KiB
+000547r 1  AD rr rr     		lda file_pagesread+1
+00054Ar 1  C9 00        		cmp #$00
+00054Cr 1  F3 16 01     		lbeq romfiletooshort
+00054Fr 1  C9 01        		cmp #$01
+000551r 1  F3 11 01     		lbeq romfiletooshort
+000554r 1  C9 02        		cmp #$02
+000556r 1  D3 F3 00     		lbne romfiletoolong
+000559r 1  AD rr rr     		lda file_pagesread
+00055Cr 1  D3 ED 00     		lbne romfiletoolong
+00055Fr 1               
+00055Fr 1               		; the loaded ROM was OK in size
+00055Fr 1               
+00055Fr 1               		; Store checksum of ROM
+00055Fr 1               		;
+00055Fr 1  20 rr rr     		jsr storeromsum
+000562r 1               
+000562r 1               		; copy character ROM portion into place
+000562r 1               		; i.e., copy $2Dxxx to $FF7Exxx
+000562r 1               
+000562r 1  A9 FF        		lda #$ff
+000564r 1  8D 02 D7     		sta $d702
+000567r 1  8D 04 D7     		sta $d704
+00056Ar 1  A9 00        		lda #$00
+00056Cr 1  A9 rr        		lda #>charromdmalist
+00056Er 1  8D 01 D7     		sta $d701
+000571r 1  A9 rr        		lda #<charromdmalist
+000573r 1  8D 05 D7     		sta $d705
+000576r 1               
+000576r 1  4C rr rr     		jmp loadedmegaromok
+000579r 1               
+000579r 1               charromdmalist:
+000579r 1               		; M65 DMA options
+000579r 1  0A           		.byte $0A    ; Request format is F018A
+00057Ar 1  81 FF        		.byte $81,$FF ; destination is $FFxxxxx
+00057Cr 1  00           		.byte $00 ; no more options
+00057Dr 1               		; F018A DMA list
+00057Dr 1  00           		.byte $00
+00057Er 1  00 10        		.word $1000
+000580r 1  00 D0        		.word $D000
+000582r 1  02           		.byte $02
+000583r 1  00 E0        		.word $E000
+000585r 1  07           		.byte $07
+000586r 1  00 00        		.word $0000
+000588r 1               
+000588r 1               
+000588r 1               loadedmegaromok:
+000588r 1               		; print debug message
+000588r 1               		;
+000588r 1  20 rr rr     		jsr checkpoint
+00058Br 1  00 20 20 4F  		.byte 0,"  OK-loading CHARROM",0
+00058Fr 1  4B 2D 6C 6F  
+000593r 1  61 64 69 6E  
+0005A1r 1               
+0005A1r 1               		; prepare debug message
+0005A1r 1               		;
+0005A1r 1  AE rr rr     		ldx dos_current_file_descriptor_offset
+0005A4r 1  BD rr rr     		lda dos_file_descriptors + dos_filedescriptor_offset_fileoffset+0,x
+0005A7r 1  8D rr rr     		sta file_pagesread
+0005AAr 1  BD rr rr     		lda dos_file_descriptors + dos_filedescriptor_offset_fileoffset+1,x
+0005ADr 1  8D rr rr     		sta file_pagesread+1
+0005B0r 1               
+0005B0r 1  A2 rr        		ldx #<msg_megaromloaded
+0005B2r 1  A0 rr        		ldy #>msg_megaromloaded
+0005B4r 1  20 rr rr     		jsr printmessage
+0005B7r 1  A0 00        		ldy #$00
+0005B9r 1  AB rr rr     		ldz file_pagesread+1
+0005BCr 1  20 rr rr     		jsr printhex
+0005BFr 1  AB rr rr     		ldz file_pagesread
+0005C2r 1  20 rr rr     		jsr printhex
+0005C5r 1               
+0005C5r 1               		; ROM file loaded, transfer control
+0005C5r 1               		;
+0005C5r 1  A2 rr        		ldx #<msg_romok
+0005C7r 1  A0 rr        		ldy #>msg_romok
+0005C9r 1  20 rr rr     		jsr printmessage
+0005CCr 1               
+0005CCr 1               		; print debug message
+0005CCr 1               		;
+0005CCr 1  20 rr rr     		jsr checkpoint
+0005CFr 1  00 20 20 4F  		.byte 0,"  OK-loading MEGA65-ROM",0
+0005D3r 1  4B 2D 6C 6F  
+0005D7r 1  61 64 69 6E  
+0005E8r 1               
+0005E8r 1               		; print debug message
+0005E8r 1               		;
+0005E8r 1  20 rr rr     		jsr checkpoint
+0005EBr 1  00 4A 55 4D  		.byte 0,"JUMPing into ROM-code",0
+0005EFr 1  50 69 6E 67  
+0005F3r 1  20 69 6E 74  
+000602r 1               
+000602r 1  20 rr rr     	jsr dumpcurrentfd	; debugging to Checkpoint
+000605r 1               
+000605r 1               loaddiskmenu:
+000605r 1               
+000605r 1                               ; print debug message
+000605r 1                               ;
+000605r 1  20 rr rr                     jsr checkpoint
+000608r 1  00 20 20 74                  .byte 0,"  try-loading $C000 Utility",0
+00060Cr 1  72 79 2D 6C  
+000610r 1  6F 61 64 69  
+000625r 1               
+000625r 1  A2 rr                        ldx #<txt_C000UTIL
+000627r 1  A0 rr                        ldy #>txt_C000UTIL
+000629r 1  20 rr rr                     jsr dos_setname
+00062Cr 1               
+00062Cr 1                               ; Prepare 32-bit pointer for loading whole ROM ($0020000)
+00062Cr 1                               ;
+00062Cr 1  A9 00                        lda #$00
+00062Er 1  85 rr                        sta <dos_file_loadaddress+0
+000630r 1  85 rr                        sta <dos_file_loadaddress+2
+000632r 1  85 rr                        sta <dos_file_loadaddress+3
+000634r 1  A9 C0                        lda #$c0
+000636r 1  85 rr                        sta <dos_file_loadaddress+1
+000638r 1               
+000638r 1  20 rr rr                     jsr dos_readfileintomemory
+00063Br 1               ;                bcs loadedok
+00063Br 1               
+00063Br 1  20 rr rr     	jsr dumpcurrentfd	; debugging to Checkpoint
+00063Er 1               
+00063Er 1               	; check for keyboard input to jump to utility menu
+00063Er 1  20 rr rr     	jsr scankeyboard
+000641r 1  B0 05        	bcs nokey4
+000643r 1  C9 20        	cmp #$20
+000645r 1  F3 1D 06     	lbeq utility_menu
+000648r 1               nokey4:
+000648r 1               
+000648r 1  4C rr rr     		jmp go64
+00064Br 1               
+00064Br 1               ;	========================
+00064Br 1               
+00064Br 1               romfiletoolong:
+00064Br 1  A2 rr        		ldx #<msg_romfilelongerror
+00064Dr 1  A0 rr        		ldy #>msg_romfilelongerror
+00064Fr 1  20 rr rr     		jsr printmessage
+000652r 1  AB rr rr     		ldz file_pagesread+1
+000655r 1  20 rr rr     		jsr printhex
+000658r 1  AB rr rr     		ldz file_pagesread
+00065Br 1  20 rr rr     		jsr printhex
+00065Er 1  20 rr rr     		jsr sdwaitawhile
+000661r 1  4C rr rr     		jmp reset_entry
+000664r 1               
+000664r 1               romfiletooshort:
+000664r 1  A2 rr        		ldx #<msg_romfileshorterror
+000666r 1  A0 rr        		ldy #>msg_romfileshorterror
+000668r 1  20 rr rr     		jsr printmessage
+00066Br 1  AB rr rr     		ldz file_pagesread+1
+00066Er 1  20 rr rr     		jsr printhex
+000671r 1  AB rr rr     		ldz file_pagesread
+000674r 1  20 rr rr     		jsr printhex
+000677r 1  20 rr rr     		jsr sdwaitawhile
+00067Ar 1  4C rr rr     		jmp reset_entry
+00067Dr 1               
+00067Dr 1               ;	========================
+00067Dr 1               
+00067Dr 1               fileopenerror:
+00067Dr 1  A2 rr        		ldx #<msg_fileopenerror
+00067Fr 1  A0 rr        		ldy #>msg_fileopenerror
+000681r 1  20 rr rr     		jsr printmessage
+000684r 1               
+000684r 1  A2 rr        sdcarderror:	ldx #<msg_sdcarderror
+000686r 1  A0 rr        		ldy #>msg_sdcarderror
+000688r 1  20 rr rr     		jsr printmessage
+00068Br 1               
+00068Br 1  20 rr rr     		jsr sdwaitawhile
+00068Er 1  4C rr rr     		jmp reset_entry
+000691r 1               
+000691r 1               ;	========================
+000691r 1               
+000691r 1  A2 rr        badfs:		ldx #<msg_badformat
+000693r 1  A0 rr        		ldy #>msg_badformat
+000695r 1  20 rr rr     		jsr printmessage
+000698r 1               
+000698r 1  20 rr rr     		jsr sdwaitawhile
+00069Br 1  4C rr rr     		jmp reset_entry
+00069Er 1               
+00069Er 1               ;;; ----------------------------------------------------------------------------
+00069Er 1               ;;; ROM loading and manipulation routines
+00069Er 1               ;;; ----------------------------------------------------------------------------
+00069Er 1               
+00069Er 1               checkromok:
+00069Er 1               		; read switch 13.  If set, assume ROM is invalid
+00069Er 1               		;
+00069Er 1  AD ED D6     		lda fpga_switches_high
+0006A1r 1  29 20        		and #$20
+0006A3r 1  D0 2A        		bne checksumfails
+0006A5r 1               
+0006A5r 1               		; or if loading a ROM other than MEGA65.ROM, then assume ROM
+0006A5r 1               		; is invalid
+0006A5r 1               		;
+0006A5r 1  AD rr rr     		lda txt_MEGA65ROM+6
+0006A8r 1  C9 2E        		cmp #'.'
+0006AAr 1  D0 23        		bne checksumfails
+0006ACr 1               
+0006ACr 1               		; calculate checksum of loaded ROM ...
+0006ACr 1               		;
+0006ACr 1  20 rr rr     		jsr calcromsum
+0006AFr 1               		; ... then fall through to testing it
+0006AFr 1               testromsum:
+0006AFr 1               		; have checksum for all slabs.
+0006AFr 1               
+0006AFr 1  20 rr rr     		jsr mapromchecksumrecord
+0006B2r 1               
+0006B2r 1  AD 00 40     		lda $4000
+0006B5r 1  CD rr rr     		cmp checksum
+0006B8r 1  D0 15        		bne checksumfails
+0006BAr 1  AD 01 40     		lda $4001
+0006BDr 1  CD rr rr     		cmp checksum+1
+0006C0r 1  D0 0D        		bne checksumfails
+0006C2r 1  AD 02 40     		lda $4002
+0006C5r 1  CD rr rr     		cmp checksum+2
+0006C8r 1  D0 05        		bne checksumfails
+0006CAr 1               
+0006CAr 1  20 rr rr     		jsr resetmemmap
+0006CDr 1               
+0006CDr 1  38           		sec
+0006CEr 1  60           		rts
+0006CFr 1               
+0006CFr 1               ;	========================
+0006CFr 1               
+0006CFr 1               		; check failed
+0006CFr 1  18           checksumfails:	clc
+0006D0r 1  60           		rts
+0006D1r 1               
+0006D1r 1               ;	========================
+0006D1r 1               
+0006D1r 1               storeromsum:
+0006D1r 1  20 rr rr     		jsr mapromchecksumrecord
+0006D4r 1               
+0006D4r 1  AD rr rr     		lda checksum
+0006D7r 1  8D 00 40     		sta $4000
+0006DAr 1  AD rr rr     		lda checksum+1
+0006DDr 1  8D 01 40     		sta $4001
+0006E0r 1  AD rr rr     		lda checksum+2
+0006E3r 1  8D 02 40     		sta $4002
+0006E6r 1  60           		rts
+0006E7r 1               
+0006E7r 1               ;	========================
+0006E7r 1               
+0006E7r 1               mapromchecksumrecord:
+0006E7r 1               
+0006E7r 1               		; Map in ROM load record, and compare checksum
+0006E7r 1               		; Here we have to use our extension to MAP to access >1MB
+0006E7r 1               		; as only 128KB of slow ram is shadowed to $20000.
+0006E7r 1               		;
+0006E7r 1               		; Again, we have to take the relative nature of MAP, so
+0006E7r 1               		; we ask for $FC000 to be mapped at $0000, which means that
+0006E7r 1               		; $4000 will correspond to $0000 (MAP instruction address
+0006E7r 1               		; space wraps around at the 1MB mark)
+0006E7r 1               
+0006E7r 1               		; select 128MB mark for mapping lower 32KB of address space
+0006E7r 1               		;
+0006E7r 1  A9 80        		lda #$80
+0006E9r 1  A2 0F        		ldx #$0f
+0006EBr 1  A0 00        		ldy #$00   ; keep kickstart mapped at $8000-$BFFF
+0006EDr 1  A3 3F        		ldz #$3f
+0006EFr 1               
+0006EFr 1  5C           		map
+0006F0r 1               
+0006F0r 1               		; then map $FC000 + $4000 = $00000 at $4000-$7FFF
+0006F0r 1               		;
+0006F0r 1  A9 C0        		lda #$c0
+0006F2r 1  A2 CF        		ldx #$cf
+0006F4r 1  A0 00        		ldy #$00   ; keep kickstart mapped at $8000-$BFFF
+0006F6r 1  A3 3F        		ldz #$3f
+0006F8r 1  5C           		map
+0006F9r 1  EA           		eom
+0006FAr 1               
+0006FAr 1  60           		rts
+0006FBr 1               
+0006FBr 1               ;	========================
+0006FBr 1               
+0006FBr 1               calcromsum:	; calculate checksum of 128KB ROM
+0006FBr 1               
+0006FBr 1               		; use MAP to map C65 ROM address space in 16KB
+0006FBr 1               		; slabs at $4000-$7FFF.  Check sum each, and
+0006FBr 1               		; then compare checksum to ROM load record.
+0006FBr 1               		;
+0006FBr 1               		; ROMs get loaded into slow RAM at $8020000-$803FFFF,
+0006FBr 1               		; which is shadowed for reading using C65 MAP instruction to
+0006FBr 1               		; C65 address space $20000-$3FFFF.
+0006FBr 1               		;
+0006FBr 1               		; Checksum and ROM load record are stored in
+0006FBr 1               		; $8000000 - $800FFFF, i.e., the first 64KB of
+0006FBr 1               		; slow RAM.
+0006FBr 1               		;
+0006FBr 1               		; The 4510 MAP instruction does not normally provide access to the
+0006FBr 1               		; full 28-bit address space, so we need to use a trick.
+0006FBr 1               		;
+0006FBr 1               		; We do this by interpretting a MAP instruction that says to
+0006FBr 1               		; map none of the 8KB pages, but provides an offset in the range
+0006FBr 1               		; $F0000 - $FFF00 to set the "super page" register for that 32KB
+0006FBr 1               		; moby to bits 8 to 15 of the offset.  In practice, this means
+0006FBr 1               		; to allow mapping of memory above 1MB, the MB of memory being
+0006FBr 1               		; selected is chosen by the contents of A and Y registers when
+0006FBr 1               		; X and Z = $0F.
+0006FBr 1               		;
+0006FBr 1               
+0006FBr 1               		; reset checksum
+0006FBr 1               		; checksum is not all zeroes, so that if RAM initialises with
+0006FBr 1               		; all zeroes, including in the checksum field, the checksum will
+0006FBr 1               		; not pass.
+0006FBr 1               		;
+0006FBr 1  A9 03        		lda #$03
+0006FDr 1  8D rr rr     		sta checksum
+000700r 1  8D rr rr     		sta checksum+1
+000703r 1  8D rr rr     		sta checksum+2
+000706r 1  8D rr rr     		sta checksum+3
+000709r 1               
+000709r 1               		; start with bottom 16KB of ROM
+000709r 1               		; we count in 16KB slabs, and ROM starts at 128KB mark,
+000709r 1               		; so we want to check from the 8th to 15th slabs inclusive.
+000709r 1               		;
+000709r 1  A9 08        		lda #$08
+00070Br 1  8D rr rr     		sta romslab
+00070Er 1               
+00070Er 1               		; Summing can be done using normal use of MAP instruction,
+00070Er 1               		; since slow RAM is shadowed as ROM to $20000-$3FFFF
+00070Er 1               
+00070Er 1               sumslab:
+00070Er 1               		; romcheckslab indicates which 16KB piece.
+00070Er 1               		; MAP uses 256-byte granularity, so we need to shift left
+00070Er 1               		; 6 bits into A, and right 2 bits into X.
+00070Er 1               		; We then set the upper two bits in X to indicate that the mapping
+00070Er 1               		; applies to blocks 2 and 3.
+00070Er 1               		; BUT MAP is relative, and since we are mapping at the 16KB mark,
+00070Er 1               		; we need to subtract 1 lot of 16KB from the result.
+00070Er 1               		; this is easy -- we just sbc #$01 from romslab before using it.
+00070Er 1               		;
+00070Er 1  AD rr rr     		lda romslab
+000711r 1  38           		sec
+000712r 1  E9 01        		sbc #$01
+000714r 1  4A           		lsr
+000715r 1  4A           		lsr
+000716r 1  09 C0        		ora #$c0
+000718r 1  AA           		tax
+000719r 1  AD rr rr     		lda romslab
+00071Cr 1  38           		sec
+00071Dr 1  E9 01        		sbc #$01
+00071Fr 1  0A           		asl
+000720r 1  0A           		asl
+000721r 1  0A           		asl
+000722r 1  0A           		asl
+000723r 1  0A           		asl
+000724r 1  0A           		asl
+000725r 1  A0 00        		ldy #$00   ; keep kickstart mapped at $8000-$BFFF
+000727r 1  A3 3F        		ldz #$3f
+000729r 1               
+000729r 1  5C           		map
+00072Ar 1  EA           		eom
+00072Br 1               
+00072Br 1               		; sum contents of 16KB slab
+00072Br 1               		;
+00072Br 1  A9 00        		lda #$00
+00072Dr 1  85 rr        		sta <zptempv
+00072Fr 1  A9 40        		lda #$40
+000731r 1  85 rr        		sta <zptempv+1
+000733r 1               
+000733r 1  A0 00        sumpage:	ldy #$00
+000735r 1  AD rr rr     sumbyte:	lda checksum
+000738r 1  18           		clc
+000739r 1  71 rr        		adc (<zptempv),y
+00073Br 1  8D rr rr     		sta checksum
+00073Er 1  90 08        		bcc l6
+000740r 1  EE rr rr     		inc checksum+1
+000743r 1  90 03        		bcc l6
+000745r 1  EE rr rr     		inc checksum+2
+000748r 1  C8           l6:		iny
+000749r 1  D0 EA        		bne sumbyte
+00074Br 1  E6 rr        		inc <zptempv+1
+00074Dr 1  A5 rr        		lda <zptempv+1
+00074Fr 1  C9 80        		cmp #$80
+000751r 1  D0 E0        		bne sumpage
+000753r 1               
+000753r 1  EE rr rr     		inc romslab
+000756r 1  AD rr rr     		lda romslab
+000759r 1  C9 10        		cmp #$10
+00075Br 1  D0 B1        		bne sumslab
+00075Dr 1               
+00075Dr 1  4C rr rr     		jmp resetmemmap
+000760r 1               
+000760r 1               ;;; ----------------------------------------------------------------------------
+000760r 1               ;;; Display and basic IO routines
+000760r 1               ;;; ----------------------------------------------------------------------------
+000760r 1               
+000760r 1               resetdisplay:
+000760r 1               		; reset screen
+000760r 1               		;
+000760r 1  A9 40        		lda #$40	; 0100 0000 = choose charset
+000762r 1  8D 30 D0     		sta $d030	; VIC-III Control Register A
+000765r 1               
+000765r 1  AD 31 D0     		lda $d031	; VIC-III Control Register B
+000768r 1  29 40        		and #$40	; bit-6 is 4mhz
+00076Ar 1  8D 31 D0     		sta $d031
+00076Dr 1               
+00076Dr 1  A9 00        		lda #$00	; black
+00076Fr 1  8D 20 D0     		sta $D020	; border
+000772r 1  8D 21 D0     		sta $D021	; background
+000775r 1               
+000775r 1               		; Enable alpha blending and horizontal blending to smooth display
+000775r 1               		; slightly
+000775r 1  A9 28        		lda #$28  ; XXX alpha blending has problems still
+000777r 1  8D 54 D0     		sta $D054	;VIC-IV Control Register C
+00077Ar 1               
+00077Ar 1               		; We use VIC-II style registers as this resets video frame in
+00077Ar 1               		; least instructions, and 40 columns is fine for us.
+00077Ar 1               		;
+00077Ar 1  A9 14        		lda #$14	; 0001 0100
+00077Cr 1  8D 18 D0     		sta $D018	; VIC-II Character/Screen location
+00077Fr 1               
+00077Fr 1  A9 1B        		lda #$1B	; 0001 1011
+000781r 1  8D 11 D0     		sta $D011	; VIC-II Control Register
+000784r 1               
+000784r 1  A9 C8        		lda #$C8	; 1100 1000
+000786r 1  8D 16 D0     		sta $D016	; VIC-II Control Register
+000789r 1               
+000789r 1               		; point VIC-IV to bottom 16KB of display memory
+000789r 1               		;
+000789r 1  A9 FF        		lda #$ff
+00078Br 1  8D 01 DD     		sta $DD01
+00078Er 1  8D 00 DD     		sta $DD00
+000791r 1               
+000791r 1               		; Now switch to 16-bit text mode so that we can use proportional
+000791r 1               		; characters and full-colour characters for chars >$FF for the logo
+000791r 1               		;
+000791r 1  A9 05        		lda #$05	; 0000 0101
+000793r 1  0C 54 D0     		tsb $d054	; VIC-IV Control Register C
+000796r 1               
+000796r 1               		; and 80 bytes (40 16-bit characters) per row.
+000796r 1               		;
+000796r 1  A9 50        		lda #<80
+000798r 1  8D 58 D0     		sta $d058
+00079Br 1  A9 00        		lda #>80
+00079Dr 1  8D 59 D0     		sta $d059
+0007A0r 1               
+0007A0r 1  60           		rts
+0007A1r 1               
+0007A1r 1               ;	========================
+0007A1r 1               
+0007A1r 1               resetpalette:
+0007A1r 1               		; reset VIC-IV palette to sensible defaults.
+0007A1r 1               		; load C64 colours into palette bank 3 for use when
+0007A1r 1               		; PAL bit in $D030 is set.
+0007A1r 1               		;
+0007A1r 1  A9 04        		lda #$04
+0007A3r 1  0C 30 D0     		tsb $D030	; enable PAL bit in $D030
+0007A6r 1               
+0007A6r 1  A9 FF        		lda #$ff
+0007A8r 1  8D 70 D0     		sta $D070	; select palette bank 3 for display and edit
+0007ABr 1               
+0007ABr 1               		; C64 colours designed to look like C65 colours on an
+0007ABr 1               		; RGBI screen.
+0007ABr 1               		;
+0007ABr 1               		; formatted in ASM to help visualise what each code is for.
+0007ABr 1               		;
+0007ABr 1  A9 00                        lda #$00
+0007ADr 1  8D 00 D1     	                sta $D100
+0007B0r 1  8D 00 D2     			sta $D200
+0007B3r 1  8D 00 D3     			sta $D300
+0007B6r 1               
+0007B6r 1  A9 FF        		lda #$ff
+0007B8r 1  8D 01 D1     			sta $D101
+0007BBr 1  8D 01 D2     			sta $D201
+0007BEr 1  8D 01 D3     			sta $D301
+0007C1r 1               
+0007C1r 1  A9 BA        		lda #$ba
+0007C3r 1  8D 02 D1     	                sta $D102
+0007C6r 1  A9 13                        lda #$13
+0007C8r 1  8D 02 D2     	                sta $D202
+0007CBr 1  A9 62                        lda #$62
+0007CDr 1  8D 02 D3     	                sta $D302
+0007D0r 1               
+0007D0r 1  A9 66                        lda #$66
+0007D2r 1  8D 03 D1     	                sta $D103
+0007D5r 1  A9 AD                        lda #$ad
+0007D7r 1  8D 03 D2     	                sta $D203
+0007DAr 1  A9 FF                        lda #$ff
+0007DCr 1  8D 03 D3     	                sta $D303
+0007DFr 1               
+0007DFr 1  A9 BB                        lda #$bb
+0007E1r 1  8D 04 D1     	                sta $D104
+0007E4r 1  A9 F3                        lda #$f3
+0007E6r 1  8D 04 D2     	                sta $D204
+0007E9r 1  A9 8B                        lda #$8b
+0007EBr 1  8D 04 D3     	                sta $D304
+0007EEr 1               
+0007EEr 1  A9 55                        lda #$55
+0007F0r 1  8D 05 D1     	                sta $D105
+0007F3r 1  A9 EC                        lda #$ec
+0007F5r 1  8D 05 D2     	                sta $D205
+0007F8r 1  A9 85                        lda #$85
+0007FAr 1  8D 05 D3     	                sta $D305
+0007FDr 1               
+0007FDr 1  A9 D1                        lda #$d1
+0007FFr 1  8D 06 D1     	                sta $D106
+000802r 1  A9 E0                        lda #$e0
+000804r 1  8D 06 D2     	                sta $D206
+000807r 1  A9 79                        lda #$79
+000809r 1  8D 06 D3     	                sta $D306
+00080Cr 1               
+00080Cr 1  A9 AE                        lda #$ae
+00080Er 1  8D 07 D1     	                sta $D107
+000811r 1  A9 5F                        lda #$5f
+000813r 1  8D 07 D2     	                sta $D207
+000816r 1  A9 C7                        lda #$c7
+000818r 1  8D 07 D3     	                sta $D307
+00081Br 1               
+00081Br 1  A9 9B                        lda #$9b
+00081Dr 1  8D 08 D1     	                sta $D108
+000820r 1  A9 47                        lda #$47
+000822r 1  8D 08 D2     	                sta $D208
+000825r 1  A9 81                        lda #$81
+000827r 1  8D 08 D3     	                sta $D308
+00082Ar 1               
+00082Ar 1  A9 87                        lda #$87
+00082Cr 1  8D 09 D1     	                sta $D109
+00082Fr 1  A9 37                        lda #$37
+000831r 1  8D 09 D2     	                sta $D209
+000834r 1  A9 00                        lda #$00
+000836r 1  8D 09 D3     	                sta $D309
+000839r 1               
+000839r 1  A9 DD                        lda #$dd
+00083Br 1  8D 0A D1     	                sta $D10a
+00083Er 1  A9 39                        lda #$39
+000840r 1  8D 0A D2     	                sta $D20a
+000843r 1  A9 78                        lda #$78
+000845r 1  8D 0A D3     	                sta $D30a
+000848r 1               
+000848r 1  A9 B5                        lda #$b5
+00084Ar 1  8D 0B D1     	                sta $D10b
+00084Dr 1  8D 0B D2     	                sta $D20b
+000850r 1  8D 0B D3     	                sta $D30b
+000853r 1               
+000853r 1  A9 B8                        lda #$b8
+000855r 1  8D 0C D1     	                sta $D10c
+000858r 1  8D 0C D2     	                sta $D20c
+00085Br 1  8D 0C D3     	                sta $D30c
+00085Er 1               
+00085Er 1  A9 0B                        lda #$0b
+000860r 1  8D 0D D1     	                sta $D10d
+000863r 1  A9 4F                        lda #$4f
+000865r 1  8D 0D D2     	                sta $D20d
+000868r 1  A9 CA                        lda #$ca
+00086Ar 1  8D 0D D3     	                sta $D30d
+00086Dr 1               
+00086Dr 1  A9 AA                        lda #$aa
+00086Fr 1  8D 0E D1     	                sta $D10e
+000872r 1  A9 D9                        lda #$d9
+000874r 1  8D 0E D2     	                sta $D20e
+000877r 1  A9 FE                        lda #$fe
+000879r 1  8D 0E D3     	                sta $D30e
+00087Cr 1               
+00087Cr 1  A9 8B                        lda #$8b
+00087Er 1  8D 0F D1     	                sta $D10f
+000881r 1  8D 0F D2     	                sta $D20f
+000884r 1  8D 0F D3     	                sta $D30f
+000887r 1               
+000887r 1               
+000887r 1  60           	rts
+000888r 1               
+000888r 1               ;	========================
+000888r 1               
+000888r 1               ; erase standard 40-column screen
+000888r 1               ;
+000888r 1               erasescreen:
+000888r 1               		; bank in 2nd KB of colour RAM
+000888r 1               		;
+000888r 1  A9 01        		lda #$01
+00088Ar 1  0C 30 D0     		tsb $D030
+00088Dr 1               
+00088Dr 1               		; use DMA to clear screen and colour RAM
+00088Dr 1               		; The screen is in 16-bit bit mode, so we actually need to fill
+00088Dr 1               		; with $20,$00, ...
+00088Dr 1               		;
+00088Dr 1               		; We will cheat by setting the first four bytes, and then copying from
+00088Dr 1               		; there, and it will then read from the freshly written bytes.
+00088Dr 1               		; (two bytes might not be enough to allow the write from the last DMA
+00088Dr 1               		;  action to be avaialble for reading because of how the DMAgic is
+00088Dr 1               		;  pipelined).
+00088Dr 1               		;
+00088Dr 1  A9 20        		lda #$20
+00088Fr 1  8D 00 04     		sta $0400
+000892r 1  8D 02 04     		sta $0402
+000895r 1  A9 00        		lda #$00
+000897r 1  8D 01 04     		sta $0401
+00089Ar 1  8D 03 04     		sta $0403
+00089Dr 1               
+00089Dr 1               		; Set bottom 22 bits of DMA list address as for C65
+00089Dr 1               		; (8MB address range)
+00089Dr 1               		;
+00089Dr 1  A9 FF        		lda #$ff
+00089Fr 1  8D 02 D7     		sta $d702
+0008A2r 1               
+0008A2r 1               		; Kickstart ROM is at $FFFE000 - $FFFFFFF, so
+0008A2r 1               		; we need to tell DMAgic that DMA list is in $FFxxxxx.
+0008A2r 1               		; this has to be done AFTER writing to $d702, as $d702
+0008A2r 1               		; clears bits 27 - 22 of the DMA list address to help with
+0008A2r 1               		; compatibility.
+0008A2r 1               		;
+0008A2r 1  A9 FF        		lda #$ff
+0008A4r 1  8D 04 D7     		sta $d704
+0008A7r 1               
+0008A7r 1  A9 rr        		lda #>erasescreendmalist
+0008A9r 1  8D 01 D7     		sta $d701
+0008ACr 1               
+0008ACr 1               		; set bottom 8 bits of address and trigger DMA.
+0008ACr 1               		;
+0008ACr 1  A9 rr        		lda #<erasescreendmalist
+0008AEr 1  8D 05 D7     		sta $d705
+0008B1r 1               
+0008B1r 1               		; clear source/destination MB so that C65 ROM doesn't go bananas
+0008B1r 1               		;
+0008B1r 1  A9 00        		lda #$00
+0008B3r 1  8D 05 D7     		sta $d705
+0008B6r 1               
+0008B6r 1               		; bank 2nd KB of colour RAM back out
+0008B6r 1               		;
+0008B6r 1  A9 01        		lda #$01
+0008B8r 1  1C 30 D0     		trb $D030
+0008BBr 1               
+0008BBr 1               ;	========================
+0008BBr 1               
+0008BBr 1               		; move cursor back to top of the screen
+0008BBr 1               		; (but leave 8 rows for logo and banner text)
+0008BBr 1               		;
+0008BBr 1  A9 08        		lda #$08
+0008BDr 1  8D rr rr     		sta screenrow
+0008C0r 1               
+0008C0r 1               		; draw 40x8 char block for banner
+0008C0r 1               		;
+0008C0r 1  A0 00        		ldy #$00
+0008C2r 1  A9 00        		lda #$00
+0008C4r 1  99 00 04     logo1:		sta $0400,y
+0008C7r 1  1A           		inc
+0008C8r 1  C8           		iny
+0008C9r 1  C8           		iny
+0008CAr 1  D0 F8        		bne logo1
+0008CCr 1  99 00 05     logo1a:		sta $0500,y
+0008CFr 1  1A           		inc
+0008D0r 1  C8           		iny
+0008D1r 1  C8           		iny
+0008D2r 1  D0 F8        		bne logo1a
+0008D4r 1  99 00 06     logo1b:		sta $0600,y
+0008D7r 1  1A           		inc
+0008D8r 1  C8           		iny
+0008D9r 1  C8           		iny
+0008DAr 1  C0 80        		cpy #$80
+0008DCr 1  D0 F6        		bne logo1b
+0008DEr 1               
+0008DEr 1               		; then write the high bytes for these (all $01, so char range will be
+0008DEr 1               		; $100-$140. $100 x $40 = $4000-$4FFF
+0008DEr 1               		;
+0008DEr 1  A2 00        		ldx #$00
+0008E0r 1  A9 01        		lda #$01
+0008E2r 1  9D 01 04     logo2:		sta $0401,x
+0008E5r 1  1A           		inc
+0008E6r 1  9D 81 05     		sta $0581,x
+0008E9r 1  3A           		dec
+0008EAr 1  9D 01 05     		sta $0501,x
+0008EDr 1  E8           		inx
+0008EEr 1  E8           		inx
+0008EFr 1  D0 F1        		bne logo2
+0008F1r 1               
+0008F1r 1               		; finally set palette for banner using contents of memory at $3D00-$3FFF
+0008F1r 1               setbannerpalette:
+0008F1r 1  A2 10        		ldx #$10
+0008F3r 1  BD 00 3D     lo1:		lda $3d00,x
+0008F6r 1  9D 00 D1     		sta $D100,x
+0008F9r 1  BD 00 3E     		lda $3e00,x
+0008FCr 1  9D 00 D2     		sta $d200,x
+0008FFr 1  BD 00 3F     		lda $3f00,x
+000902r 1  9D 00 D3     		sta $d300,x
+000905r 1  E8           		inx
+000906r 1  D0 EB        		bne lo1
+000908r 1               		; put nothing else here, as setbannerpalette also gets called after loading banner file
+000908r 1  60           		rts
+000909r 1               
+000909r 1               
+000909r 1               ;	========================
+000909r 1               
+000909r 1               erasescreendmalist:
+000909r 1               		; Clear screen RAM
+000909r 1               		;
+000909r 1               		; MEGA65 enhanced DMA options
+000909r 1  0A           		.byte $0A      ; Request format is F018A
+00090Ar 1  00           		.byte $00 ; no more options
+00090Br 1               		; F018A DMA list
+00090Br 1  04           		.byte $04   ; COPY + chained request
+00090Cr 1  CC 07        		.word 1996  ; 40x25x2-4 = 1996
+00090Er 1  00 04        		.word $0400 ; copy from start of screen at $0400
+000910r 1  00           		.byte $00   ; source bank 00
+000911r 1  04 04        		.word $0404 ; ... to screen at $0402
+000913r 1  00           		.byte $00   ; screen is in bank $00
+000914r 1  00 00        		.word $0000 ; modulo (unused)
+000916r 1               
+000916r 1               		; Clear colour RAM
+000916r 1               		;
+000916r 1               		; MEGA65 DMA options
+000916r 1  00           		.byte $00     ; no more options
+000917r 1               		; F018A dma list
+000917r 1  07           		.byte $07     ; FILL + chained request
+000918r 1  D0 07        		.word 2000    ; 40x25x2 = 2000
+00091Ar 1  01           		.byte $01     ; fill with white = $01
+00091Br 1  00 00        		.byte $00,$00 ; rest of source address is ignored in fill
+00091Dr 1  00 D8        		.word $d800   ; screen is at $0400
+00091Fr 1  80           		.byte $80     ; screen is in IO, so bank IO in to DMA context
+000920r 1  00 00        		.word $0000   ; modulo (unused)
+000922r 1               
+000922r 1               		; Copy shadow RAM logo to chip RAM
+000922r 1               		; XXX - We can get rid of this by preinitialising CHIPRAM as well as shadow RAM
+000922r 1               		;
+000922r 1  00           		.byte $00   ; no more options
+000923r 1  00           		.byte $00   ; COPY + end of chain
+000924r 1  00 60        		.word $6000 ; 320x64 = $6000
+000926r 1  00 40        		.word $4000 ; fill with white = $01
+000928r 1  00           		.byte $00   ; rest of source address is ignored in fill
+000929r 1  00 40        		.word $4000 ; screen is at $0400
+00092Br 1  00           		.byte $00   ; screen is in IO, so bank IO in to DMA context
+00092Cr 1  00 00        		.word $0000 ; modulo (unused)
+00092Er 1               
+00092Er 1               ;	========================
+00092Er 1               
+00092Er 1               .EXPORT printmessage
+00092Er 1               printmessage:	;HELPER routine
+00092Er 1               		;
+00092Er 1               		; This subroutine takes inputs from the X and Y registers,
+00092Er 1               		; so set these registers before calling this subroutine,
+00092Er 1               		; The X and Y registers need to point to a message as shown below:
+00092Er 1               		;
+00092Er 1               		;	ldx #<msg_foundsdcard
+00092Er 1               		;	ldy #>msg_foundsdcard
+00092Er 1               		;	jsr printmessage
+00092Er 1               		;
+00092Er 1               		; Ie: the X is the high-byte of the 16-bit address, and
+00092Er 1               		;     the Y is the low-byte  of the 16-bit address.
+00092Er 1               
+00092Er 1  86 rr        		stx <zptempp	;zptempp is 16-bit pointer to message
+000930r 1  84 rr        		sty <zptempp+1
+000932r 1               
+000932r 1  A9 00        		lda #$00
+000934r 1  85 rr        		sta <zptempp2	;zptempp2 is 16-bit pointer to screen
+000936r 1  A9 04        		lda #$04
+000938r 1  85 rr        		sta <zptempp2+1
+00093Ar 1               
+00093Ar 1  AE rr rr     		ldx screenrow
+00093Dr 1               
+00093Dr 1               		; Makesure we can't accidentally write on row zero
+00093Dr 1  D0 02        		bne pm22
+00093Fr 1  A2 08        		ldx #$08
+000941r 1               pm22:
+000941r 1               
+000941r 1               		; if we have reached the bottom of the screen, start writing again
+000941r 1               		; from the top of the screen (but don't touch the top 8 rows for
+000941r 1               		; logo and banner)
+000941r 1  E0 19        		cpx #25
+000943r 1  D0 05        		bne pm2
+000945r 1  A2 08        		ldx #$08
+000947r 1  8E rr rr     		stx screenrow
+00094Ar 1               
+00094Ar 1               		; work out the screen address
+00094Ar 1               		;
+00094Ar 1  E0 00        pm2:		cpx #$00
+00094Cr 1  F0 22        		beq pm1
+00094Er 1  18           		clc
+00094Fr 1  A5 rr        		lda <zptempp2
+000951r 1  69 50        		adc #$50          ; 40 columns x 16 bit
+000953r 1  85 rr        		sta <zptempp2
+000955r 1  A5 rr        		lda <zptempp2+1
+000957r 1  69 00        		adc #$00
+000959r 1  85 rr        		sta <zptempp2+1
+00095Br 1               
+00095Br 1               		; if reached bottom of screen, then loop back to top of screen
+00095Br 1               		;
+00095Br 1  C9 0B        		cmp #$0b
+00095Dr 1  90 0E        		bcc pm5
+00095Fr 1  A5 rr        		lda <zptempp2
+000961r 1  C9 D0        		cmp #$d0
+000963r 1  90 08        		bcc pm5
+000965r 1               
+000965r 1  A9 80        		lda #$80
+000967r 1  85 rr        		sta <zptempp2
+000969r 1  A9 06        		lda #$06
+00096Br 1  85 rr        		sta <zptempp2+1
+00096Dr 1  CA           pm5:		dex
+00096Er 1  D0 DA        		bne pm2
+000970r 1               pm1:
+000970r 1               
+000970r 1               		; Clear line (16-bit chars, so write #$0020 to each word
+000970r 1               		;
+000970r 1  A0 00        		ldy #$00
+000972r 1  A9 20        pm1b:		lda #$20
+000974r 1  91 rr        		sta (<zptempp2),y
+000976r 1  C8           		iny
+000977r 1  A9 00        		lda #$00
+000979r 1  91 rr        		sta (<zptempp2),y
+00097Br 1  C8           		iny
+00097Cr 1  C0 50        		cpy #$50
+00097Er 1  D0 F2        		bne pm1b
+000980r 1               
+000980r 1               writestring:
+000980r 1  DB           		phz
+000981r 1  A0 00        		ldy #$00
+000983r 1  A3 00        		ldz #$00
+000985r 1  B1 rr        pm3:		lda (<zptempp),y
+000987r 1  F0 13        		beq endofmessage
+000989r 1               
+000989r 1               		; convert ASCII/PETSCII to screen codes
+000989r 1               		;
+000989r 1  C9 40        		cmp #$40
+00098Br 1  90 02        		bcc pm4
+00098Dr 1  29 1F        		and #$1f
+00098Fr 1               
+00098Fr 1               pm4:		; write 16-bit character code
+00098Fr 1               		;
+00098Fr 1  92 rr        		sta (<zptempp2),z
+000991r 1  1B           		inz
+000992r 1  48           		pha
+000993r 1  A9 00        		lda #$00
+000995r 1  92 rr        		sta (<zptempp2),z
+000997r 1  68           		pla
+000998r 1  C8           		iny
+000999r 1  1B           		inz
+00099Ar 1  D0 E9        		bne pm3
+00099Cr 1               endofmessage:
+00099Cr 1  EE rr rr     		inc screenrow
+00099Fr 1               
+00099Fr 1  FB           		plz
+0009A0r 1  60           		rts
+0009A1r 1               
+0009A1r 1               ;	========================
+0009A1r 1               
+0009A1r 1               printbanner:
+0009A1r 1  86 rr        		stx <zptempp
+0009A3r 1  84 rr        		sty <zptempp+1
+0009A5r 1  A9 04        		lda #<$0504
+0009A7r 1  8D rr rr     		sta zptempp2
+0009AAr 1  A9 05        		lda #>$0504
+0009ACr 1  8D rr rr     		sta zptempp2+1
+0009AFr 1  20 rr rr     		jsr writestring
+0009B2r 1  CE rr rr     		dec screenrow
+0009B5r 1  60           		rts
+0009B6r 1               
+0009B6r 1               ;	========================
+0009B6r 1               
+0009B6r 1               .EXPORT printhex
+0009B6r 1               printhex:
+0009B6r 1               		; helper function
+0009B6r 1               		;
+0009B6r 1               		; seems to want to print the value if the z-reg onto the previous line written to the screen,
+0009B6r 1               		; so currently the screen consists of say "mounted $$ images"
+0009B6r 1               		; and this routine will go and change the "$$" to the value in the z-reg
+0009B6r 1               		;
+0009B6r 1               		; BG: surely this can be replaced with updating the "$$" before printing the string
+0009B6r 1               		;
+0009B6r 1               		; INPUT: .Y, BG seems to be an offset, should be set to zero?
+0009B6r 1               		; INPUT: .Z, value in Z-reg to be displayed omn the screen
+0009B6r 1               		;
+0009B6r 1  6B           		tza
+0009B7r 1  4A           		lsr
+0009B8r 1  4A           		lsr
+0009B9r 1  4A           		lsr
+0009BAr 1  4A           		lsr
+0009BBr 1  20 rr rr     		jsr printhexdigit
+0009BEr 1  6B           		tza
+0009BFr 1  29 0F        		and #$0f
+0009C1r 1               printhexdigit:
+0009C1r 1               		; find next $ sign to replace with hex digit
+0009C1r 1               		;
+0009C1r 1  AA           		tax
+0009C2r 1  B1 rr        phd3:		lda (<zptempp2),y
+0009C4r 1  C9 24        		cmp #$24
+0009C6r 1  F0 07        		beq phd2
+0009C8r 1  C8           		iny
+0009C9r 1  C8           		iny
+0009CAr 1  C0 50        		cpy #$50
+0009CCr 1  D0 F4        		bne phd3
+0009CEr 1  60           		rts
+0009CFr 1               
+0009CFr 1  8A           phd2:		txa
+0009D0r 1  09 30        		ora #$30
+0009D2r 1  C9 3A        		cmp #$3a
+0009D4r 1  90 02        		bcc phd1
+0009D6r 1  E9 39        		sbc #$39
+0009D8r 1  91 rr        phd1:		sta (<zptempp2),y
+0009DAr 1  C8           		iny
+0009DBr 1  C8           		iny
+0009DCr 1  60           		rts
+0009DDr 1               
+0009DDr 1               ;	========================
+0009DDr 1               
+0009DDr 1               go64:
+0009DDr 1               
+0009DDr 1               ; Transfer control to C64 kernel.
+0009DDr 1               ; (This also allows entry to C65 mode, because the
+0009DDr 1               ;  C64-mode kernel on the C65 checks if C65 mode
+0009DDr 1               ;  should be entered.)
+0009DDr 1               
+0009DDr 1               		; Check if hold boot switch is set (control-key)
+0009DDr 1               		;
+0009DDr 1  AD 11 D6     l41:		lda $d611
+0009E0r 1  29 04        		and #$04
+0009E2r 1  F0 16        		beq l42      ; no, so continue
+0009E4r 1               
+0009E4r 1               		; yes, display message
+0009E4r 1               		;
+0009E4r 1  A2 rr        		ldx #<msg_releasectrl
+0009E6r 1  A0 rr        		ldy #>msg_releasectrl
+0009E8r 1  20 rr rr     		jsr printmessage
+0009EBr 1               
+0009EBr 1               l41a:
+0009EBr 1               		; check for ALT key to jump to utility menu
+0009EBr 1  AD 11 D6     		lda $d611
+0009EEr 1  29 10        		and #$10
+0009F0r 1  D3 72 02     		lbne utility_menu
+0009F3r 1               
+0009F3r 1               		; and otherwise wait until CTRL is released
+0009F3r 1  AD 11 D6     		lda $d611
+0009F6r 1  29 04        		and #$04
+0009F8r 1  D0 F1        		bne l41a
+0009FAr 1               l42:
+0009FAr 1               
+0009FAr 1               		; unmap sector buffer so C64 can see CIAs
+0009FAr 1               		;
+0009FAr 1  A9 82        		lda #$82
+0009FCr 1  8D 80 D6     		sta $D680
+0009FFr 1               
+0009FFr 1               		; copy routine to stack to switch to
+0009FFr 1               		; C64 memory map and enter via reset
+0009FFr 1               		; vector.
+0009FFr 1               
+0009FFr 1               		; erase kickstart ROM copy from RAM
+0009FFr 1               		; (well, at least enough so that BASIC doesn't get upset)
+0009FFr 1               		; XXX - use DMA
+0009FFr 1               		;
+0009FFr 1  A2 00        		ldx #$00
+000A01r 1  8A           		txa
+000A02r 1  9D 00 08     g61:		sta $0800,x
+000A05r 1  E8           		inx
+000A06r 1  D0 FA        		bne g61
+000A08r 1               
+000A08r 1               		; reset video mode to normal (but with PAL + compositing enabled)
+000A08r 1               		; and return CPU to slow speed for exit
+000A08r 1  A9 28        		lda #$28    ; XXX no compositing for now, as it still has problems
+000A0Ar 1  8D 54 D0     		sta $d054
+000A0Dr 1               
+000A0Dr 1  A9 28        		lda #<40
+000A0Fr 1  8D 58 D0     		sta $d058
+000A12r 1  A9 00        		lda #>40
+000A14r 1  8D 59 D0     		sta $d059
+000A17r 1               
+000A17r 1               		; write protect ROM RAM
+000A17r 1  A9 04        		lda #$04
+000A19r 1  0C 7D D6     		tsb hypervisor_feature_enables
+000A1Cr 1               
+000A1Cr 1  20 rr rr     		jsr task_set_c64_memorymap
+000A1Fr 1  20 rr rr     		jsr task_set_pc_to_reset_vector
+000A22r 1  20 rr rr     		jsr task_dummy_nmi_vector
+000A25r 1               
+000A25r 1               		; This must happen last, so that the ultimax cartridge
+000A25r 1               		; reset vector is used, instead of the one in the loaded ROM
+000A25r 1  20 rr rr     		jsr setup_for_ultimax_cartridge
+000A28r 1               
+000A28r 1               		; exit from hypervisor to start machine
+000A28r 1  8D 7F D6     		sta hypervisor_enterexit_trigger
+000A2Br 1               
+000A2Br 1               		;.include "kickstart_ultimax.a65"
+000A2Br 1  4C rr rr     		jmp setup_for_ultimax_cartridge
+000A2Er 1               
+000A2Er 1               ;	========================
+000A2Er 1               
+000A2Er 1               ; BG: the longpeek subroutine does not get called from kickstart,
+000A2Er 1               ;     it gets called only from the kickstart_task file,
+000A2Er 1               ;     so i suggest moving this subroutine to that file.
+000A2Er 1               
+000A2Er 1               .EXPORT longpeek
+000A2Er 1               longpeek:
+000A2Er 1               		; Use DMAgic to read any byte of RAM in 28bit address space.
+000A2Er 1               		; Value gets read into $BC00 (kickstart_scratchbyte0)
+000A2Er 1               		; ($FFFBC00 - $FFFBDFF)
+000A2Er 1               
+000A2Er 1               		; Patch DMA list
+000A2Er 1               		;
+000A2Er 1  8E rr rr     		stx longpeekdmalist_src_lsb
+000A31r 1  8C rr rr     		sty longpeekdmalist_src_2sb
+000A34r 1  9C rr rr     		stz longpeekdmalist_src_msb
+000A37r 1  8D rr rr     		sta longpeekdmalist_src_mb
+000A3Ar 1               
+000A3Ar 1               		; Set DMA list address
+000A3Ar 1               		;
+000A3Ar 1  A9 rr        		lda #>longpeekdmalist
+000A3Cr 1  8D 01 D7     		sta $d701
+000A3Fr 1  A9 0F        		lda #$0f
+000A41r 1  8D 02 D7     		sta $d702 ; DMA list address is $xxFxxxx
+000A44r 1  A9 FF        		lda #$ff
+000A46r 1  8D 04 D7     		sta $d704 ; DMA list address is $FFxxxxx
+000A49r 1               
+000A49r 1               		; set bottom bits of DMA list address and trigger enhanced DMA
+000A49r 1               		;
+000A49r 1  A9 rr        		lda #<longpeekdmalist
+000A4Br 1  8D 05 D7     		sta $d705
+000A4Er 1  60           		rts
+000A4Fr 1               
+000A4Fr 1               longpeekdmalist:
+000A4Fr 1               		; MEGA65 Enhanced DMA options
+000A4Fr 1  0A           		.byte $0A      ; Request format is F018A
+000A50r 1  80           		.byte $80
+000A51r 1               longpeekdmalist_src_mb:
+000A51r 1  FF           		.byte $FF
+000A52r 1  81 FF        		.byte $81,$FF ; destination is always $FFxxxxx
+000A54r 1  00           		.byte $00 ; end of options marker
+000A55r 1               		; F018A format request follows
+000A55r 1  00           		.byte $00 ; COPY, no chain
+000A56r 1               		; 1 byte
+000A56r 1  01 00        		.word $0001
+000A58r 1               		; source address
+000A58r 1               longpeekdmalist_src_lsb:
+000A58r 1  00           		.byte $00
+000A59r 1               longpeekdmalist_src_2sb:
+000A59r 1  00           		.byte $00
+000A5Ar 1               longpeekdmalist_src_msb:
+000A5Ar 1  00           		.byte $00
+000A5Br 1               		; destination address ($xxFBC00)
+000A5Br 1  rr rr        		.word kickstart_scratchbyte0
+000A5Dr 1  0F           		.byte $0F
+000A5Er 1  00 00        		.byte $00,00 ; Modulo
+000A60r 1               
+000A60r 1               longpoke:
+000A60r 1               		; Use DMAgic to write any byte of RAM in C65 1MB address space.
+000A60r 1               		; A = value
+000A60r 1               		; X = Address LSB
+000A60r 1               		; Y = Address MidB
+000A60r 1               		; Z = Address Bank
+000A60r 1               
+000A60r 1               		; Patch DMA list
+000A60r 1               		;
+000A60r 1  8D rr rr     		sta longpokevalue
+000A63r 1  8E rr rr     		stx longpokeaddress+0
+000A66r 1  8C rr rr     		sty longpokeaddress+1
+000A69r 1  9C rr rr     		stz longpokeaddress+2
+000A6Cr 1  6B           		tza
+000A6Dr 1  4A           		lsr
+000A6Er 1  4A           		lsr
+000A6Fr 1  4A           		lsr
+000A70r 1  4A           		lsr
+000A71r 1  8D rr rr     		sta longpokedmalist_dest_mb ; DMAgic destination MB
+000A74r 1               		; and disable F108B enhanced mode
+000A74r 1  8D 03 D7     		sta $d703
+000A77r 1               
+000A77r 1               		; Set DMA list address
+000A77r 1               		;
+000A77r 1  A9 rr        		lda #>longpokedmalist
+000A79r 1  8D 01 D7     		sta $d701
+000A7Cr 1  A9 0F        		lda #$0f
+000A7Er 1  8D 02 D7     		sta $d702 ; DMA list address is $xxFxxxx
+000A81r 1  A9 FF        		lda #$ff
+000A83r 1  8D 04 D7     		sta $d704 ; DMA list address is $FFxxxxx
+000A86r 1               
+000A86r 1               		; set bottom bits of DMA list address and trigger enhhanced DMA
+000A86r 1               		;
+000A86r 1               
+000A86r 1  A9 rr        		lda #<longpokedmalist
+000A88r 1  8D 05 D7     		sta $d705
+000A8Br 1  60           		rts
+000A8Cr 1               
+000A8Cr 1               longpokedmalist:
+000A8Cr 1               		; MEGA65 Enhanced DMA option list
+000A8Cr 1  0A           		.byte $0A      ; Request format is F018A
+000A8Dr 1  81           		.byte $81
+000A8Er 1               longpokedmalist_dest_mb:
+000A8Er 1  00           		.byte $00
+000A8Fr 1  00           		.byte $00 ; no more enhanced DMA options
+000A90r 1               		; F018A dma list
+000A90r 1  03           		.byte $03 ; FILL, no chain
+000A91r 1               		; 1 byte
+000A91r 1  01 00        		.word $0001
+000A93r 1               		; source address (LSB = fill value)
+000A93r 1  00           longpokevalue:	.byte $00
+000A94r 1  00 00        		.word $0000
+000A96r 1               		; destination address
+000A96r 1               longpokeaddress:
+000A96r 1  00 00        		.word $0000
+000A98r 1  0F           		.byte $0F
+000A99r 1  00 00        		.byte $00,00 ; Modulo
+000A9Br 1               
+000A9Br 1               
+000A9Br 1               ;	========================
+000A9Br 1               
+000A9Br 1               ; reset memory map to default
+000A9Br 1               resetmemmap:
+000A9Br 1               		; clear memory MAP MB offset register
+000A9Br 1               		;
+000A9Br 1  A9 00        		lda #$00
+000A9Dr 1  A2 0F        		ldx #$0f
+000A9Fr 1  A0 00        		ldy #$00   ; keep kickstart mapped at $8000-$BFFF
+000AA1r 1  A3 3F        		ldz #$3f
+000AA3r 1               
+000AA3r 1  5C           		map
+000AA4r 1               
+000AA4r 1               		; and clear all mapping
+000AA4r 1               		;
+000AA4r 1  AA           		tax
+000AA5r 1  A0 00        		ldy #$00   ; keep kickstart mapped at $8000-$BFFF
+000AA7r 1  A3 3F        		ldz #$3f
+000AA9r 1               
+000AA9r 1  5C           		map
+000AAAr 1  EA           		eom
+000AABr 1               
+000AABr 1  60           		rts
+000AACr 1               
+000AACr 1               ;	========================
+000AACr 1               
+000AACr 1               enhanced_io:
+000AACr 1               
+000AACr 1               		; If C=1, enable enhanced IO bank,
+000AACr 1               		;   else, return to C64 standard IO map.
+000AACr 1               		;
+000AACr 1               
+000AACr 1  B0 06        		bcs l1
+000AAEr 1               		; Return to VIC-II / C64 IO
+000AAEr 1               		;
+000AAEr 1  A9 00        		lda #$00
+000AB0r 1  8D 2F D0     		sta VICIV_MAGIC
+000AB3r 1  60           		rts
+000AB4r 1               
+000AB4r 1               l1:		; Enable VIC-IV / MEGA65 IO
+000AB4r 1               		;
+000AB4r 1  A9 47        		lda #$47
+000AB6r 1  8D 2F D0     		sta VICIV_MAGIC
+000AB9r 1  A9 53        		lda #$53
+000ABBr 1  8D 2F D0     		sta VICIV_MAGIC
+000ABEr 1  60           		RTS
+000ABFr 1               
+000ABFr 1               
+000ABFr 1               ;	========================
+000ABFr 1               		;.include "kickstart_keyboard.a65"
+000ABFr 1               
+000ABFr 1               keyboardread:
+000ABFr 1               
+000ABFr 1               ; Check for keyboard activity, and change which ROM we intend to read
+000ABFr 1               ; based on that, i.e., holding any key down during boot will load MEGA65<that character>.ROM instead of MEGA65.ROM
+000ABFr 1               
+000ABFr 1  20 rr rr     		jsr scankeyboard
+000AC2r 1  B0 0D        		bcs kr2  ; if an error occured
+000AC4r 1  C9 20        		cmp #$20
+000AC6r 1  F3 9C 01     		lbeq utility_menu
+000AC9r 1  C9 30        		cmp #$30
+000ACBr 1  90 04        		bcc kr2
+000ACDr 1  C9 39        		cmp #$39
+000ACFr 1  B0 00        		bcs kr2
+000AD1r 1  A9 20        kr2:		lda #$20 ; default to space
+000AD3r 1               kr1:
+000AD3r 1               		; put character into 6th byte position of ROM file name.
+000AD3r 1               		; so no key looks for MEGA65.ROM, where as 0-9 will look
+000AD3r 1               		; for MEGA65x.ROM, where x is the number.
+000AD3r 1  A2 06        		ldx #6
+000AD5r 1  C9 20        		cmp #$20
+000AD7r 1  F0 04        		beq default_rom
+000AD9r 1  9D rr rr     		sta txt_MEGA65ROM,x
+000ADCr 1  E8           		inx
+000ADDr 1               default_rom:
+000ADDr 1  A9 2E        		lda #'.'
+000ADFr 1  9D rr rr     		sta txt_MEGA65ROM,x
+000AE2r 1  E8           		inx
+000AE3r 1  A9 52        		lda #'R'
+000AE5r 1  9D rr rr     		sta txt_MEGA65ROM,x
+000AE8r 1  E8           		inx
+000AE9r 1  A9 4F        		lda #'O'
+000AEBr 1  9D rr rr     		sta txt_MEGA65ROM,x
+000AEEr 1  E8           		inx
+000AEFr 1  A9 4D        		lda #'M'
+000AF1r 1  9D rr rr     		sta txt_MEGA65ROM,x
+000AF4r 1  E8           		inx
+000AF5r 1  A9 00        		lda #0
+000AF7r 1  9D rr rr     		sta txt_MEGA65ROM,x
+000AFAr 1               
+000AFAr 1  60           		rts
+000AFBr 1               
+000AFBr 1               ;	========================
+000AFBr 1               
+000AFBr 1               hypervisor_nmi:
+000AFBr 1               hypervisor_irq:
+000AFBr 1               		; Default interrupt handlers for hypervisor: for now just mask the
+000AFBr 1               		; interrupt source.  Later we can have raster splits in the boot
+000AFBr 1               		; display if we so choose.
+000AFBr 1  78           		sei
+000AFCr 1  40           		rti
+000AFDr 1               
+000AFDr 1               .EXPORT hypervisor_setup_copy_region
+000AFDr 1               hypervisor_setup_copy_region:
+000AFDr 1               	; Hypervisor copy region sit entirely within the first 32KB of
+000AFDr 1               	; mapped address space. Since we allow a 256 byte copy region,
+000AFDr 1               	; we limit the start address to the range $0000-$7EFF
+000AFDr 1               	; XXX - We should also return an error if there is an IO
+000AFDr 1               	; region mapped there, so that the hypervisor can't be tricked
+000AFDr 1               	; into doing privileged IO operations as part of the copy-back
+000AFDr 1               
+000AFDr 1  AD 42 D6     	lda hypervisor_y
+000B00r 1  30 39        	bmi hscr1
+000B02r 1  C9 7F        	cmp #$7f
+000B04r 1  F0 35        	beq hscr1
+000B06r 1  8D rr rr     	sta hypervisor_userspace_copy_vector +1
+000B09r 1  A9 00        	lda #$00
+000B0Br 1  8D rr rr     	sta hypervisor_userspace_copy_vector +0
+000B0Er 1               
+000B0Er 1  20 rr rr     	jsr checkpoint
+000B11r 1  00 68 79 70  	.byte 0,"hypervisor_setup_copy_region <success>",0
+000B15r 1  65 72 76 69  
+000B19r 1  73 6F 72 5F  
+000B39r 1               
+000B39r 1  38           	sec
+000B3Ar 1  60           	rts
+000B3Br 1               
+000B3Br 1               hscr1:
+000B3Br 1  20 rr rr     	jsr checkpoint
+000B3Er 1  00 68 79 70  	.byte 0,"hypervisor_setup_copy_region <failure>",0
+000B42r 1  65 72 76 69  
+000B46r 1  73 6F 72 5F  
+000B66r 1               
+000B66r 1  A9 10        	lda #dos_errorcode_invalid_address
+000B68r 1  4C rr rr     	jmp dos_return_error
+000B6Br 1               
+000B6Br 1               ;	========================
+000B6Br 1               
+000B6Br 1               .EXPORT checkpoint
+000B6Br 1               checkpoint:
+000B6Br 1               
+000B6Br 1               	; Routine to record the progress of code through the hypervisor for
+000B6Br 1               	; debugging problems in the hypervisor.
+000B6Br 1               	; If the JSR checkpoint is followed by $00, then a text string describing the
+000B6Br 1               	; checkpoint is inserted into the checkpoint log.
+000B6Br 1               	; Checkpoint data is recorded in the 2nd 16KB of colour RAM.
+000B6Br 1               
+000B6Br 1               	; Save all registers and CPU flags
+000B6Br 1  8D rr rr     	sta checkpoint_a
+000B6Er 1  8E rr rr     	stx checkpoint_x
+000B71r 1  8C rr rr     	sty checkpoint_y
+000B74r 1  9C rr rr     	stz checkpoint_z
+000B77r 1  08           	php
+000B78r 1  68           	pla
+000B79r 1  8D rr rr     	sta checkpoint_p
+000B7Cr 1               
+000B7Cr 1               	; pull PC return address from stack
+000B7Cr 1               	; (JSR pushes return_address-1, so add one)
+000B7Cr 1  68           	pla
+000B7Dr 1  18           	clc
+000B7Er 1  69 01        	adc #$01
+000B80r 1  85 rr        	sta ZP(checkpoint_pcl)
+000B82r 1  68           	pla
+000B83r 1  69 00        	adc #$00
+000B85r 1  85 rr        	sta ZP(checkpoint_pch)
+000B87r 1               
+000B87r 1               	; Only do checkpoints visibly if shift held during boot
+000B87r 1  AD 11 D6     	lda $d611
+000B8Ar 1  29 03        	and #$03
+000B8Cr 1  F0 5C        	beq cp9
+000B8Er 1               
+000B8Er 1               	; Write checkpoint byte values out as hex into message template
+000B8Er 1  AE rr rr     	ldx checkpoint_a
+000B91r 1  20 rr rr     	jsr checkpoint_bytetohex
+000B94r 1  8C rr rr     	sty msg_checkpoint_a+0
+000B97r 1  8E rr rr     	stx msg_checkpoint_a+1
+000B9Ar 1               
+000B9Ar 1  AE rr rr     	ldx checkpoint_x
+000B9Dr 1  20 rr rr     	jsr checkpoint_bytetohex
+000BA0r 1  8C rr rr     	sty msg_checkpoint_x+0
+000BA3r 1  8E rr rr     	stx msg_checkpoint_x+1
+000BA6r 1               
+000BA6r 1  AE rr rr     	ldx checkpoint_y
+000BA9r 1  20 rr rr     	jsr checkpoint_bytetohex
+000BACr 1  8C rr rr     	sty msg_checkpoint_y+0
+000BAFr 1  8E rr rr     	stx msg_checkpoint_y+1
+000BB2r 1               
+000BB2r 1  AE rr rr     	ldx checkpoint_z
+000BB5r 1  20 rr rr     	jsr checkpoint_bytetohex
+000BB8r 1  8C rr rr     	sty msg_checkpoint_z+0
+000BBBr 1  8E rr rr     	stx msg_checkpoint_z+1
+000BBEr 1               
+000BBEr 1  AE rr rr     	ldx checkpoint_p
+000BC1r 1  20 rr rr     	jsr checkpoint_bytetohex
+000BC4r 1  8C rr rr     	sty msg_checkpoint_p+0
+000BC7r 1  8E rr rr     	stx msg_checkpoint_p+1
+000BCAr 1               
+000BCAr 1  A6 rr        	ldx z:ZP(checkpoint_pch)
+000BCCr 1  20 rr rr     	jsr checkpoint_bytetohex
+000BCFr 1  8C rr rr     	sty msg_checkpoint_pc+0
+000BD2r 1  8E rr rr     	stx msg_checkpoint_pc+1
+000BD5r 1               
+000BD5r 1  A6 rr        	ldx ZP(checkpoint_pcl)
+000BD7r 1  20 rr rr     	jsr checkpoint_bytetohex
+000BDAr 1  8C rr rr     	sty msg_checkpoint_pc+2
+000BDDr 1  8E rr rr     	stx msg_checkpoint_pc+3
+000BE0r 1               
+000BE0r 1               	; Clear out checkpoint message
+000BE0r 1  A2 3B        	ldx #59
+000BE2r 1  A9 20        	lda #$20
+000BE4r 1  9D rr rr     cp4:	sta msg_checkpointmsg,x
+000BE7r 1  CA           	dex
+000BE8r 1  10 FA        	bpl cp4
+000BEAr 1               cp9:
+000BEAr 1               	; Read next byte following the return address to see if it is $00,
+000BEAr 1               	; if so, then also store the $00-terminated text message that follows.
+000BEAr 1               	; e.g.:
+000BEAr 1               	;
+000BEAr 1               	; jsr checkpoint
+000BEAr 1               	; .byte 0,"OPEN DIRECTORY",0
+000BEAr 1               	;
+000BEAr 1               	; to record a checkpoint with the string "OPEN DIRECTORY"
+000BEAr 1               
+000BEAr 1  A0 00        	ldy #$00
+000BECr 1  B1 rr        	lda (<checkpoint_pcl),y
+000BEEr 1               
+000BEEr 1  D0 18        	bne nocheckpointmessage
+000BF0r 1               
+000BF0r 1               	; Copy null-terminated checkpoint string
+000BF0r 1  A2 00        	ldx #$00
+000BF2r 1  C8           	iny
+000BF3r 1  B1 rr        cp3:	lda (<checkpoint_pcl),y
+000BF5r 1  F0 10        	beq endofcheckpointmessage
+000BF7r 1  9D rr rr     	sta msg_checkpointmsg,x
+000BFAr 1  E8           	inx
+000BFBr 1  C8           	iny
+000BFCr 1  C0 3C        	cpy #60
+000BFEr 1  D0 F3        	bne cp3
+000C00r 1               
+000C00r 1               	; flush out any excess bytes at end of message
+000C00r 1  B1 rr        cp44:	lda (<checkpoint_pcl),y
+000C02r 1  F0 03        	beq endofcheckpointmessage
+000C04r 1  C8           	iny
+000C05r 1  80 F9        	bra cp44
+000C07r 1               
+000C07r 1               
+000C07r 1               endofcheckpointmessage:
+000C07r 1               	; Skip $00 at end of message
+000C07r 1  C8           	iny
+000C08r 1               
+000C08r 1               nocheckpointmessage:
+000C08r 1               
+000C08r 1               	; Advance return address following any checkpoint message
+000C08r 1  98           	tya
+000C09r 1  18           	clc
+000C0Ar 1  6D rr rr     	adc checkpoint_pcl
+000C0Dr 1  8D rr rr     	sta checkpoint_pcl
+000C10r 1  AD rr rr     	lda checkpoint_pch
+000C13r 1  69 00        	adc #$00
+000C15r 1  8D rr rr     	sta checkpoint_pch
+000C18r 1               
+000C18r 1               	; Only do checkpoints visibly if shift key held
+000C18r 1  AD 11 D6     	lda $d611
+000C1Br 1  29 03        	and #$03
+000C1Dr 1  F0 12        	beq checkpoint_return
+000C1Fr 1               
+000C1Fr 1               	; output checkpoint message to serial monitor
+000C1Fr 1  A2 00        	ldx #0
+000C21r 1               	; do not adjust x-reg until label "checkpoint_return"
+000C21r 1               cp5:
+000C21r 1               
+000C21r 1               	; wait for uart to be not busy
+000C21r 1  AD 7C D6     	lda hypervisor_write_char_to_serial_monitor	; LSB is busy status
+000C24r 1  D0 FB        	bne cp5		; branch if busy (LSB=1)
+000C26r 1               
+000C26r 1               	; uart is not busy, so write the char
+000C26r 1  BD rr rr     	lda msg_checkpoint,x
+000C29r 1  8D 7C D6     	sta hypervisor_write_char_to_serial_monitor
+000C2Cr 1  E8           	inx
+000C2Dr 1               
+000C2Dr 1               
+000C2Dr 1               
+000C2Dr 1  C9 0A        	cmp #10		; compare A-reg with "LineFeed"
+000C2Fr 1  D0 F0        	bne cp5
+000C31r 1               
+000C31r 1               checkpoint_return:
+000C31r 1               	; restore registers
+000C31r 1  AD rr rr     	lda checkpoint_p
+000C34r 1  08           	php
+000C35r 1  AD rr rr     	lda checkpoint_a
+000C38r 1  AE rr rr     	ldx checkpoint_x
+000C3Br 1  AC rr rr     	ldy checkpoint_y
+000C3Er 1  AB rr rr     	ldz checkpoint_z
+000C41r 1  28           	plp
+000C42r 1               
+000C42r 1               	; return by jumping to the
+000C42r 1  6C rr rr     	jmp (checkpoint_pcl)
+000C45r 1               
+000C45r 1               ;	========================
+000C45r 1               
+000C45r 1               .EXPORT checkpoint_bytetohex
+000C45r 1               checkpoint_bytetohex:
+000C45r 1               
+000C45r 1               	; BG: this is a helper function to convert a HEX-byte to
+000C45r 1               	;     its equivalent two-byte char representation
+000C45r 1               	;
+000C45r 1               	;     input ".X", containing a HEX-byte to convert
+000C45r 1               	;   outputs ".X" & ".Y", Y is MSB, X is LSB, print YX
+000C45r 1               
+000C45r 1  8A           	txa
+000C46r 1  29 F0        	and #$f0
+000C48r 1  4A           	lsr
+000C49r 1  4A           	lsr
+000C4Ar 1  4A           	lsr
+000C4Br 1  4A           	lsr
+000C4Cr 1  20 rr rr     	jsr checkpoint_nybltohex
+000C4Fr 1  A8           	tay
+000C50r 1  8A           	txa
+000C51r 1  29 0F        	and #$0f
+000C53r 1  20 rr rr     	jsr checkpoint_nybltohex
+000C56r 1  AA           	tax
+000C57r 1  60           	rts
+000C58r 1               
+000C58r 1               ;	========================
+000C58r 1               
+000C58r 1               checkpoint_nybltohex:
+000C58r 1               
+000C58r 1  29 0F        	and #$0f
+000C5Ar 1  09 30        	ora #$30
+000C5Cr 1  C9 3A        	cmp #$3a
+000C5Er 1  B0 01        	bcs cpnth1
+000C60r 1  60           	rts
+000C61r 1               
+000C61r 1  69 06        cpnth1:	adc #$06
+000C63r 1  60           	rts
+000C64r 1               
+000C64r 1               ;	========================
+000C64r 1               ;       Scan the 32KB colour RAM looking for pre-loaded utilities.
+000C64r 1               ;       Offer for the user to be able to launch one of them
+000C64r 1               
+000C64r 1               utility_menu:
+000C64r 1  A2 rr        	ldx #<msg_utilitymenu
+000C66r 1  A0 rr        	ldy #>msg_utilitymenu
+000C68r 1  20 rr rr     	jsr printmessage
+000C6Br 1               
+000C6Br 1               	; First utility will be number 1
+000C6Br 1  A9 30        	lda #$30
+000C6Dr 1  8D rr rr     	sta zptempv
+000C70r 1               
+000C70r 1  20 rr rr     	jsr utillist_rewind
+000C73r 1               um1:
+000C73r 1  20 rr rr     	jsr utillist_validity_check
+000C76r 1  90 30        	bcc utility_end_of_list
+000C78r 1               
+000C78r 1               	; Display utility and assign number
+000C78r 1  A0 27        	ldy #39
+000C7Ar 1  A9 20        	lda #$20
+000C7Cr 1  99 rr rr     um2:	sta msg_utility_item,y
+000C7Fr 1  88           	dey
+000C80r 1  C0 02        	cpy #2
+000C82r 1  D0 F8        	bne um2
+000C84r 1  C8           	iny
+000C85r 1  EE rr rr     	inc zptempv
+000C88r 1  AD rr rr     	lda zptempv
+000C8Br 1  8D rr rr     	sta msg_utility_item
+000C8Er 1  A3 04        	ldz #4
+000C90r 1  EA           um4:	nop
+000C91r 1  B2 rr        	lda (<zptempv32),z
+000C93r 1  99 rr rr     	sta msg_utility_item,y
+000C96r 1  F0 04        	beq um3
+000C98r 1  C8           	iny
+000C99r 1  1B           	inz
+000C9Ar 1  80 F4        	bra um4
+000C9Cr 1               um3:
+000C9Cr 1               
+000C9Cr 1  A2 rr        	ldx #<msg_utility_item
+000C9Er 1  A0 rr        	ldy #>msg_utility_item
+000CA0r 1  20 rr rr     	jsr printmessage
+000CA3r 1               
+000CA3r 1  20 rr rr     	jsr utillist_next
+000CA6r 1               
+000CA6r 1  80 CB        	bra um1
+000CA8r 1               
+000CA8r 1               
+000CA8r 1               utility_end_of_list:
+000CA8r 1               	; XXX Get input from user (accept only numbers 1 - 9)
+000CA8r 1  20 rr rr     	jsr scankeyboard
+000CABr 1  C9 FF        	cmp #$ff
+000CADr 1  F0 F9        	beq utility_end_of_list
+000CAFr 1  C9 31        	cmp #$31
+000CB1r 1  90 F5        	bcc utility_end_of_list
+000CB3r 1  C9 39        	cmp #$39
+000CB5r 1  B0 F1        	bcs utility_end_of_list
+000CB7r 1               
+000CB7r 1               	; XXX Based on input, find that utility
+000CB7r 1  29 0F        	and #$f
+000CB9r 1  AA           	tax
+000CBAr 1  CA           	dex ; input is 1-9, so subtract one for list beginning at 0
+000CBBr 1  20 rr rr     	jsr utillist_rewind
+000CBEr 1  20 rr rr     ueol2:	jsr utillist_validity_check
+000CC1r 1               	; Select again if first choice invalid
+000CC1r 1  90 E5        	bcc utility_end_of_list
+000CC3r 1  CA           	dex
+000CC4r 1  30 05        	bmi ueol1
+000CC6r 1  20 rr rr     	jsr utillist_next
+000CC9r 1  80 F3        	bra ueol2
+000CCBr 1               ueol1:
+000CCBr 1               
+000CCBr 1  EE 21 D0     	inc $d021
+000CCEr 1               
+000CCEr 1               	; XXX - Set hardware protection bits based on utility definition
+000CCEr 1               	;       (and check that utility memory has not been modified. If modified.
+000CCEr 1               	;        give an error instead of giving privileges, so that there is no
+000CCEr 1               	;        privilege escalation vulnerability here.)
+000CCEr 1               	; XXX - In fact, if the utility memory has been modified, we shouldn't even
+000CCEr 1               	;       offer the menu at all perhaps?
+000CCEr 1               
+000CCEr 1               	; Load selected utility into memory
+000CCEr 1               	; length @ offset 36
+000CCEr 1  A3 24        	ldz #36
+000CD0r 1  EA           	nop
+000CD1r 1  B2 rr        	lda (<zptempv32),z
+000CD3r 1  8D rr rr     	sta utility_dmalist_length+0
+000CD6r 1  1B           	inz
+000CD7r 1  EA           	nop
+000CD8r 1  B2 rr        	lda (<zptempv32),z
+000CDAr 1  8D rr rr     	sta utility_dmalist_length+1
+000CDDr 1  A5 rr        	lda <zptempv32+0
+000CDFr 1  18           	clc
+000CE0r 1  69 2C        	adc #44 ; length of header structure
+000CE2r 1  8D rr rr     	sta utility_dmalist_srcaddr+0
+000CE5r 1  A5 rr        	lda <zptempv32+1
+000CE7r 1  69 00        	adc #0
+000CE9r 1  8D rr rr     	sta utility_dmalist_srcaddr+1
+000CECr 1               
+000CECr 1               	; load address is always $07FF (to skip $0801 header)
+000CECr 1               	; start @ zptempv32 + 44
+000CECr 1               	; DMA list is from Hypervisor ROM, so DMA list address MB also = $FF
+000CECr 1  A9 FF        	lda #$ff
+000CEEr 1  8D 02 D7     	sta $d702
+000CF1r 1  8D 04 D7     	sta $d704
+000CF4r 1  A9 rr        	lda #>utility_dmalist
+000CF6r 1  8D 01 D7     	sta $d701
+000CF9r 1  A9 rr        	lda #<utility_dmalist
+000CFBr 1  8D 05 D7     	sta $d705  ; Trigger enhanced DMA
+000CFEr 1               
+000CFEr 1               	; clear 16-bit char mode
+000CFEr 1  A9 05        	lda #$05	; 0000 0101
+000D00r 1  1C 54 D0     	trb $d054	; VIC-IV Control Register C
+000D03r 1               
+000D03r 1               	; and 40 bytes (40 8-bit characters) per row.
+000D03r 1  A9 28        	lda #<40
+000D05r 1  8D 58 D0     	sta $d058
+000D08r 1  A9 00        	lda #>40
+000D0Ar 1  8D 59 D0     	sta $d059
+000D0Dr 1               
+000D0Dr 1               	; screen at $0800 for debug
+000D0Dr 1  A9 25        	lda #$25
+000D0Fr 1  8D 18 D0     	sta $d018
+000D12r 1               
+000D12r 1               
+000D12r 1               	; Exit hypervisor, with PC set to entry point of utility
+000D12r 1  A3 26        	ldz #38
+000D14r 1  EA           	nop
+000D15r 1  B2 rr        	lda (<zptempv32),z
+000D17r 1  8D 48 D6     	sta hypervisor_pcl
+000D1Ar 1  1B           	inz
+000D1Br 1  EA           	nop
+000D1Cr 1  B2 rr        	lda (<zptempv32),z
+000D1Er 1  8D 49 D6     	sta hypervisor_pch
+000D21r 1               
+000D21r 1  20 rr rr     	jsr task_set_c64_memorymap
+000D24r 1  A9 3F        	lda #$3f
+000D26r 1  8D 50 D6     	sta hypervisor_cpuport00
+000D29r 1  A9 35        	lda #$35 ; IO + Kernel ROM @ $E000 (although Kernel is blank)
+000D2Br 1  8D 51 D6     	sta hypervisor_cpuport01
+000D2Er 1               
+000D2Er 1               	; make $FFD2 safe for CC65 compiled programs that call
+000D2Er 1               	; there to set lower case during initialisation.
+000D2Er 1               	; We need to write $60 to $2FFD2
+000D2Er 1  A9 60        	lda #$60 ; RTS
+000D30r 1  A2 D2        	ldx #$d2
+000D32r 1  A0 FF        	ldy #$ff
+000D34r 1  A3 02        	ldz #$02
+000D36r 1  20 rr rr     	jsr longpoke
+000D39r 1               
+000D39r 1               	; Next instruction exits hypervisor to user mode
+000D39r 1  8D 7F D6     	sta hypervisor_enterexit_trigger
+000D3Cr 1               
+000D3Cr 1               utility_dmalist:
+000D3Cr 1               		; copy $FF8xxxx-$FF8yyyy to $00007FF-$000xxxx
+000D3Cr 1               
+000D3Cr 1               		; MEGA65 Enhanced DMA options
+000D3Cr 1  0A           		.byte $0A      ; Request format is F018A
+000D3Dr 1  80 FF        		.byte $80,$FF  ; Copy from $FFxxxxx
+000D3Fr 1  81 00        		.byte $81,$00  ; Copy to $00xxxxx
+000D41r 1  00           		.byte $00 ; no more options
+000D42r 1               		; F018A DMA list
+000D42r 1  00           		.byte $00 ; copy + last request in chain
+000D43r 1               utility_dmalist_length:
+000D43r 1  FF FF        		.word $FFFF ; size of copy  (gets overwritten)
+000D45r 1               utility_dmalist_srcaddr:
+000D45r 1  FF FF        		.word $FFFF ; starting addr (gets overwritten)
+000D47r 1  08           		.byte $08   ; of bank $8
+000D48r 1  FF 07        		.word $07FF ; destination address is $0801 - 2
+000D4Ar 1  00           		.byte $00   ; of bank $0
+000D4Br 1  00 00        		.word $0000 ; modulo (unused)
+000D4Dr 1               
+000D4Dr 1               
+000D4Dr 1               msg_utility_item:
+000D4Dr 1  31 2E 20 33  	.byte "1. 32 CHARACTERS OF UTILITY NAME...    ",0
+000D51r 1  32 20 43 48  
+000D55r 1  41 52 41 43  
+000D75r 1               
+000D75r 1               utillist_next:
+000D75r 1               
+000D75r 1               	; Advance pointer to the next pointer
+000D75r 1  A3 2A        	ldz #42
+000D77r 1  EA           	nop
+000D78r 1  B2 rr        	lda (<zptempv32),z
+000D7Ar 1  DA           	phx
+000D7Br 1  AA           	tax
+000D7Cr 1  1B           	inz
+000D7Dr 1  EA           	nop
+000D7Er 1  B2 rr        	lda (<zptempv32),z
+000D80r 1               	; XXX - Make sure it can't point earlier into the colour RAM here
+000D80r 1               
+000D80r 1  85 rr        	sta <zptempv32+1
+000D82r 1  86 rr        	stx <zptempv32
+000D84r 1  FA           	plx
+000D85r 1  60           	rts
+000D86r 1               
+000D86r 1               utillist_validity_check:
+000D86r 1               	; See if this is a valid utility entry
+000D86r 1  A3 00        	ldz #0
+000D88r 1               
+000D88r 1               	; Check for magic value
+000D88r 1  EA           	nop ; 32-bit pointer access follows
+000D89r 1  B2 rr        	lda (<zptempv32),z
+000D8Br 1  C9 4D        	cmp #'M'
+000D8Dr 1  D0 2D        	bne ulvc_fail
+000D8Fr 1  1B           	inz
+000D90r 1  EA           	nop ; 32-bit pointer access follows
+000D91r 1  B2 rr        	lda (<zptempv32),z
+000D93r 1  C9 36        	cmp #'6'
+000D95r 1  D0 25        	bne ulvc_fail
+000D97r 1  1B           	inz
+000D98r 1  EA           	nop ; 32-bit pointer access follows
+000D99r 1  B2 rr        	lda (<zptempv32),z
+000D9Br 1  C9 35        	cmp #'5'
+000D9Dr 1  D0 1D        	bne ulvc_fail
+000D9Fr 1  1B           	inz
+000DA0r 1  EA           	nop ; 32-bit pointer access follows
+000DA1r 1  B2 rr        	lda (<zptempv32),z
+000DA3r 1  C9 55        	cmp #'U'
+000DA5r 1  D0 15        	bne ulvc_fail
+000DA7r 1               
+000DA7r 1               	; Check self address
+000DA7r 1  A3 28        	ldz #40
+000DA9r 1  EA           	nop ; 32-bit pointer access follows
+000DAAr 1  B2 rr        	lda (<zptempv32),z
+000DACr 1  CD rr rr     	cmp zptempv32
+000DAFr 1  D0 0B        	bne ulvc_fail
+000DB1r 1  1B           	inz
+000DB2r 1  EA           	nop ; 32-bit pointer access follows
+000DB3r 1  B2 rr        	lda (<zptempv32),z
+000DB5r 1  CD rr rr     	cmp zptempv32+1
+000DB8r 1  D0 02        	bne ulvc_fail
+000DBAr 1               
+000DBAr 1               	; success
+000DBAr 1  38           	sec
+000DBBr 1  60           	rts
+000DBCr 1               
+000DBCr 1               ulvc_fail:
+000DBCr 1  18           	clc
+000DBDr 1  60           	rts
+000DBEr 1               
+000DBEr 1               utillist_rewind:
+000DBEr 1               	; Set pointer to first entry in colour RAM ($0800)
+000DBEr 1  A9 00        	lda #<$0800
+000DC0r 1  85 rr        	sta <zptempv32
+000DC2r 1  A9 08        	lda #>$0800
+000DC4r 1  85 rr        	sta <zptempv32+1
+000DC6r 1  A9 F8        	lda #<$0FF8
+000DC8r 1  85 rr        	sta <zptempv32+2
+000DCAr 1  A9 0F        	lda #>$0FF8
+000DCCr 1  85 rr        	sta <zptempv32+3
+000DCEr 1               
+000DCEr 1  60           	rts
+000DCFr 1               
+000DCFr 1               msg_utilitymenu:
+000DCFr 1  53 45 4C 45  	.byte "SELECT UTILITY TO LAUNCH",0
+000DD3r 1  43 54 20 55  
+000DD7r 1  54 49 4C 49  
+000DE8r 1               
+000DE8r 1               ;	========================
+000DE8r 1               
+000DE8r 1               ; checkpoint message
+000DE8r 1               
+000DE8r 1  24           msg_checkpoint:	      .byte "$"
+000DE9r 1  25 25 25 25  msg_checkpoint_pc:    .byte "%%%% A:"
+000DEDr 1  20 41 3A     
+000DF0r 1  25 25 2C 20  msg_checkpoint_a:     .byte "%%, X:"
+000DF4r 1  58 3A        
+000DF6r 1  25 25 2C 20  msg_checkpoint_x:     .byte "%%, Y:"
+000DFAr 1  59 3A        
+000DFCr 1  25 25 2C 20  msg_checkpoint_y:     .byte "%%, Z:"
+000E00r 1  5A 3A        
+000E02r 1  25 25 2C 20  msg_checkpoint_z:     .byte "%%, P:"
+000E06r 1  50 3A        
+000E08r 1  25 25 20 3A  msg_checkpoint_p:     .byte "%% :"
+000E0Cr 1  20 20 20 20  msg_checkpointmsg:    .byte "                                                             " ; END_OF_STRING
+000E10r 1  20 20 20 20  
+000E14r 1  20 20 20 20  
+000E49r 1  0D 0A        		      .byte 13,10  ; CR/LF
+000E4Br 1               
+000E4Br 1               ;	========================
+000E4Br 1               
+000E4Br 1               msg_checkpoint_eom:
+000E4Br 1               
+000E4Br 1               ; messages all have to be <=40 bytes long
+000E4Br 1               
+000E4Br 1  52 45 2D 54  msg_retryreadmbr:     .byte "RE-TRYING TO READ MBR",0
+000E4Fr 1  52 59 49 4E  
+000E53r 1  47 20 54 4F  
+000E61r 1  4D 45 47 41  msg_kickstart:        .byte "MEGA65 MEGAOS HYPERVISOR V00.12",0
+000E65r 1  36 35 20 4D  
+000E69r 1  45 47 41 4F  
+000E81r 1  41 4C 54 3D  msg_kickstarthelp:    .byte "ALT=UTIL MENU CTRL=HOLD-BOOT SHIFT=DEBUG",0
+000E85r 1  55 54 49 4C  
+000E89r 1  20 4D 45 4E  
+000EAAr 1  52 4F 4D 20  msg_romok:            .byte "ROM CHECKSUM OK - BOOTING",0
+000EAEr 1  43 48 45 43  
+000EB2r 1  4B 53 55 4D  
+000EC4r 1  52 4F 4D 20  msg_rombad:	      .byte "ROM CHECKSUM FAIL - LOADING ROMS",0
+000EC8r 1  43 48 45 43  
+000ECCr 1  4B 53 55 4D  
+000EE5r 1  43 4F 55 4C  msg_charrombad:	      .byte "COULD NOT LOAD CHARROM.M65",0
+000EE9r 1  44 20 4E 4F  
+000EEDr 1  54 20 4C 4F  
+000F00r 1  4C 4F 41 44  msg_charromloaded:    .byte "LOADED CHARROM.M65 ($$$$ PAGES)",0
+000F04r 1  45 44 20 43  
+000F08r 1  48 41 52 52  
+000F20r 1  4C 4F 41 44  msg_megaromloaded:    .byte "LOADED MEGA65ROM.M65 ($$$$ PAGES)",0
+000F24r 1  45 44 20 4D  
+000F28r 1  45 47 41 36  
+000F42r 1  4C 4F 4F 4B  msg_tryingsdcard:     .byte "LOOKING FOR SDCARD...",0
+000F46r 1  49 4E 47 20  
+000F4Ar 1  46 4F 52 20  
+000F58r 1               .EXPORT msg_foundsdcard
+000F58r 1  46 4F 55 4E  msg_foundsdcard:      .byte "FOUND AND RESET SD CARD",0
+000F5Cr 1  44 20 41 4E  
+000F60r 1  44 20 52 45  
+000F70r 1               .EXPORT msg_foundsdhccard
+000F70r 1  46 4F 55 4E  msg_foundsdhccard:    .byte "FOUND AND RESET SDHC CARD",0
+000F74r 1  44 20 41 4E  
+000F78r 1  44 20 52 45  
+000F8Ar 1  45 52 52 4F  msg_sdcarderror:      .byte "ERROR READING FROM SD CARD",0
+000F8Er 1  52 20 52 45  
+000F92r 1  41 44 49 4E  
+000FA5r 1               .EXPORT msg_sdredoread
+000FA5r 1  52 45 2D 52  msg_sdredoread:       .byte "RE-READING SDCARD",0
+000FA9r 1  45 41 44 49  
+000FADr 1  4E 47 20 53  
+000FB7r 1               
+000FB7r 1  42 41 44 20  msg_badformat:	      .byte "BAD MBR OR DOS BOOT SECTOR.",0
+000FBBr 1  4D 42 52 20  
+000FBFr 1  4F 52 20 44  
+000FD3r 1  52 45 41 44  msg_sdcardfound:      .byte "READ PARTITION TABLE FROM SDCARD",0
+000FD7r 1  20 50 41 52  
+000FDBr 1  54 49 54 49  
+000FF4r 1  46 4F 55 4E  msg_foundromfile:     .byte "FOUND ROM FILE. START CLUSTER = $$$$$$$$",0
+000FF8r 1  44 20 52 4F  
+000FFCr 1  4D 20 46 49  
+00101Dr 1  44 49 53 4B  msg_diskcount:	      .byte "DISK-COUNT=$$, DEFAULT-DISK=$$",0
+001021r 1  2D 43 4F 55  
+001025r 1  4E 54 3D 24  
+00103Cr 1               .EXPORT msg_diskdata0
+00103Cr 1  44 49 53 4B  msg_diskdata0:	      .byte "DISK-TABLE:",0
+001040r 1  2D 54 41 42  
+001044r 1  4C 45 3A 00  
+001048r 1               .EXPORT msg_diskdata
+001048r 1  42 42 24 24  msg_diskdata:	      .byte "BB$$:$$.$$.$$.$$.$$.$$.$$.$$",0
+00104Cr 1  3A 24 24 2E  
+001050r 1  24 24 2E 24  
+001065r 1               
+001065r 1  4C 4F 4F 4B  msg_filelengths:      .byte "LOOKING FOR $$ BYTES, I SEE $$ BYTES",0
+001069r 1  49 4E 47 20  
+00106Dr 1  46 4F 52 20  
+00108Ar 1               
+00108Ar 1  43 4F 55 4C  msg_fileopenerror:    .byte "COULD NOT OPEN ROM FILE FOR READING",0
+00108Er 1  44 20 4E 4F  
+001092r 1  54 20 4F 50  
+0010AEr 1  52 45 41 44  msg_readingfile:      .BYTE "READING ROM FILE...",0
+0010B2r 1  49 4E 47 20  
+0010B6r 1  52 4F 4D 20  
+0010C2r 1  52 4F 4D 20  msg_romfilelongerror: .byte "ROM TOO LONG: (READ $$$$ PAGES)",0
+0010C6r 1  54 4F 4F 20  
+0010CAr 1  4C 4F 4E 47  
+0010E2r 1  52 4F 4D 20  msg_romfileshorterror:.byte "ROM TOO SHORT: (READ $$$$ PAGES)",0
+0010E6r 1  54 4F 4F 20  
+0010EAr 1  53 48 4F 52  
+001103r 1               .EXPORT msg_clusternumber
+001103r 1  43 55 52 52  msg_clusternumber:    .byte "CURRENT CLUSTER=$$$$$$$$",0
+001107r 1  45 4E 54 20  
+00110Br 1  43 4C 55 53  
+00111Cr 1               .EXPORT msg_sectoraddress
+00111Cr 1  43 55 52 52  msg_sectoraddress:    .byte "CURRENT SECTOR= $$$$$$$$",0
+001120r 1  45 4E 54 20  
+001124r 1  53 45 43 54  
+001135r 1  43 41 4E 4E  msg_nod81:	      .byte "CANNOT MOUNT MEGA65.D81 - (ERRNO: $$)",0
+001139r 1  4F 54 20 4D  
+00113Dr 1  4F 55 4E 54  
+00115Br 1  4D 45 47 41  msg_d81mounted:	      .byte "MEGA65.D81 SUCCESSFULLY MOUNTED",0
+00115Fr 1  36 35 2E 44  
+001163r 1  38 31 20 53  
+00117Br 1  52 45 4C 45  msg_releasectrl:      .byte "RELEASE CONTROL TO CONTINUE BOOTING.",0
+00117Fr 1  41 53 45 20  
+001183r 1  43 4F 4E 54  
+0011A0r 1  43 4F 55 4C  msg_romnotfound:      .byte "COULD NOT FIND ROM MEGA65XXROM",0
+0011A4r 1  44 20 4E 4F  
+0011A8r 1  54 20 46 49  
+0011BFr 1  4C 4F 41 44  msg_foundkickup:      .byte "LOADING KICKUP.M65 INTO HYPERVISOR",0
+0011C3r 1  49 4E 47 20  
+0011C7r 1  4B 49 43 4B  
+0011E2r 1  4E 4F 20 4B  msg_nokickup:         .byte "NO KICKUP.M65 TO LOAD (OR BROKEN)",0
+0011E6r 1  49 43 4B 55  
+0011EAr 1  50 2E 4D 36  
+001204r 1  4B 49 43 4B  msg_kickuploaded:     .byte "KICKUP LOADED TO 00004000 - $$$$$$$$",0
+001208r 1  55 50 20 4C  
+00120Cr 1  4F 41 44 45  
+001229r 1  52 55 4E 4E  msg_alreadykicked:    .byte "RUNNING KICKED HYPERVISOR",0
+00122Dr 1  49 4E 47 20  
+001231r 1  4B 49 43 4B  
+001243r 1               msg_lookingfornextsector:
+001243r 1  4C 4F 4F 4B  		      .byte "LOOKING FOR NEXT SECTOR OF FILE",0
+001247r 1  49 4E 47 20  
+00124Br 1  46 4F 52 20  
+001263r 1  43 4F 55 4C  msg_nologo:	      .byte "COULD NOT LOAD BANNER.M65 (ERRNO:$$)",0
+001267r 1  44 20 4E 4F  
+00126Br 1  54 20 4C 4F  
+001288r 1  43 4F 55 4C  msg_cdrootfailed:     .byte "COULD NOT CHDIR TO / (ERRNO:$$)",0
+00128Cr 1  44 20 4E 4F  
+001290r 1  54 20 43 48  
+0012A8r 1               
+0012A8r 1               			; include the GIT-STRING as a message
+0012A8r 1               			;
+0012A8r 1               			.include "version.a65"
+0012A8r 2               ;msg_gitcommit: .byte "GIT: px100m,94c613b,20180126.03",0
+0012A8r 2  4C 47 42 2D  msg_gitcommit:  .byte "LGB-CA65-LGB-CA65-LGB-CA65-LGB!",0
+0012ACr 2  43 41 36 35  
+0012B0r 2  2D 4C 47 42  
+0012C8r 2               
+0012C8r 2               
+0012C8r 1               
+0012C8r 1  00           msg_blankline:	      .byte 0
+0012C9r 1               
+0012C9r 1               ;	========================
+0012C9r 1               			; filename of utility to pre-load at $C000
+0012C9r 1               			; (typically the "disk menu" program)
+0012C9r 1  43 30 30 30  txt_C000UTIL:		.byte "C000UTIL.BIN",0
+0012CDr 1  55 54 49 4C  
+0012D1r 1  2E 42 49 4E  
+0012D6r 1               
+0012D6r 1               			; filename of character ROM
+0012D6r 1               			;
+0012D6r 1  43 48 41 52  txt_CHARROMM65:		.byte "CHARROM.M65",0
+0012DAr 1  52 4F 4D 2E  
+0012DEr 1  4D 36 35 00  
+0012E2r 1               
+0012E2r 1               			; filename of ROM we want to load in FAT directory format
+0012E2r 1               			; (the two zero bytes are so that we can insert an extra digit after
+0012E2r 1               			; the 5, when a user presses a key, so that they can choose a
+0012E2r 1               			; different ROM to load).
+0012E2r 1               			;
+0012E2r 1  4D 45 47 41  txt_MEGA65ROM:		.byte "MEGA65.ROM",0,0
+0012E6r 1  36 35 2E 52  
+0012EAr 1  4F 4D 00 00  
+0012EEr 1               
+0012EEr 1               			; filename of 1581 disk image we mount by default
+0012EEr 1               			;
+0012EEr 1  4D 45 47 41  txt_MEGA65D81:		.byte "MEGA65.D81",0
+0012F2r 1  36 35 2E 44  
+0012F6r 1  38 31 00     
+0012F9r 1               
+0012F9r 1               			; filename of kickstart update file
+0012F9r 1               			;
+0012F9r 1  4B 49 43 4B  txt_KICKUPM65:		.byte "KICKUP.M65",0
+0012FDr 1  55 50 2E 4D  
+001301r 1  36 35 00     
+001304r 1               
+001304r 1               			; filename containing boot logo
+001304r 1               			;
+001304r 1  42 41 4E 4E  txt_BOOTLOGOM65:	.byte "BANNER.M65",0
+001308r 1  45 52 2E 4D  
+00130Cr 1  36 35 00     
+00130Fr 1               
+00130Fr 1               			; If this file is present, then machine starts up with video
+00130Fr 1               			; mode set to NTSC (60Hz), else as PAL (50Hz).
+00130Fr 1               			; This is to allow us to boot in PAL by default, except for
+00130Fr 1               			; those who have a monitor that cannot do 50Hz.
+00130Fr 1  4E 54 53 43  txt_NTSC:		.byte "NTSC",0
+001313r 1  00           
+001314r 1               
+001314r 1               ;	========================
+001314r 1               
+001314r 1               ;	.include "kickstart_debug.a65"
+001314r 1               
+001314r 1               ;	========================
+001314r 1               
+001314r 1               ;		.checkpc $BB00
+001314r 1               ;		.advance $BB00
+001314r 1               
+001314r 1               .SEGMENT "BB00SEG"
+000000r 1               
+000000r 1               ; Table of available disks.
+000000r 1               ; This includes native FAT32 disks, as well as (in the future at least)
+000000r 1               ; mounted .D41, .D71, .D81 and .DHD files using Commodore DOS filesystems.
+000000r 1               ; But for now, we are supporting only FAT32 as the filesystem.
+000000r 1               ; See kickstart_dos.a65 for information on how the table is used.
+000000r 1               ; Entries are 32 bytes long, so we can have 6 of them.
+000000r 1               ;
+000000r 1               .EXPORT dos_disk_table
+000000r 1               dos_disk_table:
+000000r 1               ;		.checkpc $BBC0
+000000r 1               ;		.advance $BBC0
+000000r 1               	;.RES $BBC0 - *	; LGB: well this is ugly maybe a new segment would be nicer?
+000000r 1               .SEGMENT "BBC0SEG"
+000000r 1               
+000000r 1               .EXPORT syspart_structure
+000000r 1               syspart_structure:
+000000r 1               
+000000r 1               .EXPORT syspart_start_sector
+000000r 1  00 00 00 00  syspart_start_sector:  .byte 0,0,0,0
+000004r 1  00 00 00 00  syspart_size_in_sectors:   .byte 0,0,0,0
+000008r 1               syspart_reserved:
+000008r 1  00 00 00 00  		.byte 0,0,0,0,0,0,0,0
+00000Cr 1  00 00 00 00  
+000010r 1               
+000010r 1               ; For fast freezing/unfreezing, we have a number of contiguous
+000010r 1               ; freeze slots that can each store the state of the machine
+000010r 1               ; We note where the area begins, how big it is, how many slots
+000010r 1               ; it has, and how many sectors are used at the start of the area
+000010r 1               ; to hold a directory with 128 bytes per slot, the contains info
+000010r 1               ; about the frozen program.
+000010r 1               .EXPORT syspart_freeze_area_start
+000010r 1               syspart_freeze_area_start:
+000010r 1  00 00 00 00  		.byte 0,0,0,0
+000014r 1               syspart_freeze_area_size_in_bytes:
+000014r 1  00 00 00 00  		.byte 0,0,0,0
+000018r 1               .EXPORT syspart_freeze_slot_size_in_bytes
+000018r 1               syspart_freeze_slot_size_in_bytes:
+000018r 1  00 00 00 00  		.byte 0,0,0,0
+00001Cr 1               .EXPORT syspart_freeze_slot_count
+00001Cr 1               syspart_freeze_slot_count:
+00001Cr 1  00 00        		.byte 0,0
+00001Er 1               .EXPORT syspart_freeze_directory_sector_count
+00001Er 1               syspart_freeze_directory_sector_count:
+00001Er 1  00 00        		.byte 0,0
+000020r 1               
+000020r 1               ; The first 64 freeze slots are reserved for various purposes
+000020r 1               	syspart_freeze_slots_reserved = 64
+000020r 1               	; Freeze slot 0 is used when the hypervisor needs to
+000020r 1               	; temporarily shove all or part of the active process out
+000020r 1               	; the way to do something
+000020r 1               	freeze_slot_temporary = 0
+000020r 1               
+000020r 1               	; Freeze slots 1 - 63 are currently reserved
+000020r 1               	; They will likely get used for a service call-stack
+000020r 1               	; among other purposes.
+000020r 1               
+000020r 1               
+000020r 1               ; We then have a similar area for system services, which are stored
+000020r 1               ; using much the same representation, but are used as helper
+000020r 1               ; programs.
+000020r 1               syspart_service_area_start:
+000020r 1  00 00 00 00  		.byte 0,0,0,0
+000024r 1               syspart_service_area_size_in_bytes:
+000024r 1  00 00 00 00  		.byte 0,0,0,0
+000028r 1               syspart_service_slot_size_in_bytes:
+000028r 1  00 00 00 00  		.byte 0,0,0,0
+00002Cr 1               .EXPORT syspart_service_slot_count
+00002Cr 1               syspart_service_slot_count:
+00002Cr 1  00 00        		.byte 0,0
+00002Er 1               syspart_service_directory_sector_count:
+00002Er 1  00 00        		.byte 0,0
+000030r 1               
+000030r 1               
+000030r 1               ;;; ----------------------------------------------------------------------------
+000030r 1               ;;; Hypervisor DOS work area and scratch pad at $BC00-$BCFF
+000030r 1               ;;; ----------------------------------------------------------------------------
+000030r 1               
+000030r 1               ;		.checkpc $BC00
+000030r 1               ;		.advance $BC00
+000030r 1               
+000030r 1               .SEGMENT "BC00SEG"
+000000r 1               
+000000r 1               .EXPORT kickstart_scratchbyte0
+000000r 1               kickstart_scratchbyte0:
+000000r 1  00           		.byte $00
+000001r 1               
+000001r 1               		; The number of disks we have
+000001r 1               		;
+000001r 1               
+000001r 1               .EXPORT dos_disk_count
+000001r 1               dos_disk_count:
+000001r 1  00           		.byte $00
+000002r 1               
+000002r 1               		; The default disk
+000002r 1               		;
+000002r 1               .EXPORT dos_default_disk
+000002r 1               dos_default_disk:
+000002r 1  00           		.byte $00
+000003r 1               
+000003r 1               		; The current disk
+000003r 1               		;
+000003r 1               .EXPORT dos_disk_current_disk
+000003r 1               dos_disk_current_disk:
+000003r 1  00           		.byte $00
+000004r 1               
+000004r 1               		; Offset of current disk entry in disk table
+000004r 1               		;
+000004r 1               
+000004r 1               .EXPORT dos_disk_table_offset
+000004r 1               dos_disk_table_offset:
+000004r 1  00           		.byte $00
+000005r 1               
+000005r 1               		; cluster of current directory of current disk
+000005r 1               		;
+000005r 1               .EXPORT dos_disk_cwd_cluster
+000005r 1               dos_disk_cwd_cluster:
+000005r 1  00 00 00 00  		.byte 0,0,0,0
+000009r 1               
+000009r 1               ;	========================
+000009r 1               
+000009r 1               		; Current point in open directory
+000009r 1               		;
+000009r 1               dos_opendir_cluster:
+000009r 1  00 00 00 00  		.byte 0,0,0,0
+00000Dr 1               dos_opendir_sector:
+00000Dr 1  00           		.byte 0
+00000Er 1               dos_opendir_entry:
+00000Er 1  00           		.byte 0
+00000Fr 1               
+00000Fr 1               ;	========================
+00000Fr 1               
+00000Fr 1               
+00000Fr 1               		; Current long filename (max 64 bytes)
+00000Fr 1               		;
+00000Fr 1               .EXPORT dos_dirent_longfilename
+00000Fr 1               dos_dirent_longfilename:
+00000Fr 1  56 65 6E 65  		.byte "Venezualen casaba melon productio" ; 33-chars
+000013r 1  7A 75 61 6C  
+000017r 1  65 6E 20 63  
+000030r 1  6E 20 73 74  		.byte "n statistics (2012-2015).txt  "    ; 30-chars
+000034r 1  61 74 69 73  
+000038r 1  74 69 63 73  
+00004Er 1  00           		.byte 0
+00004Fr 1               
+00004Fr 1               .EXPORT dos_dirent_longfilename_length
+00004Fr 1               dos_dirent_longfilename_length:
+00004Fr 1  00           		.byte 0
+000050r 1               
+000050r 1               .EXPORT dos_dirent_shortfilename
+000050r 1               dos_dirent_shortfilename:
+000050r 1  46 49 4C 45  		.byte "FILENAME.EXT",0
+000054r 1  4E 41 4D 45  
+000058r 1  2E 45 58 54  
+00005Dr 1               
+00005Dr 1               .EXPORT dos_dirent_cluster
+00005Dr 1               dos_dirent_cluster:
+00005Dr 1  00 00 00 00  		.byte 0,0,0,0
+000061r 1               
+000061r 1               .EXPORT dos_dirent_length
+000061r 1               dos_dirent_length:
+000061r 1  00 00 00 00  		.byte 0,0,0,0
+000065r 1               
+000065r 1               .EXPORT dos_dirent_type_and_attribs
+000065r 1               dos_dirent_type_and_attribs:
+000065r 1  00           		.byte 0
+000066r 1               
+000066r 1               ;	========================
+000066r 1               
+000066r 1               		; Requested file name and length
+000066r 1               		;
+000066r 1               
+000066r 1               .EXPORT dos_requested_filename_len
+000066r 1               dos_requested_filename_len:
+000066r 1  00           		.byte 0
+000067r 1               
+000067r 1               .EXPORT dos_requested_filename
+000067r 1               dos_requested_filename:
+000067r 1  56 65 6E 65  		.byte "Venezualen casaba melon productio"
+00006Br 1  7A 75 61 6C  
+00006Fr 1  65 6E 20 63  
+000088r 1  6E 20 73 74  		.byte "n statistics (2007-2011).txt     "
+00008Cr 1  61 74 69 73  
+000090r 1  74 69 63 73  
+0000A9r 1               
+0000A9r 1               ;	========================
+0000A9r 1               
+0000A9r 1               		; Details about current DOS request
+0000A9r 1               		;
+0000A9r 1               
+0000A9r 1               .EXPORT dos_current_sector
+0000A9r 1               .EXPORT dos_current_cluster
+0000A9r 1               .EXPORT dos_sectorsread
+0000A9r 1               
+0000A9r 1  00 00        dos_sectorsread:		.word 0
+0000ABr 1  00 00 00 00  dos_current_sector:		.word 0,0
+0000AFr 1  00 00 00 00  dos_current_cluster:		.word 0,0
+0000B3r 1  00           dos_current_sector_in_cluster:	.byte 0
+0000B4r 1               
+0000B4r 1               
+0000B4r 1               .EXPORT dos_file_descriptors
+0000B4r 1               dos_file_descriptors:
+0000B4r 1  FF 00 00 00  	.byte $FF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0	; each is 16 bytes
+0000B8r 1  00 00 00 00  
+0000BCr 1  00 00 00 00  
+0000C4r 1  FF 00 00 00  	.byte $FF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+0000C8r 1  00 00 00 00  
+0000CCr 1  00 00 00 00  
+0000D4r 1  FF 00 00 00  	.byte $FF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+0000D8r 1  00 00 00 00  
+0000DCr 1  00 00 00 00  
+0000E4r 1  FF 00 00 00  	.byte $FF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+0000E8r 1  00 00 00 00  
+0000ECr 1  00 00 00 00  
+0000F4r 1               
+0000F4r 1               	; The current file descriptor
+0000F4r 1               	;
+0000F4r 1               .EXPORT dos_current_file_descriptor
+0000F4r 1               dos_current_file_descriptor:
+0000F4r 1  00           	.byte 0
+0000F5r 1               
+0000F5r 1               	; Offset of current file descriptor
+0000F5r 1               	;
+0000F5r 1               .EXPORT dos_current_file_descriptor_offset
+0000F5r 1               dos_current_file_descriptor_offset:
+0000F5r 1  00           	.byte 0
+0000F6r 1               
+0000F6r 1               ;	========================
+0000F6r 1               
+0000F6r 1               	; For providing feedback on why DOS calls have failed
+0000F6r 1               	; There is a set of error codes defined in kickstart_dos.a65
+0000F6r 1               .EXPORT dos_error_code
+0000F6r 1               dos_error_code:
+0000F6r 1  00           		.byte $00
+0000F7r 1               
+0000F7r 1               	; Similarly for system partition related errors
+0000F7r 1               .EXPORT syspart_error_code
+0000F7r 1               syspart_error_code:
+0000F7r 1  00           		.byte $00
+0000F8r 1               
+0000F8r 1               	; Non-zero if there is a valid system partition
+0000F8r 1               .EXPORT syspart_present
+0000F8r 1               syspart_present:
+0000F8r 1  00           		.byte $00
+0000F9r 1               
+0000F9r 1               ;;; ----------------------------------------------------------------------------
+0000F9r 1               ;;; reserved space for Hypervisor Process work area $BD00-$BDFF
+0000F9r 1               ;;; ----------------------------------------------------------------------------
+0000F9r 1               
+0000F9r 1               ;		.checkpc $BD00
+0000F9r 1               ;		.advance $BD00,$00
+0000F9r 1               .SEGMENT "BD00SEG"
+000000r 1               
+000000r 1               ;		.include "kickstart_process_descriptor.a65"
+000000r 1               
+000000r 1               ;;; ----------------------------------------------------------------------------
+000000r 1               ;;; reserved space for Kickstart stack (8-bit) $BE00-$BEFF
+000000r 1               ;;; ----------------------------------------------------------------------------
+000000r 1               
+000000r 1               ;		.checkpc $BE00
+000000r 1               ;		.advance $BE00,$3d
+000000r 1               .SEGMENT "STACK"
+000000r 1               
+000000r 1               ;;; ----------------------------------------------------------------------------
+000000r 1               ;;; reserved space for Kickstart ZP at $BF00-$BFFF
+000000r 1               ;;; ----------------------------------------------------------------------------
+000000r 1               
+000000r 1               ;		.checkpc $BF00
+000000r 1               ;		.advance $BF00,$3e
+000000r 1               .SEGMENT "ZEROPAGE"
+000000r 1               
+000000r 1               		; Temporary vector storage for DOS
+000000r 1               		;
+000000r 1               
+000000r 1               .EXPORT dos_scratch_vector
+000000r 1               
+000000r 1  00 00 00 00  dos_scratch_vector: .word 0,0
+000004r 1               .EXPORT dos_scratch_byte_1, dos_scratch_byte_2
+000004r 1  00           dos_scratch_byte_1: .byte 0
+000005r 1  00           dos_scratch_byte_2: .byte 0
+000006r 1               
+000006r 1               		; Vectors for copying data between hypervisor and user-space
+000006r 1               		;
+000006r 1               .EXPORT hypervisor_userspace_copy_vector
+000006r 1  00 00        hypervisor_userspace_copy_vector:    .word 0
+000008r 1               
+000008r 1               		; general kickstart temporary variables
+000008r 1               		;
+000008r 1               
+000008r 1               .EXPORT dos_file_loadaddress
+000008r 1               
+000008r 1  00 00        zptempv:		.word 0
+00000Ar 1  00 00        zptempv2:		.word 0
+00000Cr 1  00 00        zptempp:		.word 0
+00000Er 1  00 00        zptempp2:		.word 0
+000010r 1  00 00 00 00  zptempv32:		.word 0,0
+000014r 1  00 00 00 00  zptempv32b:		.word 0,0
+000018r 1  00 00 00 00  dos_file_loadaddress:	.word 0,0
+00001Cr 1               
+00001Cr 1               		; Keyboard scan routine
+00001Cr 1               
+00001Cr 1                   ; // ZERO PAGE Varibles
+00001Cr 1  00 00 00 00  ScanResult:   	    .byte 0,0,0,0,0,0,0,0
+000020r 1  00 00 00 00  
+000024r 1  00 00 00     BufferNew:    	    .byte 0,0,0
+000027r 1  00           KeyQuantity:  	    .byte 0
+000028r 1  00           NonAlphaFlagX: 	    .byte 0
+000029r 1  00           NonAlphaFlagY: 	    .byte 0
+00002Ar 1  00           TempZP: 	    .byte 0
+00002Br 1  00           SimultaneousKeys:   .byte 0
+00002Cr 1               
+00002Cr 1                   ; // Operational Variables
+00002Cr 1                  MaxKeyRollover = 3
+00002Cr 1               
+00002Cr 1               		; Used for checkpoint debug system of hypervisor
+00002Cr 1               		;
+00002Cr 1  00           checkpoint_a:	      .byte 0
+00002Dr 1  00           checkpoint_x:	      .byte 0
+00002Er 1  00           checkpoint_y:	      .byte 0
+00002Fr 1  00           checkpoint_z:	      .byte 0
+000030r 1  00           checkpoint_p:	      .byte 0
+000031r 1  00           checkpoint_pcl:	      .byte 0
+000032r 1  00           checkpoint_pch:	      .byte 0
+000033r 1               
+000033r 1               		; SD card timeout handling
+000033r 1               		;
+000033r 1               
+000033r 1               .EXPORT sdcounter
+000033r 1  00 00 00     sdcounter:		.byte 0,0,0
+000036r 1               
+000036r 1               ;;; ----------------------------------------------------------------------------
+000036r 1               ;;; end of KICKUP-rom
+000036r 1               ;;; ----------------------------------------------------------------------------
+000036r 1               
+000036r 1               ;			.checkpc $C000
+000036r 1               ;			.advance $C000, $3f
+000036r 1               
+000036r 1               ;			.outfile "bin/KICKUP.M65"
+000036r 1               
+000036r 1               

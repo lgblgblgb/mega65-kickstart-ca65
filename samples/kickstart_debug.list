@@ -1,0 +1,789 @@
+ca65 V2.15
+Main file   : kickstart_debug.a65
+Current file: kickstart_debug.a65
+
+000000r 1               ;======================================================================================
+000000r 1               ;======================================================================================
+000000r 1               ;======================================================================================
+000000r 1               ; These routines are included in the kickup-build-process primarily for debug purposes.
+000000r 1               ; It is anticipated that these routines will become removed as the code is verified.
+000000r 1               ;
+000000r 1               ;	========================
+000000r 1               ;
+000000r 1               ; NOTE: that there are two main output streams:
+000000r 1               ; - the serial debugger (via the USB/COM)
+000000r 1               ;   => messages are sent using the "Checkpoint" function.
+000000r 1               ;
+000000r 1               ; - the screen console (chars displayed by VIC on boot-screen)
+000000r 1               ;   => messages are sent using the "printmessage" and "printhex" functions.
+000000r 1               ;
+000000r 1               ;	========================
+000000r 1               
+000000r 1               
+000000r 1               .INCLUDE "kickstart.i65"
+000000r 2               ; My try to define some stuff can be included from every kickstart related sources.
+000000r 2               
+000000r 2               .SETCPU	"4510"	; Set CPU to "4510 mode"
+000000r 2               
+000000r 2               
+000000r 2               ; Try to make it clear that we want to use zero page addressing. The intended usage:
+000000r 2               ; LDA ZP(zp_temp_byte)
+000000r 2               ; I *think* it's may be better than this syntax which is even complained by ca65 as
+000000r 2               ; a warning:   LDA <zp_temp_byte
+000000r 2               
+000000r 2               .DEFINE ZP(n) .LOBYTE(n)
+000000r 2               
+000000r 2               .MACRO space label,bytes
+000000r 2               label: .res bytes
+000000r 2               .ENDMACRO
+000000r 2               
+000000r 2               
+000000r 1               .INCLUDE "kickstart_machine.a65"
+000000r 2               
+000000r 2               	reset_vector = $fffc
+000000r 2               	irq_vector = $fffe
+000000r 2               	nmi_vector = $fffa
+000000r 2               
+000000r 2               
+000000r 2               	hypervisor_a = $d640
+000000r 2               	hypervisor_x = $d641
+000000r 2               	hypervisor_y = $d642
+000000r 2               	hypervisor_z = $d643
+000000r 2               	hypervisor_b = $d644
+000000r 2               	hypervisor_spl = $d645
+000000r 2               	hypervisor_sph = $d646
+000000r 2               	hypervisor_flags = $d647
+000000r 2               	hypervisor_pcl = $d648
+000000r 2               	hypervisor_pch = $d649
+000000r 2               	hypervisor_maplolo = $d64a
+000000r 2               	hypervisor_maplohi = $d64b
+000000r 2               	hypervisor_maphilo = $d64c
+000000r 2               	hypervisor_maphihi = $d64d
+000000r 2               	hypervisor_maplomb = $d64e
+000000r 2               	hypervisor_maphimb = $d64f
+000000r 2               	hypervisor_cpuport00 = $d650
+000000r 2               	hypervisor_cpuport01 = $d651
+000000r 2               	hypervisor_iomode = $d652
+000000r 2               	hypervisor_dmagic_srcmb = $d653
+000000r 2               	hypervisor_dmagic_dstmb = $d654
+000000r 2               	hypervisor_dmagic_list0 = $d655
+000000r 2               	hypervisor_dmagic_list1 = $d656
+000000r 2               	hypervisor_dmagic_list2 = $d657
+000000r 2               	hypervisor_dmagic_list3 = $d658
+000000r 2               	hypervisor_hardware_virtualisation = $d659
+000000r 2               
+000000r 2               	; d65a
+000000r 2               	; d65b
+000000r 2               	; d65c
+000000r 2               
+000000r 2               	hypervisor_vm_currentpage_lo = $d65d
+000000r 2               	hypervisor_vm_currentpage_mid = $d65e
+000000r 2               	hypervisor_vm_currentpage_hi = $d65f
+000000r 2               
+000000r 2               	hypervisor_vm_pagetable = $d660
+000000r 2               	hypervisor_vm_pagetable0_logicalpage_lo = $d660
+000000r 2               	hypervisor_vm_pagetable0_logicalpage_hi = $d661
+000000r 2               	hypervisor_vm_pagetable0_physicalpage_lo = $d662
+000000r 2               	hypervisor_vm_pagetable0_physicalpage_hi = $d663
+000000r 2               	hypervisor_vm_pagetable1_logicalpage_lo = $d664
+000000r 2               	hypervisor_vm_pagetable1_logicalpage_hi = $d665
+000000r 2               	hypervisor_vm_pagetable1_physicalpage_lo = $d666
+000000r 2               	hypervisor_vm_pagetable1_physicalpage_hi = $d667
+000000r 2               	hypervisor_vm_pagetable2_logicalpage_lo = $d668
+000000r 2               	hypervisor_vm_pagetable2_logicalpage_hi = $d669
+000000r 2               	hypervisor_vm_pagetable2_physicalpage_lo = $d66a
+000000r 2               	hypervisor_vm_pagetable2_physicalpage_hi = $d66b
+000000r 2               	hypervisor_vm_pagetable3_logicalpage_lo = $d66c
+000000r 2               	hypervisor_vm_pagetable3_logicalpage_hi = $d66d
+000000r 2               	hypervisor_vm_pagetable3_physicalpage_lo = $d66e
+000000r 2               	hypervisor_vm_pagetable3_physicalpage_hi = $d66f
+000000r 2               
+000000r 2               	hypervisor_georam_base_mb = $d670
+000000r 2               	hypervsior_georam_block_mask = $d671
+000000r 2               
+000000r 2               	; d672 110 010
+000000r 2               	hypervisor_secure_mode_flags = $d672
+000000r 2               
+000000r 2               	; d673
+000000r 2               	; d674
+000000r 2               	; d675
+000000r 2               	; d676
+000000r 2               	; d677
+000000r 2               	; d678
+000000r 2               	; d679
+000000r 2               	; d67a
+000000r 2               	; d67b
+000000r 2               
+000000r 2               	hypervisor_write_char_to_serial_monitor = $d67c
+000000r 2               
+000000r 2               	hypervisor_feature_enables = $d67d
+000000r 2               	hypervisor_kickedup_flag = $d67e
+000000r 2               	hypervisor_cartridge_flags = $d67e
+000000r 2               	hypervisor_enterexit_trigger = $d67f
+000000r 2               
+000000r 2               	; Where sector buffer maps (over = $DE00-$DFFF IO expansion space)
+000000r 2               	sd_sectorbuffer = $DE00
+000000r 2               	sd_address_byte0 = $D681
+000000r 2               	sd_address_byte1 = $D682
+000000r 2               	sd_address_byte2 = $D683
+000000r 2               	sd_address_byte3 = $D684
+000000r 2               
+000000r 2               	fpga_switches_low = $d6ec
+000000r 2               	fpga_switches_high = $d6ed
+000000r 2               
+000000r 2               	VICIV_MAGIC = $d02f
+000000r 2               
+000000r 2               ; LGB moved here
+000000r 2               
+000000r 2               ; Current file descriptors
+000000r 2               ; Each descriptor has:
+000000r 2               ;   disk id : 1 byte ($00-$07 = file open, $FF = file closed)
+000000r 2               ;   access mode : 1 byte ($00 = read only)
+000000r 2               ;   start cluster : 4 bytes
+000000r 2               ;   current cluster : 4 bytes
+000000r 2               ;   current sector in cluster : 1 byte
+000000r 2               ;   offset in sector: 2 bytes
+000000r 2               ;   file offset / $100 : 3 bytes
+000000r 2               ;
+000000r 2               
+000000r 2                   dos_filedescriptor_max = 4
+000000r 2                   dos_filedescriptor_offset_diskid = 0
+000000r 2                   dos_filedescriptor_offset_mode = 1
+000000r 2                   dos_filedescriptor_offset_startcluster = 2
+000000r 2                   dos_filedescriptor_offset_currentcluster = 6
+000000r 2               ;
+000000r 2               ; These last three fields must be contiguous, as dos_open_current_file
+000000r 2               ; relies on it.
+000000r 2               ;
+000000r 2                   dos_filedescriptor_offset_sectorincluster = 10
+000000r 2                   dos_filedescriptor_offset_offsetinsector = 11
+000000r 2                   dos_filedescriptor_offset_fileoffset = 13
+000000r 2               
+000000r 2               ;
+000000r 2                               ; WARNING: dos_readdir_read_next_entry uses carnal knowledge about the following
+000000r 2                               ;          structure, particularly the length as calculated here:
+000000r 2                               ;
+000000r 2                               dos_dirent_structure_length =  64+1+11+4+4+1
+000000r 2               
+000000r 2               dos_max_disks = 6
+000000r 2               
+000000r 2               dos_errorcode_invalid_address = $10
+000000r 2               dos_errorcode_read_timeout = $07
+000000r 2               
+000000r 2               syspart_error_nosyspart = $ff
+000000r 2               
+000000r 2               
+000000r 1               
+000000r 1               .SEGMENT "CODE"
+000000r 1               
+000000r 1               .AUTOIMPORT +
+000000r 1               
+000000r 1               
+000000r 1               .EXPORT dumpcurrentfd
+000000r 1               dumpcurrentfd:
+000000r 1               
+000000r 1               	; this function prints to Checkpoint the current_file_descriptor and the offset.
+000000r 1               
+000000r 1  AE rr rr     	ldx dos_current_file_descriptor			; convert .X to char-representation for display
+000003r 1  20 rr rr     	jsr checkpoint_bytetohex			; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000006r 1  8E rr rr     	stx dcfd0+1;
+000009r 1  8C rr rr     	sty dcfd0
+00000Cr 1               
+00000Cr 1  AE rr rr     	ldx dos_current_file_descriptor_offset
+00000Fr 1  20 rr rr     	jsr checkpoint_bytetohex
+000012r 1  8E rr rr     	stx dcfd1+1
+000015r 1  8C rr rr     	sty dcfd1
+000018r 1               
+000018r 1  20 rr rr     	jsr checkpoint
+00001Br 1  00 63 75 72  	.byte 0,"current file desc="
+00001Fr 1  72 65 6E 74  
+000023r 1  20 66 69 6C  
+00002Er 1  78 78 2C 20  dcfd0:	.byte "xx, and offset="
+000032r 1  61 6E 64 20  
+000036r 1  6F 66 66 73  
+00003Dr 1  78 78 2E 00  dcfd1:	.byte "xx.",0
+000041r 1               
+000041r 1  60           	rts
+000042r 1               
+000042r 1               
+000042r 1               ;	========================
+000042r 1               
+000042r 1               .EXPORT dumpfddata
+000042r 1               dumpfddata:
+000042r 1               
+000042r 1               	; this function prints to Checkpoint the file-descriptor[0].
+000042r 1               
+000042r 1  AE rr rr     	ldx dos_file_descriptors+0	; convert .X to char-representation for display
+000045r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000048r 1  8E rr rr     	stx dfdd0+1
+00004Br 1  8C rr rr     	sty dfdd0
+00004Er 1  AE rr rr     	ldx dos_file_descriptors+1	; convert .X to char-representation for display
+000051r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000054r 1  8E rr rr     	stx dfdd1+1
+000057r 1  8C rr rr     	sty dfdd1
+00005Ar 1  AE rr rr     	ldx dos_file_descriptors+2	; convert .X to char-representation for display
+00005Dr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000060r 1  8E rr rr     	stx dfdd2+1
+000063r 1  8C rr rr     	sty dfdd2
+000066r 1  AE rr rr     	ldx dos_file_descriptors+3	; convert .X to char-representation for display
+000069r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+00006Cr 1  8E rr rr     	stx dfdd3+1
+00006Fr 1  8C rr rr     	sty dfdd3
+000072r 1  AE rr rr     	ldx dos_file_descriptors+4	; convert .X to char-representation for display
+000075r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000078r 1  8E rr rr     	stx dfdd4+1
+00007Br 1  8C rr rr     	sty dfdd4
+00007Er 1  AE rr rr     	ldx dos_file_descriptors+5	; convert .X to char-representation for display
+000081r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000084r 1  8E rr rr     	stx dfdd5+1
+000087r 1  8C rr rr     	sty dfdd5
+00008Ar 1  AE rr rr     	ldx dos_file_descriptors+6	; convert .X to char-representation for display
+00008Dr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000090r 1  8E rr rr     	stx dfdd6+1
+000093r 1  8C rr rr     	sty dfdd6
+000096r 1  AE rr rr     	ldx dos_file_descriptors+7	; convert .X to char-representation for display
+000099r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+00009Cr 1  8E rr rr     	stx dfdd7+1
+00009Fr 1  8C rr rr     	sty dfdd7
+0000A2r 1               
+0000A2r 1               
+0000A2r 1  AE rr rr     	ldx dos_file_descriptors+8	; convert .X to char-representation for display
+0000A5r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0000A8r 1  8E rr rr     	stx dfdd8+1
+0000ABr 1  8C rr rr     	sty dfdd8
+0000AEr 1  AE rr rr     	ldx dos_file_descriptors+9	; convert .X to char-representation for display
+0000B1r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0000B4r 1  8E rr rr     	stx dfdd9+1
+0000B7r 1  8C rr rr     	sty dfdd9
+0000BAr 1  AE rr rr     	ldx dos_file_descriptors+10	; convert .X to char-representation for display
+0000BDr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0000C0r 1  8E rr rr     	stx dfdda+1
+0000C3r 1  8C rr rr     	sty dfdda
+0000C6r 1  AE rr rr     	ldx dos_file_descriptors+11	; convert .X to char-representation for display
+0000C9r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0000CCr 1  8E rr rr     	stx dfddb+1
+0000CFr 1  8C rr rr     	sty dfddb
+0000D2r 1  AE rr rr     	ldx dos_file_descriptors+12	; convert .X to char-representation for display
+0000D5r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0000D8r 1  8E rr rr     	stx dfddc+1
+0000DBr 1  8C rr rr     	sty dfddc
+0000DEr 1  AE rr rr     	ldx dos_file_descriptors+13	; convert .X to char-representation for display
+0000E1r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0000E4r 1  8E rr rr     	stx dfddd+1
+0000E7r 1  8C rr rr     	sty dfddd
+0000EAr 1  AE rr rr     	ldx dos_file_descriptors+14	; convert .X to char-representation for display
+0000EDr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0000F0r 1  8E rr rr     	stx dfdde+1
+0000F3r 1  8C rr rr     	sty dfdde
+0000F6r 1  AE rr rr     	ldx dos_file_descriptors+15	; convert .X to char-representation for display
+0000F9r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0000FCr 1  8E rr rr     	stx dfddf+1
+0000FFr 1  8C rr rr     	sty dfddf
+000102r 1               
+000102r 1  20 rr rr     	jsr checkpoint
+000105r 1  00 46 69 6C  	.byte 0,"FileDesc<="
+000109r 1  65 44 65 73  
+00010Dr 1  63 3C 3D     
+000110r 1  78 78 2C     dfdd0:	.byte	"xx,"
+000113r 1  78 78 2C     dfdd1:	.byte	"xx,"
+000116r 1  78 78 2C     dfdd2:	.byte	"xx,"
+000119r 1  78 78 2C     dfdd3:	.byte	"xx,"
+00011Cr 1  78 78 2C     dfdd4:	.byte	"xx,"
+00011Fr 1  78 78 2C     dfdd5:	.byte	"xx,"
+000122r 1  78 78 2C     dfdd6:	.byte	"xx,"
+000125r 1  78 78 20 2D  dfdd7:	.byte	"xx - "
+000129r 1  20           
+00012Ar 1               
+00012Ar 1  78 78 2C     dfdd8:	.byte	"xx,"
+00012Dr 1  78 78 2C     dfdd9:	.byte	"xx,"
+000130r 1  78 78 2C     dfdda:	.byte	"xx,"
+000133r 1  78 78 2C     dfddb:	.byte	"xx,"
+000136r 1  78 78 2C     dfddc:	.byte	"xx,"
+000139r 1  78 78 2C     dfddd:	.byte	"xx,"
+00013Cr 1  78 78 2C     dfdde:	.byte	"xx,"
+00013Fr 1  78 78        dfddf:	.byte	"xx"
+000141r 1  00           	.byte 0
+000142r 1               
+000142r 1  60           	rts
+000143r 1               
+000143r 1               ;	========================
+000143r 1               
+000143r 1               .EXPORT dumpsectoraddress
+000143r 1               dumpsectoraddress:
+000143r 1               
+000143r 1               	; print out this message to Checkpoint
+000143r 1               	;
+000143r 1               
+000143r 1  AE 84 D6     	ldx sd_address_byte3	;MSB	; convert .X to char-representation for display
+000146r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000149r 1  8E rr rr     	stx sdrscp3+1;
+00014Cr 1  8C rr rr     	sty sdrscp3
+00014Fr 1               
+00014Fr 1  AE 83 D6     	ldx sd_address_byte2
+000152r 1  20 rr rr     	jsr checkpoint_bytetohex
+000155r 1  8E rr rr     	stx sdrscp2+1
+000158r 1  8C rr rr     	sty sdrscp2
+00015Br 1               
+00015Br 1  AE 82 D6     	ldx sd_address_byte1
+00015Er 1  20 rr rr     	jsr checkpoint_bytetohex
+000161r 1  8E rr rr     	stx sdrscp1+1
+000164r 1  8C rr rr     	sty sdrscp1
+000167r 1               
+000167r 1  AE 81 D6     	ldx sd_address_byte0	;LSB
+00016Ar 1  20 rr rr     	jsr checkpoint_bytetohex
+00016Dr 1  8E rr rr     	stx sdrscp0+1
+000170r 1  8C rr rr     	sty sdrscp0
+000173r 1               
+000173r 1  20 rr rr     	jsr checkpoint
+000176r 1  00 73 64 5F  	.byte 0,"sd_sector: $d681="
+00017Ar 1  73 65 63 74  
+00017Er 1  6F 72 3A 20  
+000188r 1  78 78        sdrscp3:	.byte "xx"
+00018Ar 1  78 78        sdrscp2:	.byte "xx"
+00018Cr 1  78 78        sdrscp1:	.byte "xx"
+00018Er 1  78 78 2E 00  sdrscp0:	.byte "xx.",0
+000192r 1               
+000192r 1  60           	rts
+000193r 1               
+000193r 1               
+000193r 1               ;	========================
+000193r 1               
+000193r 1               printsectoraddress:
+000193r 1               
+000193r 1               		; debug message to boot-screen
+000193r 1               		;
+000193r 1  A2 rr        		ldx #<msg_sectoraddress
+000195r 1  A0 rr        		ldy #>msg_sectoraddress
+000197r 1  20 rr rr     		jsr printmessage
+00019Ar 1               
+00019Ar 1  A0 00        		ldy #$00
+00019Cr 1  AB 84 D6     		ldz sd_address_byte3 ; is $D681+3
+00019Fr 1  20 rr rr     		jsr printhex
+0001A2r 1  AB 83 D6     		ldz sd_address_byte2 ; is $D681+2
+0001A5r 1  20 rr rr     		jsr printhex
+0001A8r 1  AB 82 D6     		ldz sd_address_byte1 ; is $D681+1
+0001ABr 1  20 rr rr     		jsr printhex
+0001AEr 1  AB 81 D6     		ldz sd_address_byte0 ; is $D681+0
+0001B1r 1  20 rr rr     		jsr printhex
+0001B4r 1  60           		rts
+0001B5r 1               
+0001B5r 1               
+0001B5r 1               
+0001B5r 1               ;	========================
+0001B5r 1               
+0001B5r 1               print_disk_table:
+0001B5r 1               
+0001B5r 1               		; HELPER routine, for debug to screen
+0001B5r 1               
+0001B5r 1  A2 rr        		ldx #<msg_diskdata0
+0001B7r 1  A0 rr        		ldy #>msg_diskdata0
+0001B9r 1  20 rr rr     		jsr printmessage
+0001BCr 1               
+0001BCr 1  A2 rr        		ldx #<msg_diskdata
+0001BEr 1  A0 rr        		ldy #>msg_diskdata
+0001C0r 1  20 rr rr     		jsr printmessage
+0001C3r 1               
+0001C3r 1  A0 00        		ldy #$00
+0001C5r 1  A3 00        		ldz #$00		; offset
+0001C7r 1  20 rr rr     		jsr printhex
+0001CAr 1  A0 00        		ldy #$00
+0001CCr 1  AB rr rr     		ldz dos_disk_table+0
+0001CFr 1  20 rr rr     		jsr printhex
+0001D2r 1  AB rr rr     		ldz dos_disk_table+1
+0001D5r 1  20 rr rr     		jsr printhex
+0001D8r 1  AB rr rr     		ldz dos_disk_table+2
+0001DBr 1  20 rr rr     		jsr printhex
+0001DEr 1  AB rr rr     		ldz dos_disk_table+3
+0001E1r 1  20 rr rr     		jsr printhex
+0001E4r 1  AB rr rr     		ldz dos_disk_table+4
+0001E7r 1  20 rr rr     		jsr printhex
+0001EAr 1  AB rr rr     		ldz dos_disk_table+5
+0001EDr 1  20 rr rr     		jsr printhex
+0001F0r 1  AB rr rr     		ldz dos_disk_table+6
+0001F3r 1  20 rr rr     		jsr printhex
+0001F6r 1  AB rr rr     		ldz dos_disk_table+7
+0001F9r 1  20 rr rr     		jsr printhex
+0001FCr 1               
+0001FCr 1  A2 rr        		ldx #<msg_diskdata
+0001FEr 1  A0 rr        		ldy #>msg_diskdata
+000200r 1  20 rr rr     		jsr printmessage
+000203r 1               
+000203r 1  A0 00        		ldy #$00
+000205r 1  A3 08        		ldz #$08		; offset
+000207r 1  20 rr rr     		jsr printhex
+00020Ar 1  A0 00        		ldy #$00
+00020Cr 1  AB rr rr     		ldz dos_disk_table+8
+00020Fr 1  20 rr rr     		jsr printhex
+000212r 1  AB rr rr     		ldz dos_disk_table+9
+000215r 1  20 rr rr     		jsr printhex
+000218r 1  AB rr rr     		ldz dos_disk_table+10
+00021Br 1  20 rr rr     		jsr printhex
+00021Er 1  AB rr rr     		ldz dos_disk_table+11
+000221r 1  20 rr rr     		jsr printhex
+000224r 1  AB rr rr     		ldz dos_disk_table+12
+000227r 1  20 rr rr     		jsr printhex
+00022Ar 1  AB rr rr     		ldz dos_disk_table+13
+00022Dr 1  20 rr rr     		jsr printhex
+000230r 1  AB rr rr     		ldz dos_disk_table+14
+000233r 1  20 rr rr     		jsr printhex
+000236r 1  AB rr rr     		ldz dos_disk_table+15
+000239r 1  20 rr rr     		jsr printhex
+00023Cr 1               
+00023Cr 1  A2 rr        		ldx #<msg_diskdata
+00023Er 1  A0 rr        		ldy #>msg_diskdata
+000240r 1  20 rr rr     		jsr printmessage
+000243r 1               
+000243r 1  A0 00        		ldy #$00
+000245r 1  A3 10        		ldz #$10		; offset
+000247r 1  20 rr rr     		jsr printhex
+00024Ar 1  A0 00        		ldy #$00
+00024Cr 1  AB rr rr     		ldz dos_disk_table+16
+00024Fr 1  20 rr rr     		jsr printhex
+000252r 1  AB rr rr     		ldz dos_disk_table+17
+000255r 1  20 rr rr     		jsr printhex
+000258r 1  AB rr rr     		ldz dos_disk_table+18
+00025Br 1  20 rr rr     		jsr printhex
+00025Er 1  AB rr rr     		ldz dos_disk_table+19
+000261r 1  20 rr rr     		jsr printhex
+000264r 1  AB rr rr     		ldz dos_disk_table+20
+000267r 1  20 rr rr     		jsr printhex
+00026Ar 1  AB rr rr     		ldz dos_disk_table+21
+00026Dr 1  20 rr rr     		jsr printhex
+000270r 1  AB rr rr     		ldz dos_disk_table+22
+000273r 1  20 rr rr     		jsr printhex
+000276r 1  AB rr rr     		ldz dos_disk_table+23
+000279r 1  20 rr rr     		jsr printhex
+00027Cr 1               
+00027Cr 1  A2 rr        		ldx #<msg_diskdata
+00027Er 1  A0 rr        		ldy #>msg_diskdata
+000280r 1  20 rr rr     		jsr printmessage
+000283r 1               
+000283r 1  A0 00        		ldy #$00
+000285r 1  A3 18        		ldz #$18		 ; offset
+000287r 1  20 rr rr     		jsr printhex
+00028Ar 1  A0 00        		ldy #$00
+00028Cr 1  AB rr rr     		ldz dos_disk_table+24
+00028Fr 1  20 rr rr     		jsr printhex
+000292r 1  AB rr rr     		ldz dos_disk_table+25
+000295r 1  20 rr rr     		jsr printhex
+000298r 1  AB rr rr     		ldz dos_disk_table+26
+00029Br 1  20 rr rr     		jsr printhex
+00029Er 1  AB rr rr     		ldz dos_disk_table+27
+0002A1r 1  20 rr rr     		jsr printhex
+0002A4r 1  AB rr rr     		ldz dos_disk_table+28
+0002A7r 1  20 rr rr     		jsr printhex
+0002AAr 1  AB rr rr     		ldz dos_disk_table+29
+0002ADr 1  20 rr rr     		jsr printhex
+0002B0r 1  AB rr rr     		ldz dos_disk_table+30
+0002B3r 1  20 rr rr     		jsr printhex
+0002B6r 1  AB rr rr     		ldz dos_disk_table+31
+0002B9r 1  20 rr rr     		jsr printhex
+0002BCr 1               
+0002BCr 1  60           		rts
+0002BDr 1               
+0002BDr 1               ;	========================
+0002BDr 1               
+0002BDr 1               .EXPORT dump_disk_table
+0002BDr 1               dump_disk_table:
+0002BDr 1               
+0002BDr 1               	; this function prints to Checkpoint the dos_disk_table[0].
+0002BDr 1               
+0002BDr 1  20 rr rr     	jsr checkpoint
+0002C0r 1  00 64 6F 73  	.byte 0,"dos_disk_table"
+0002C4r 1  5F 64 69 73  
+0002C8r 1  6B 5F 74 61  
+0002CFr 1  00           	.byte 0
+0002D0r 1               
+0002D0r 1  AE rr rr     	ldx dos_disk_table+0		; convert .X to char-representation for display
+0002D3r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0002D6r 1  8E rr rr     	stx ddt00+1
+0002D9r 1  8C rr rr     	sty ddt00
+0002DCr 1  AE rr rr     	ldx dos_disk_table+1		; convert .X to char-representation for display
+0002DFr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0002E2r 1  8E rr rr     	stx ddt01+1
+0002E5r 1  8C rr rr     	sty ddt01
+0002E8r 1  AE rr rr     	ldx dos_disk_table+2		; convert .X to char-representation for display
+0002EBr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0002EEr 1  8E rr rr     	stx ddt02+1
+0002F1r 1  8C rr rr     	sty ddt02
+0002F4r 1  AE rr rr     	ldx dos_disk_table+3		; convert .X to char-representation for display
+0002F7r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0002FAr 1  8E rr rr     	stx ddt03+1
+0002FDr 1  8C rr rr     	sty ddt03
+000300r 1  AE rr rr     	ldx dos_disk_table+4		; convert .X to char-representation for display
+000303r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000306r 1  8E rr rr     	stx ddt04+1
+000309r 1  8C rr rr     	sty ddt04
+00030Cr 1  AE rr rr     	ldx dos_disk_table+5		; convert .X to char-representation for display
+00030Fr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000312r 1  8E rr rr     	stx ddt05+1
+000315r 1  8C rr rr     	sty ddt05
+000318r 1  AE rr rr     	ldx dos_disk_table+6		; convert .X to char-representation for display
+00031Br 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+00031Er 1  8E rr rr     	stx ddt06+1
+000321r 1  8C rr rr     	sty ddt06
+000324r 1  AE rr rr     	ldx dos_disk_table+7		; convert .X to char-representation for display
+000327r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+00032Ar 1  8E rr rr     	stx ddt07+1
+00032Dr 1  8C rr rr     	sty ddt07
+000330r 1               
+000330r 1  20 rr rr     	jsr checkpoint
+000333r 1  00           	.byte 0
+000334r 1  78 78 2C     ddt00:	.byte	"xx,"
+000337r 1  78 78 2C     ddt01:	.byte	"xx,"
+00033Ar 1  78 78 2C     ddt02:	.byte	"xx,"
+00033Dr 1  78 78 2C     ddt03:	.byte	"xx,"
+000340r 1  78 78 2C     ddt04:	.byte	"xx,"
+000343r 1  78 78 2C     ddt05:	.byte	"xx,"
+000346r 1  78 78 2C     ddt06:	.byte	"xx,"
+000349r 1  78 78        ddt07:	.byte	"xx"
+00034Br 1  00           	.byte 0
+00034Cr 1               
+00034Cr 1  AE rr rr     	ldx dos_disk_table+8		; convert .X to char-representation for display
+00034Fr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000352r 1  8E rr rr     	stx ddt08+1
+000355r 1  8C rr rr     	sty ddt08
+000358r 1  AE rr rr     	ldx dos_disk_table+9		; convert .X to char-representation for display
+00035Br 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+00035Er 1  8E rr rr     	stx ddt09+1
+000361r 1  8C rr rr     	sty ddt09
+000364r 1  AE rr rr     	ldx dos_disk_table+10		; convert .X to char-representation for display
+000367r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+00036Ar 1  8E rr rr     	stx ddt0a+1
+00036Dr 1  8C rr rr     	sty ddt0a
+000370r 1  AE rr rr     	ldx dos_disk_table+11		; convert .X to char-representation for display
+000373r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000376r 1  8E rr rr     	stx ddt0b+1
+000379r 1  8C rr rr     	sty ddt0b
+00037Cr 1  AE rr rr     	ldx dos_disk_table+12		; convert .X to char-representation for display
+00037Fr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000382r 1  8E rr rr     	stx ddt0c+1
+000385r 1  8C rr rr     	sty ddt0c
+000388r 1  AE rr rr     	ldx dos_disk_table+13		; convert .X to char-representation for display
+00038Br 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+00038Er 1  8E rr rr     	stx ddt0d+1
+000391r 1  8C rr rr     	sty ddt0d
+000394r 1  AE rr rr     	ldx dos_disk_table+14		; convert .X to char-representation for display
+000397r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+00039Ar 1  8E rr rr     	stx ddt0e+1
+00039Dr 1  8C rr rr     	sty ddt0e
+0003A0r 1  AE rr rr     	ldx dos_disk_table+15		; convert .X to char-representation for display
+0003A3r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0003A6r 1  8E rr rr     	stx ddt0f+1
+0003A9r 1  8C rr rr     	sty ddt0f
+0003ACr 1               
+0003ACr 1  20 rr rr     	jsr checkpoint
+0003AFr 1  00           	.byte 0
+0003B0r 1  78 78 2C     ddt08:	.byte	"xx,"
+0003B3r 1  78 78 2C     ddt09:	.byte	"xx,"
+0003B6r 1  78 78 2C     ddt0a:	.byte	"xx,"
+0003B9r 1  78 78 2C     ddt0b:	.byte	"xx,"
+0003BCr 1  78 78 2C     ddt0c:	.byte	"xx,"
+0003BFr 1  78 78 2C     ddt0d:	.byte	"xx,"
+0003C2r 1  78 78 2C     ddt0e:	.byte	"xx,"
+0003C5r 1  78 78        ddt0f:	.byte	"xx"
+0003C7r 1  00           	.byte 0
+0003C8r 1               
+0003C8r 1  AE rr rr     	ldx dos_disk_table+0+16		; convert .X to char-representation for display
+0003CBr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0003CEr 1  8E rr rr     	stx ddt10+1
+0003D1r 1  8C rr rr     	sty ddt10
+0003D4r 1  AE rr rr     	ldx dos_disk_table+1+16		; convert .X to char-representation for display
+0003D7r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0003DAr 1  8E rr rr     	stx ddt11+1
+0003DDr 1  8C rr rr     	sty ddt11
+0003E0r 1  AE rr rr     	ldx dos_disk_table+2+16		; convert .X to char-representation for display
+0003E3r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0003E6r 1  8E rr rr     	stx ddt12+1
+0003E9r 1  8C rr rr     	sty ddt12
+0003ECr 1  AE rr rr     	ldx dos_disk_table+3+16		; convert .X to char-representation for display
+0003EFr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0003F2r 1  8E rr rr     	stx ddt13+1
+0003F5r 1  8C rr rr     	sty ddt13
+0003F8r 1  AE rr rr     	ldx dos_disk_table+4+16		; convert .X to char-representation for display
+0003FBr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0003FEr 1  8E rr rr     	stx ddt14+1
+000401r 1  8C rr rr     	sty ddt14
+000404r 1  AE rr rr     	ldx dos_disk_table+5+16		; convert .X to char-representation for display
+000407r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+00040Ar 1  8E rr rr     	stx ddt15+1
+00040Dr 1  8C rr rr     	sty ddt15
+000410r 1  AE rr rr     	ldx dos_disk_table+6+16		; convert .X to char-representation for display
+000413r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000416r 1  8E rr rr     	stx ddt16+1
+000419r 1  8C rr rr     	sty ddt16
+00041Cr 1  AE rr rr     	ldx dos_disk_table+7+16		; convert .X to char-representation for display
+00041Fr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000422r 1  8E rr rr     	stx ddt17+1
+000425r 1  8C rr rr     	sty ddt17
+000428r 1               
+000428r 1  20 rr rr     	jsr checkpoint
+00042Br 1  00           	.byte 0
+00042Cr 1  78 78 2C     ddt10:	.byte	"xx,"
+00042Fr 1  78 78 2C     ddt11:	.byte	"xx,"
+000432r 1  78 78 2C     ddt12:	.byte	"xx,"
+000435r 1  78 78 2C     ddt13:	.byte	"xx,"
+000438r 1  78 78 2C     ddt14:	.byte	"xx,"
+00043Br 1  78 78 2C     ddt15:	.byte	"xx,"
+00043Er 1  78 78 2C     ddt16:	.byte	"xx,"
+000441r 1  78 78        ddt17:	.byte	"xx"
+000443r 1  00           	.byte 0
+000444r 1               
+000444r 1  AE rr rr     	ldx dos_disk_table+8+16		; convert .X to char-representation for display
+000447r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+00044Ar 1  8E rr rr     	stx ddt18+1
+00044Dr 1  8C rr rr     	sty ddt18
+000450r 1  AE rr rr     	ldx dos_disk_table+9+16		; convert .X to char-representation for display
+000453r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000456r 1  8E rr rr     	stx ddt19+1
+000459r 1  8C rr rr     	sty ddt19
+00045Cr 1  AE rr rr     	ldx dos_disk_table+10+16	; convert .X to char-representation for display
+00045Fr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000462r 1  8E rr rr     	stx ddt1a+1
+000465r 1  8C rr rr     	sty ddt1a
+000468r 1  AE rr rr     	ldx dos_disk_table+11+16	; convert .X to char-representation for display
+00046Br 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+00046Er 1  8E rr rr     	stx ddt1b+1
+000471r 1  8C rr rr     	sty ddt1b
+000474r 1  AE rr rr     	ldx dos_disk_table+12+16	; convert .X to char-representation for display
+000477r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+00047Ar 1  8E rr rr     	stx ddt1c+1
+00047Dr 1  8C rr rr     	sty ddt1c
+000480r 1  AE rr rr     	ldx dos_disk_table+13+16	; convert .X to char-representation for display
+000483r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000486r 1  8E rr rr     	stx ddt1d+1
+000489r 1  8C rr rr     	sty ddt1d
+00048Cr 1  AE rr rr     	ldx dos_disk_table+14+16	; convert .X to char-representation for display
+00048Fr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000492r 1  8E rr rr     	stx ddt1e+1
+000495r 1  8C rr rr     	sty ddt1e
+000498r 1  AE rr rr     	ldx dos_disk_table+15+16	; convert .X to char-representation for display
+00049Br 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+00049Er 1  8E rr rr     	stx ddt1f+1
+0004A1r 1  8C rr rr     	sty ddt1f
+0004A4r 1               
+0004A4r 1  20 rr rr     	jsr checkpoint
+0004A7r 1  00           	.byte 0
+0004A8r 1  78 78 2C     ddt18:	.byte	"xx,"
+0004ABr 1  78 78 2C     ddt19:	.byte	"xx,"
+0004AEr 1  78 78 2C     ddt1a:	.byte	"xx,"
+0004B1r 1  78 78 2C     ddt1b:	.byte	"xx,"
+0004B4r 1  78 78 2C     ddt1c:	.byte	"xx,"
+0004B7r 1  78 78 2C     ddt1d:	.byte	"xx,"
+0004BAr 1  78 78 2C     ddt1e:	.byte	"xx,"
+0004BDr 1  78 78        ddt1f:	.byte	"xx"
+0004BFr 1  00           	.byte 0
+0004C0r 1               
+0004C0r 1  60           	rts
+0004C1r 1               
+0004C1r 1               ;	========================
+0004C1r 1               
+0004C1r 1               .EXPORT dump_disk_count
+0004C1r 1               dump_disk_count:
+0004C1r 1               
+0004C1r 1  AD rr rr     	lda dos_disk_count
+0004C4r 1               
+0004C4r 1               	; print out this message to Checkpoint
+0004C4r 1               	;
+0004C4r 1  AA           	tax				; convert .X to char-representation for display
+0004C5r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0004C8r 1  8C rr rr     	sty ddc
+0004CBr 1  8E rr rr     	stx ddc+1
+0004CEr 1  20 rr rr     	jsr checkpoint
+0004D1r 1  00 64 6F 73  	.byte 0,"dos_disk_count = "
+0004D5r 1  5F 64 69 73  
+0004D9r 1  6B 5F 63 6F  
+0004E3r 1  78 78 00     ddc:	.byte "xx",0
+0004E6r 1               
+0004E6r 1  60           	rts
+0004E7r 1               
+0004E7r 1               ;	========================
+0004E7r 1               
+0004E7r 1               
+0004E7r 1               delay1sec:
+0004E7r 1               
+0004E7r 1  A0 32        		ldy #$32	; 50dec (frames per sec)
+0004E9r 1               d1s1:
+0004E9r 1  AD 12 D0     		lda $d012	; raster y-value
+0004ECr 1  C9 40        		cmp #$40
+0004EEr 1  D0 F9        		bne d1s1
+0004F0r 1               
+0004F0r 1  CD 12 D0     d1s2:		cmp $d012
+0004F3r 1  F0 FB        		beq d1s2
+0004F5r 1               
+0004F5r 1  88           		dey		; do this loop 50 times
+0004F6r 1  D0 F1        		bne d1s1
+0004F8r 1               
+0004F8r 1  60           		rts
+0004F9r 1               
+0004F9r 1               ;	========================
+0004F9r 1               
+0004F9r 1               
+0004F9r 1               
+0004F9r 1               debug_show_cluster_number:
+0004F9r 1               
+0004F9r 1               	; work out where the cluster number should be
+0004F9r 1  20 rr rr     	jsr dos_get_file_descriptor_offset
+0004FCr 1  DA           	phx
+0004FDr 1  20 rr rr     	jsr checkpoint_bytetohex
+000500r 1  8E rr rr     	stx dfanc_fd
+000503r 1  FA           	plx
+000504r 1  8A           	txa
+000505r 1  18           	clc
+000506r 1  69 06        	adc #dos_filedescriptor_offset_currentcluster
+000508r 1  A8           	tay
+000509r 1               
+000509r 1               
+000509r 1  B9 rr rr     	lda dos_file_descriptors+3,y
+00050Cr 1  5A           	phy
+00050Dr 1  AA           	tax
+00050Er 1  20 rr rr     	jsr checkpoint_bytetohex
+000511r 1  8C rr rr     	sty dfanc_hex+0
+000514r 1  8E rr rr     	stx dfanc_hex+1
+000517r 1               
+000517r 1  7A           	ply
+000518r 1  5A           	phy
+000519r 1               
+000519r 1  AC rr rr     	ldy dos_scratch_byte_2
+00051Cr 1  B9 rr rr     	lda dos_file_descriptors+2,y
+00051Fr 1  AA           	tax
+000520r 1  20 rr rr     	jsr checkpoint_bytetohex
+000523r 1  8C rr rr     	sty dfanc_hex+2
+000526r 1  8E rr rr     	stx dfanc_hex+3
+000529r 1               
+000529r 1  7A           	ply
+00052Ar 1  5A           	phy
+00052Br 1               
+00052Br 1  AC rr rr     	ldy dos_scratch_byte_2
+00052Er 1  B9 rr rr     	lda dos_file_descriptors+1,y
+000531r 1  AA           	tax
+000532r 1  20 rr rr     	jsr checkpoint_bytetohex
+000535r 1  8C rr rr     	sty dfanc_hex+4
+000538r 1  8E rr rr     	stx dfanc_hex+5
+00053Br 1               
+00053Br 1  7A           	ply
+00053Cr 1               
+00053Cr 1  AC rr rr     	ldy dos_scratch_byte_2
+00053Fr 1  B9 rr rr     	lda dos_file_descriptors+0,y
+000542r 1  AA           	tax
+000543r 1  20 rr rr     	jsr checkpoint_bytetohex
+000546r 1  8C rr rr     	sty dfanc_hex+6
+000549r 1  8E rr rr     	stx dfanc_hex+7
+00054Cr 1               
+00054Cr 1               
+00054Cr 1  20 rr rr     	jsr checkpoint
+00054Fr 1  00 46 69 6C  	.byte 0,"File Desc #"
+000553r 1  65 20 44 65  
+000557r 1  73 63 20 23  
+00055Br 1               dfanc_fd:
+00055Br 1  24 3A 20 63  	.byte "$: curr_cluster=$"
+00055Fr 1  75 72 72 5F  
+000563r 1  63 6C 75 73  
+00056Cr 1               dfanc_hex:
+00056Cr 1  24 24 24 24  	.BYTE "$$$$$$$$",0
+000570r 1  24 24 24 24  
+000574r 1  00           
+000575r 1               
+000575r 1  60           	rts
+000576r 1               
+000576r 1               

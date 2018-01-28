@@ -1,0 +1,44 @@
+ca65 V2.15
+Main file   : kickstart_keyboard.a65
+Current file: kickstart_keyboard.a65
+
+000000r 1               .INCLUDE "kickstart.i65"
+000000r 2               ; My try to define some stuff can be included from every kickstart related sources.
+000000r 2               
+000000r 2               .SETCPU	"4510"	; Set CPU to "4510 mode"
+000000r 2               
+000000r 2               
+000000r 2               ; Try to make it clear that we want to use zero page addressing. The intended usage:
+000000r 2               ; LDA ZP(zp_temp_byte)
+000000r 2               ; I *think* it's may be better than this syntax which is even complained by ca65 as
+000000r 2               ; a warning:   LDA <zp_temp_byte
+000000r 2               
+000000r 2               .DEFINE ZP(n) .LOBYTE(n)
+000000r 2               
+000000r 2               .MACRO space label,bytes
+000000r 2               label: .res bytes
+000000r 2               .ENDMACRO
+000000r 2               
+000000r 2               
+000000r 1               
+000000r 1               .SEGMENT "CODE"
+000000r 1               
+000000r 1               
+000000r 1               .EXPORT scankeyboard
+000000r 1               
+000000r 1               peekkeyboard:
+000000r 1               	; We now use hardware-accelerated keyboard reading
+000000r 1  AD 10 D6     	lda $d610
+000003r 1  C9 00        	cmp #$00
+000005r 1  F0 02        	beq nokey
+000007r 1  18           	clc
+000008r 1  60           	rts
+000009r 1               nokey:	; no key currently down, so set carry and return
+000009r 1  38           	sec
+00000Ar 1  60           	rts
+00000Br 1               
+00000Br 1               scankeyboard:
+00000Br 1  20 rr rr     	jsr peekkeyboard
+00000Er 1  8D 10 D6     	sta $d610 ; clear key from buffer
+000011r 1  60           	rts
+000011r 1               

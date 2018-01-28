@@ -1,0 +1,3847 @@
+ca65 V2.15
+Main file   : kickstart_dos.a65
+Current file: kickstart_dos.a65
+
+000000r 1                       .include "kickstart.i65"
+000000r 2               ; My try to define some stuff can be included from every kickstart related sources.
+000000r 2               
+000000r 2               .SETCPU	"4510"	; Set CPU to "4510 mode"
+000000r 2               
+000000r 2               
+000000r 2               ; Try to make it clear that we want to use zero page addressing. The intended usage:
+000000r 2               ; LDA ZP(zp_temp_byte)
+000000r 2               ; I *think* it's may be better than this syntax which is even complained by ca65 as
+000000r 2               ; a warning:   LDA <zp_temp_byte
+000000r 2               
+000000r 2               .DEFINE ZP(n) .LOBYTE(n)
+000000r 2               
+000000r 2               .MACRO space label,bytes
+000000r 2               label: .res bytes
+000000r 2               .ENDMACRO
+000000r 2               
+000000r 2               
+000000r 1                       .include "kickstart_machine.a65"
+000000r 2               
+000000r 2               	reset_vector = $fffc
+000000r 2               	irq_vector = $fffe
+000000r 2               	nmi_vector = $fffa
+000000r 2               
+000000r 2               
+000000r 2               	hypervisor_a = $d640
+000000r 2               	hypervisor_x = $d641
+000000r 2               	hypervisor_y = $d642
+000000r 2               	hypervisor_z = $d643
+000000r 2               	hypervisor_b = $d644
+000000r 2               	hypervisor_spl = $d645
+000000r 2               	hypervisor_sph = $d646
+000000r 2               	hypervisor_flags = $d647
+000000r 2               	hypervisor_pcl = $d648
+000000r 2               	hypervisor_pch = $d649
+000000r 2               	hypervisor_maplolo = $d64a
+000000r 2               	hypervisor_maplohi = $d64b
+000000r 2               	hypervisor_maphilo = $d64c
+000000r 2               	hypervisor_maphihi = $d64d
+000000r 2               	hypervisor_maplomb = $d64e
+000000r 2               	hypervisor_maphimb = $d64f
+000000r 2               	hypervisor_cpuport00 = $d650
+000000r 2               	hypervisor_cpuport01 = $d651
+000000r 2               	hypervisor_iomode = $d652
+000000r 2               	hypervisor_dmagic_srcmb = $d653
+000000r 2               	hypervisor_dmagic_dstmb = $d654
+000000r 2               	hypervisor_dmagic_list0 = $d655
+000000r 2               	hypervisor_dmagic_list1 = $d656
+000000r 2               	hypervisor_dmagic_list2 = $d657
+000000r 2               	hypervisor_dmagic_list3 = $d658
+000000r 2               	hypervisor_hardware_virtualisation = $d659
+000000r 2               
+000000r 2               	; d65a
+000000r 2               	; d65b
+000000r 2               	; d65c
+000000r 2               
+000000r 2               	hypervisor_vm_currentpage_lo = $d65d
+000000r 2               	hypervisor_vm_currentpage_mid = $d65e
+000000r 2               	hypervisor_vm_currentpage_hi = $d65f
+000000r 2               
+000000r 2               	hypervisor_vm_pagetable = $d660
+000000r 2               	hypervisor_vm_pagetable0_logicalpage_lo = $d660
+000000r 2               	hypervisor_vm_pagetable0_logicalpage_hi = $d661
+000000r 2               	hypervisor_vm_pagetable0_physicalpage_lo = $d662
+000000r 2               	hypervisor_vm_pagetable0_physicalpage_hi = $d663
+000000r 2               	hypervisor_vm_pagetable1_logicalpage_lo = $d664
+000000r 2               	hypervisor_vm_pagetable1_logicalpage_hi = $d665
+000000r 2               	hypervisor_vm_pagetable1_physicalpage_lo = $d666
+000000r 2               	hypervisor_vm_pagetable1_physicalpage_hi = $d667
+000000r 2               	hypervisor_vm_pagetable2_logicalpage_lo = $d668
+000000r 2               	hypervisor_vm_pagetable2_logicalpage_hi = $d669
+000000r 2               	hypervisor_vm_pagetable2_physicalpage_lo = $d66a
+000000r 2               	hypervisor_vm_pagetable2_physicalpage_hi = $d66b
+000000r 2               	hypervisor_vm_pagetable3_logicalpage_lo = $d66c
+000000r 2               	hypervisor_vm_pagetable3_logicalpage_hi = $d66d
+000000r 2               	hypervisor_vm_pagetable3_physicalpage_lo = $d66e
+000000r 2               	hypervisor_vm_pagetable3_physicalpage_hi = $d66f
+000000r 2               
+000000r 2               	hypervisor_georam_base_mb = $d670
+000000r 2               	hypervsior_georam_block_mask = $d671
+000000r 2               
+000000r 2               	; d672 110 010
+000000r 2               	hypervisor_secure_mode_flags = $d672
+000000r 2               
+000000r 2               	; d673
+000000r 2               	; d674
+000000r 2               	; d675
+000000r 2               	; d676
+000000r 2               	; d677
+000000r 2               	; d678
+000000r 2               	; d679
+000000r 2               	; d67a
+000000r 2               	; d67b
+000000r 2               
+000000r 2               	hypervisor_write_char_to_serial_monitor = $d67c
+000000r 2               
+000000r 2               	hypervisor_feature_enables = $d67d
+000000r 2               	hypervisor_kickedup_flag = $d67e
+000000r 2               	hypervisor_cartridge_flags = $d67e
+000000r 2               	hypervisor_enterexit_trigger = $d67f
+000000r 2               
+000000r 2               	; Where sector buffer maps (over = $DE00-$DFFF IO expansion space)
+000000r 2               	sd_sectorbuffer = $DE00
+000000r 2               	sd_address_byte0 = $D681
+000000r 2               	sd_address_byte1 = $D682
+000000r 2               	sd_address_byte2 = $D683
+000000r 2               	sd_address_byte3 = $D684
+000000r 2               
+000000r 2               	fpga_switches_low = $d6ec
+000000r 2               	fpga_switches_high = $d6ed
+000000r 2               
+000000r 2               	VICIV_MAGIC = $d02f
+000000r 2               
+000000r 2               ; LGB moved here
+000000r 2               
+000000r 2               ; Current file descriptors
+000000r 2               ; Each descriptor has:
+000000r 2               ;   disk id : 1 byte ($00-$07 = file open, $FF = file closed)
+000000r 2               ;   access mode : 1 byte ($00 = read only)
+000000r 2               ;   start cluster : 4 bytes
+000000r 2               ;   current cluster : 4 bytes
+000000r 2               ;   current sector in cluster : 1 byte
+000000r 2               ;   offset in sector: 2 bytes
+000000r 2               ;   file offset / $100 : 3 bytes
+000000r 2               ;
+000000r 2               
+000000r 2                   dos_filedescriptor_max = 4
+000000r 2                   dos_filedescriptor_offset_diskid = 0
+000000r 2                   dos_filedescriptor_offset_mode = 1
+000000r 2                   dos_filedescriptor_offset_startcluster = 2
+000000r 2                   dos_filedescriptor_offset_currentcluster = 6
+000000r 2               ;
+000000r 2               ; These last three fields must be contiguous, as dos_open_current_file
+000000r 2               ; relies on it.
+000000r 2               ;
+000000r 2                   dos_filedescriptor_offset_sectorincluster = 10
+000000r 2                   dos_filedescriptor_offset_offsetinsector = 11
+000000r 2                   dos_filedescriptor_offset_fileoffset = 13
+000000r 2               
+000000r 2               ;
+000000r 2                               ; WARNING: dos_readdir_read_next_entry uses carnal knowledge about the following
+000000r 2                               ;          structure, particularly the length as calculated here:
+000000r 2                               ;
+000000r 2                               dos_dirent_structure_length =  64+1+11+4+4+1
+000000r 2               
+000000r 2               dos_max_disks = 6
+000000r 2               
+000000r 2               dos_errorcode_invalid_address = $10
+000000r 2               dos_errorcode_read_timeout = $07
+000000r 2               
+000000r 2               syspart_error_nosyspart = $ff
+000000r 2               
+000000r 2               
+000000r 1               
+000000r 1               .SEGMENT "CODE"
+000000r 1               
+000000r 1               
+000000r 1               .autoimport +
+000000r 1               
+000000r 1               
+000000r 1               
+000000r 1               ; XXX - Track down why 2nd and subsequent LFN blocks are not used.
+000000r 1               
+000000r 1               	 os_version  = $0102
+000000r 1               	 dos_version = $0102
+000000r 1               	 constant_partition_type_fat32_chs = $0b
+000000r 1               	 constant_partition_type_fat32_lba = $0c
+000000r 1               	 constant_partition_type_megea65_sys =$41
+000000r 1               
+000000r 1               	; DOS error codes
+000000r 1               	;
+000000r 1               	 dos_errorcode_partition_not_interesting = $01
+000000r 1               	 dos_errorcode_bad_signature = $02
+000000r 1               	 dos_errorcode_is_small_fat = $03
+000000r 1               	 dos_errorcode_too_many_reserved_clusters = $04
+000000r 1               	 dos_errorcode_not_two_fats = $05
+000000r 1               	 dos_errorcode_too_few_clusters = $06
+000000r 1               	 ;dos_errorcode_read_timeout = $07
+000000r 1               	 dos_errorcode_partition_error = $08
+000000r 1               
+000000r 1               	 ;dos_errorcode_invalid_address = $10
+000000r 1               	 dos_errorcode_illegal_value = $11
+000000r 1               
+000000r 1               	 dos_errorcode_no_such_disk = $80
+000000r 1               	 dos_errorcode_name_too_long = $81
+000000r 1               	 dos_errorcode_not_implemented = $82
+000000r 1               	 dos_errorcode_file_too_long = $83
+000000r 1               	 dos_errorcode_too_many_open_files = $84
+000000r 1               	 dos_errorcode_invalid_cluster = $85
+000000r 1               	 dos_errorcode_is_a_directory = $86
+000000r 1               	 dos_errorcode_not_a_directory = $87
+000000r 1               	 dos_errorcode_file_not_found = $88
+000000r 1               	 dos_errorcode_invalid_file_descriptor = $89
+000000r 1               	 dos_errorcode_image_wrong_length = $8A
+000000r 1               	 dos_errorcode_image_fragmented = $8B
+000000r 1               
+000000r 1               	 dos_errorcode_eof = $FF
+000000r 1               
+000000r 1               	; FAT directory entry constants
+000000r 1               	;
+000000r 1               	; these seem to be offsets into the STANDARD FAT32 header (DO NOT CHANGE)
+000000r 1               	;
+000000r 1               	 fs_fat32_dirent_offset_attributes = 11
+000000r 1               	 fs_fat32_dirent_offset_shortname = 0
+000000r 1               	 fs_fat32_dirent_offset_create_tenthsofseconds = 13
+000000r 1               	 fs_fat32_dirent_offset_create_time = 14
+000000r 1               	 fs_fat32_dirent_offset_create_date = 16
+000000r 1               	 fs_fat32_dirent_offset_access_date = 18
+000000r 1               	 fs_fat32_dirent_offset_clusters_high = 20
+000000r 1               	 fs_fat32_dirent_offset_modify_time = 22
+000000r 1               	 fs_fat32_dirent_offset_modify_date = 24
+000000r 1               	 fs_fat32_dirent_offset_clusters_low = 26
+000000r 1               	 fs_fat32_dirent_offset_file_length = 28
+000000r 1               
+000000r 1               	; VFAT long file name entry constants
+000000r 1               	;
+000000r 1               	; these seem to be offsets into the STANDARD FAT32 header (DO NOT CHANGE)
+000000r 1               	;
+000000r 1               	 fs_fat32_dirent_offset_lfn_part_number = 0
+000000r 1               	 fs_fat32_dirent_offset_lfn_type = 12
+000000r 1               	 fs_fat32_dirent_offset_lfn_checksum = 13
+000000r 1               	 fs_fat32_dirent_offset_lfn_part1_chars = 5
+000000r 1               	 fs_fat32_dirent_offset_lfn_part1_start = 1
+000000r 1               	 fs_fat32_dirent_offset_lfn_part2_chars = 6
+000000r 1               	 fs_fat32_dirent_offset_lfn_part2_start = 14
+000000r 1               	 fs_fat32_dirent_offset_lfn_part3_chars = 2
+000000r 1               	 fs_fat32_dirent_offset_lfn_part3_start = 28
+000000r 1               
+000000r 1               	 fs_fat32_attribute_isreadonly = $01
+000000r 1               	 fs_fat32_attribute_ishidden = $02
+000000r 1               	 fs_fat32_attribute_issystem = $04
+000000r 1               	 fs_fat32_attribute_isvolumelabel = $08
+000000r 1               	 fs_fat32_attribute_isdirectory = $10
+000000r 1               	 fs_fat32_attribute_archiveset = $20
+000000r 1               
+000000r 1               	; Possible file modes
+000000r 1               	;
+000000r 1               	 dos_filemode_directoryaccess = $80
+000000r 1               	 dos_filemode_end_of_directory = $81
+000000r 1               	 dos_filemode_readonly = 0
+000000r 1               	 dos_filemode_readwrite = 1
+000000r 1               
+000000r 1               	; 256-byte fixed size records for REL emulaton
+000000r 1               	;
+000000r 1               	 dos_filemode_relative = 2
+000000r 1               
+000000r 1               ;	========================
+000000r 1               
+000000r 1               .EXPORT dos_and_process_trap
+000000r 1               dos_and_process_trap:
+000000r 1               
+000000r 1               	; XXX - Machine is being updated to automatically disable IRQs on trapping
+000000r 1               	; to hypervisor, but for now, we need to do this explicitly.
+000000r 1               	; Should be able to be removed after 20160103
+000000r 1               	; BG: cannot confirm removal of the instruction below. Dated 20160902
+000000r 1  78           	sei
+000001r 1               
+000001r 1               	; XXX - We have just added a fix for this in the CPU, to CLEAR DECIMAL MODE
+000001r 1               	; on entry to the hypervisor. But I'm not taking any chances just now.
+000001r 1               	;
+000001r 1  D8           	CLD
+000002r 1               
+000002r 1               	; Sub-function is selected by A.
+000002r 1               	; Bits 6-1 are the only ones used.
+000002r 1               	; Mask out bit 0 so that indirect jmp's are valid.
+000002r 1               	;
+000002r 1  29 FE        	and #$FE
+000004r 1  AA           	tax
+000005r 1  7C rr rr     	jmp (dos_and_process_trap_table,x)
+000008r 1               
+000008r 1               ;	========================
+000008r 1               
+000008r 1               dos_and_process_trap_table:
+000008r 1               
+000008r 1               	; $00 - $0E
+000008r 1               	;
+000008r 1  rr rr        	.word trap_dos_getversion
+00000Ar 1  rr rr        	.word trap_dos_getdefaultdrive
+00000Cr 1  rr rr        	.word trap_dos_getcurrentdrive		; appears out-of-order (is far below)
+00000Er 1  rr rr        	.word trap_dos_selectdrive
+000010r 1  rr rr        	.word trap_dos_getdisksize		; not currently implememted
+000012r 1  rr rr        	.word trap_dos_getcwd			; not currently implememted
+000014r 1  rr rr        	.word trap_dos_chdir			; not currently implememted
+000016r 1  rr rr        	.word trap_dos_mkdir			; not currently implememted
+000018r 1               
+000018r 1               	; $10 - $1E
+000018r 1               	;
+000018r 1  rr rr        	.word trap_dos_rmdir			; not currently implememted
+00001Ar 1  rr rr        	.word trap_dos_opendir
+00001Cr 1  rr rr        	.word trap_dos_readdir
+00001Er 1  rr rr        	.word trap_dos_closedir
+000020r 1  rr rr        	.word trap_dos_openfile
+000022r 1  rr rr        	.word trap_dos_readfile		; not currently implememted
+000024r 1  rr rr        	.word trap_dos_writefile	; not currently implememted
+000026r 1  rr rr        	.word trap_dos_mkfile			; not currently implememted
+000028r 1               
+000028r 1               	; $20 - $2E
+000028r 1               	;
+000028r 1  rr rr        	.word trap_dos_closefile
+00002Ar 1  rr rr        	.word trap_dos_closeall
+00002Cr 1  rr rr        	.word trap_dos_seekfile		; not currently implememted
+00002Er 1  rr rr        	.word trap_dos_rmfile		; not currently implememted
+000030r 1  rr rr        	.word trap_dos_fstat		; not currently implememted
+000032r 1  rr rr        	.word trap_dos_rename		; not currently implememted
+000034r 1  rr rr        	.word trap_dos_filedate		; not currently implememted
+000036r 1  rr rr        	.word trap_dos_setname
+000038r 1               
+000038r 1               	; $30 - $3E
+000038r 1               	;
+000038r 1  rr rr        	.word trap_dos_findfirst
+00003Ar 1  rr rr        	.word trap_dos_findnext
+00003Cr 1  rr rr        	.word trap_dos_findfile
+00003Er 1  rr rr        	.word trap_dos_loadfile
+000040r 1  rr rr        	.word trap_dos_geterrorcode
+000042r 1  rr rr        	.word invalid_subfunction
+000044r 1  rr rr        	.word invalid_subfunction
+000046r 1  rr rr        	.word invalid_subfunction
+000048r 1               
+000048r 1               	; $40 - $4E
+000048r 1               	;
+000048r 1  rr rr        	.word trap_dos_d81attach
+00004Ar 1  rr rr        	.word trap_dos_d81detach
+00004Cr 1  rr rr        	.word trap_dos_d81writeen
+00004Er 1  rr rr        	.word invalid_subfunction
+000050r 1  rr rr        	.word invalid_subfunction
+000052r 1  rr rr        	.word invalid_subfunction
+000054r 1  rr rr        	.word invalid_subfunction
+000056r 1  rr rr        	.word invalid_subfunction
+000058r 1               
+000058r 1               	; $50 - $5E
+000058r 1               	;
+000058r 1  rr rr        	.word trap_dos_gettasklist		; not currently implememted
+00005Ar 1  rr rr        	.word trap_dos_sendmessage		; not currently implememted
+00005Cr 1  rr rr        	.word trap_dos_receivemessage		; not currently implememted
+00005Er 1  rr rr        	.word trap_dos_writeintotask		; not currently implememted
+000060r 1  rr rr        	.word trap_dos_readoutoftask		; not currently implememted
+000062r 1  rr rr        	.word invalid_subfunction
+000064r 1  rr rr        	.word invalid_subfunction
+000066r 1  rr rr        	.word invalid_subfunction
+000068r 1               
+000068r 1               	; $60 - $6E
+000068r 1               	;
+000068r 1  rr rr        	.word trap_dos_terminateothertask	; not currently implememted
+00006Ar 1  rr rr        	.word trap_dos_create_task_native	; not currently implememted
+00006Cr 1  rr rr        	.word trap_dos_load_into_task		; not currently implememted
+00006Er 1  rr rr        	.word trap_dos_create_task_c64		; not currently implememted
+000070r 1  rr rr        	.word trap_dos_create_task_c65		; not currently implememted
+000072r 1  rr rr        	.word trap_dos_exit_and_switch_to_task	; not currently implememted
+000074r 1  rr rr        	.word trap_dos_switch_to_task		; not currently implememted
+000076r 1  rr rr        	.word trap_dos_exit_task		; not currently implememted
+000078r 1               
+000078r 1               	; $70 - $7E
+000078r 1               	;
+000078r 1  rr rr        	.word invalid_subfunction
+00007Ar 1  rr rr        	.word invalid_subfunction
+00007Cr 1  rr rr        	.word invalid_subfunction
+00007Er 1  rr rr        	.word invalid_subfunction
+000080r 1  rr rr        	.word invalid_subfunction
+000082r 1  rr rr        	.word invalid_subfunction
+000084r 1  rr rr        	.word invalid_subfunction
+000086r 1  rr rr        	.word invalid_subfunction
+000088r 1               
+000088r 1               ;	========================
+000088r 1               
+000088r 1               trap_dos_getversion:
+000088r 1               
+000088r 1               	; Return OS and DOS version.
+000088r 1               	; A/X = OS Version major/minor
+000088r 1               	; Z/Y = DOS Version major/minor
+000088r 1               
+000088r 1  A9 02        	lda #<os_version
+00008Ar 1  8D 41 D6     	sta hypervisor_x
+00008Dr 1  A9 01        	lda #>os_version
+00008Fr 1  8D 40 D6     	sta hypervisor_a
+000092r 1  A9 02        	lda #<dos_version
+000094r 1  8D 43 D6     	sta hypervisor_z
+000097r 1  A9 01        	lda #>dos_version
+000099r 1  8D 42 D6     	sta hypervisor_y
+00009Cr 1  4C rr rr     	jmp return_from_trap_with_success
+00009Fr 1               
+00009Fr 1               ;	========================
+00009Fr 1               
+00009Fr 1               trap_dos_getdefaultdrive:
+00009Fr 1               
+00009Fr 1  AD rr rr     	lda dos_default_disk
+0000A2r 1  8D 40 D6     	sta hypervisor_a
+0000A5r 1  4C rr rr     	jmp return_from_trap_with_success
+0000A8r 1               
+0000A8r 1               ;	========================
+0000A8r 1               
+0000A8r 1               trap_dos_selectdrive:
+0000A8r 1               
+0000A8r 1  20 rr rr     	jsr dos_set_current_disk
+0000ABr 1               
+0000ABr 1               return_from_trap_with_carry_flag:
+0000ABr 1               
+0000ABr 1  B3 rr rr     	lbcs return_from_trap_with_success
+0000AEr 1  93 rr rr     	lbcc return_from_trap_with_failure
+0000B1r 1               
+0000B1r 1               trap_dos_closeall:
+0000B1r 1               
+0000B1r 1  20 rr rr     	jsr dos_clear_filedescriptors
+0000B4r 1  4C rr rr     	jmp return_from_trap_with_success
+0000B7r 1               
+0000B7r 1               ;	========================
+0000B7r 1               
+0000B7r 1               trap_dos_loadfile:
+0000B7r 1               
+0000B7r 1               	; Only allow loading into lower 16MB to avoid possibility of writing
+0000B7r 1               	; over hypervisor
+0000B7r 1               	;
+0000B7r 1  AD 41 D6     	lda hypervisor_x
+0000BAr 1  8D rr rr     	sta dos_file_loadaddress
+0000BDr 1  AD 42 D6     	lda hypervisor_y
+0000C0r 1  8D rr rr     	sta dos_file_loadaddress+1
+0000C3r 1  AD 43 D6     	lda hypervisor_z
+0000C6r 1  8D rr rr     	sta dos_file_loadaddress+2
+0000C9r 1  A9 00        	lda #$00
+0000CBr 1  8D rr rr     	sta dos_file_loadaddress+3
+0000CEr 1               
+0000CEr 1  20 rr rr     	jsr dos_readfileintomemory
+0000D1r 1  4C rr rr     	jmp return_from_trap_with_carry_flag
+0000D4r 1               
+0000D4r 1               ;	========================
+0000D4r 1               
+0000D4r 1               trap_dos_setname:
+0000D4r 1               
+0000D4r 1               	; read file name from any where in bottom 32KB of RAM, as mapped on entry
+0000D4r 1               	; to the hypervisor (this prevents the user from setting the filename to some
+0000D4r 1               	; piece of the hypervisor, and thus leaking hypervisor data to user-land if the
+0000D4r 1               	; user were to later query the filename).
+0000D4r 1               
+0000D4r 1  20 rr rr     	jsr checkpoint
+0000D7r 1  00 74 72 61  	.byte 0,"trap_dos_setname",0
+0000DBr 1  70 5F 64 6F  
+0000DFr 1  73 5F 73 65  
+0000E9r 1               
+0000E9r 1  20 rr rr     	jsr hypervisor_setup_copy_region
+0000ECr 1  93 84 00     	lbcc tdsnfailure
+0000EFr 1               
+0000EFr 1  A0 3F        	ldy #$3f
+0000F1r 1  B1 rr        tdsn1:	lda (<hypervisor_userspace_copy_vector),y
+0000F3r 1  99 rr rr     	sta dos_requested_filename,y
+0000F6r 1  88           	dey
+0000F7r 1  10 F8        	bpl tdsn1
+0000F9r 1               
+0000F9r 1               	; now set length
+0000F9r 1               	;
+0000F9r 1  AD 43 D6     	lda hypervisor_z
+0000FCr 1  C9 3F        	cmp #$3f
+0000FEr 1  90 08        	bcc tdsn2
+000100r 1  A9 81        	lda #dos_errorcode_name_too_long
+000102r 1  8D rr rr     	sta dos_error_code
+000105r 1  4C rr rr     	jmp return_from_trap_with_failure
+000108r 1               
+000108r 1               tdsn2:
+000108r 1               	; setname succeeded
+000108r 1               	;
+000108r 1  9C rr rr     	stz dos_requested_filename_len
+00010Br 1               
+00010Br 1               	; upper case the filename for comparison
+00010Br 1               	;
+00010Br 1  20 rr rr     	jsr dos_requested_filename_to_uppercase
+00010Er 1               
+00010Er 1               	; clear out checkpoint message to make sure there are no $00 chars hiding
+00010Er 1               	; to cause grief.
+00010Er 1               	;
+00010Er 1  A9 20        	lda #$20
+000110r 1  A0 27        	ldy #39
+000112r 1               tdsn6:
+000112r 1  99 rr rr     	sta setnamemsg,y
+000115r 1  88           	dey
+000116r 1  C0 0B        	cpy #11
+000118r 1  D0 F8        	bne tdsn6
+00011Ar 1               
+00011Ar 1               tdsn5:
+00011Ar 1               	; display name length in checkpoint message
+00011Ar 1               	;
+00011Ar 1  6B           	tza
+00011Br 1               
+00011Br 1  AA           	tax				; convert .X to char-representation for display
+00011Cr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+00011Fr 1  8C rr rr     	sty setnamemsglen+0
+000122r 1  8E rr rr     	stx setnamemsglen+1
+000125r 1               
+000125r 1               	; Display filename in checkpoint message
+000125r 1               	;
+000125r 1  C2 18        	cpz #24
+000127r 1  90 02        	bcc tdsn3
+000129r 1  A3 18        	ldz #24
+00012Br 1               
+00012Br 1               tdsn3:
+00012Br 1  6B           	tza
+00012Cr 1  A8           	tay
+00012Dr 1  88           	dey
+00012Er 1               
+00012Er 1  B9 rr rr     tdsn4:	lda dos_requested_filename,y
+000131r 1  D0 02        	bne tdsn7
+000133r 1               
+000133r 1  A9 3F        	lda #$3f ; ? mark in place of $00 chars
+000135r 1               tdsn7:
+000135r 1  99 rr rr     	sta setnamemsgname,y
+000138r 1  88           	dey
+000139r 1  10 F3        	bpl tdsn4
+00013Br 1               
+00013Br 1  6B           	tza
+00013Cr 1  A8           	tay
+00013Dr 1  A9 29        	lda #')'			; ) ????
+00013Fr 1  99 rr rr     	sta setnamemsgname,y
+000142r 1               
+000142r 1  20 rr rr     	jsr checkpoint
+000145r 1  00           	.byte 0
+000146r 1               setnamemsg:
+000146r 1  73 65 74 6E  	.byte "setname($"
+00014Ar 1  61 6D 65 28  
+00014Er 1  24           
+00014Fr 1               setnamemsglen:
+00014Fr 1  25 25 2C     	.byte "%%,"
+000152r 1               setnamemsgname:
+000152r 1  20 20 20 20  	.byte "                            " ; space reserved for the filename (BG: not enuff chars?)
+000156r 1  20 20 20 20  
+00015Ar 1  20 20 20 20  
+00016Er 1  00           	.byte 0
+00016Fr 1               
+00016Fr 1  4C rr rr     	jmp return_from_trap_with_success
+000172r 1               
+000172r 1               ;	========================
+000172r 1               
+000172r 1               tdsnfailure:
+000172r 1               
+000172r 1  AD rr rr     	lda dos_error_code
+000175r 1  4C rr rr     	jmp return_from_trap_with_failure
+000178r 1               
+000178r 1               ;	========================
+000178r 1               
+000178r 1               
+000178r 1               illegalvalue:
+000178r 1               
+000178r 1               	; BG: the below section seems never called from anywhere: suggest removal
+000178r 1               
+000178r 1               ;	tya
+000178r 1               ;	tax
+000178r 1               ;	jsr checkpoint_bytetohex
+000178r 1               ;	sty iv1+0
+000178r 1               ;	stx iv1+1
+000178r 1               ;
+000178r 1               ;	jsr checkpoint
+000178r 1               ;	.byte 0,"Filename contains $00 @ position $"
+000178r 1               ;iv1:	.byte "%%",0
+000178r 1               
+000178r 1  A9 11        	lda #dos_errorcode_illegal_value
+00017Ar 1  8D rr rr     	sta dos_error_code
+00017Dr 1  4C rr rr     	jmp return_from_trap_with_failure
+000180r 1               
+000180r 1               ;	========================
+000180r 1               
+000180r 1               trap_dos_getcurrentdrive:
+000180r 1               
+000180r 1  AD rr rr     	lda dos_disk_current_disk
+000183r 1  8D 40 D6     	sta hypervisor_a
+000186r 1  4C rr rr     	jmp return_from_trap_with_success
+000189r 1               
+000189r 1               ;	========================
+000189r 1               
+000189r 1               trap_dos_opendir:
+000189r 1               
+000189r 1               	; Open the current working directory for iteration.
+000189r 1               	;
+000189r 1  20 rr rr     	jsr dos_opendir
+00018Cr 1  B0 06        	bcs tdod1
+00018Er 1               
+00018Er 1               	; Something has gone wrong. Assume dos_opendir will
+00018Er 1               	; have set error code
+00018Er 1               	;
+00018Er 1  AD rr rr     	lda dos_error_code
+000191r 1  4C rr rr     	jmp return_from_trap_with_failure
+000194r 1               
+000194r 1               tdod1:
+000194r 1               	; Directory opened ok.
+000194r 1               	;
+000194r 1  AD rr rr     	lda dos_current_file_descriptor
+000197r 1  8D 40 D6     	sta hypervisor_a
+00019Ar 1  4C rr rr     	jmp return_from_trap_with_success
+00019Dr 1               
+00019Dr 1               ;	========================
+00019Dr 1               
+00019Dr 1               trap_dos_readdir:
+00019Dr 1               
+00019Dr 1               	; Read next directory entry from file descriptor $XX
+00019Dr 1               	; Return dirent structure to $YY00
+00019Dr 1               	; in first 32KB of mapped address space
+00019Dr 1               
+00019Dr 1  20 rr rr     	jsr checkpoint
+0001A0r 1  00 74 72 61  	.byte 0,"trap_dos_readdir",0
+0001A4r 1  70 5F 64 6F  
+0001A8r 1  73 5F 72 65  
+0001B2r 1               
+0001B2r 1  20 rr rr     	jsr sd_map_sectorbuffer
+0001B5r 1               
+0001B5r 1               	; Get offset to current file descriptor
+0001B5r 1               	; (we can't use X register, as has been clobbered in the jump
+0001B5r 1               	; table dispatch code)
+0001B5r 1               	;
+0001B5r 1  AE 41 D6     	ldx hypervisor_x
+0001B8r 1  8E rr rr     	stx dos_current_file_descriptor
+0001BBr 1               
+0001BBr 1  20 rr rr     	jsr dos_get_file_descriptor_offset
+0001BEr 1  90 39        	bcc tdrd1
+0001C0r 1  8D rr rr     	sta dos_current_file_descriptor_offset
+0001C3r 1               
+0001C3r 1  20 rr rr     	jsr dos_readdir
+0001C6r 1  90 31        	bcc tdrd1
+0001C8r 1               
+0001C8r 1               	; Read the directory entry, now copy it to userland
+0001C8r 1               	;
+0001C8r 1  20 rr rr     	jsr hypervisor_setup_copy_region
+0001CBr 1  90 2C        	bcc tdrd1
+0001CDr 1               
+0001CDr 1               	; We can now copy the bytes of the dirent to user-space
+0001CDr 1               	;
+0001CDr 1  A0 54        	ldy #dos_dirent_structure_length-1
+0001CFr 1               tdrd2:
+0001CFr 1  B9 rr rr     	lda dos_dirent_longfilename,y
+0001D2r 1  91 rr        	sta (<hypervisor_userspace_copy_vector),y
+0001D4r 1  88           	dey
+0001D5r 1  10 F8        	bpl tdrd2
+0001D7r 1               
+0001D7r 1  20 rr rr     	jsr checkpoint
+0001DAr 1  00 74 72 61  	.byte 0,"trap_dos_readdir <success>",0
+0001DEr 1  70 5F 64 6F  
+0001E2r 1  73 5F 72 65  
+0001F6r 1               
+0001F6r 1  4C rr rr     	jmp return_from_trap_with_success
+0001F9r 1               
+0001F9r 1               ;	========================
+0001F9r 1               
+0001F9r 1               tdrd1:
+0001F9r 1  20 rr rr     	jsr checkpoint
+0001FCr 1  00 74 72 61  	.byte 0,"trap_dos_readdir <failure>",0
+000200r 1  70 5F 64 6F  
+000204r 1  73 5F 72 65  
+000218r 1               
+000218r 1  AD rr rr     	lda dos_error_code
+00021Br 1  4C rr rr     	jmp return_from_trap_with_failure
+00021Er 1               
+00021Er 1               ;	========================
+00021Er 1               
+00021Er 1               trap_dos_closedir:
+00021Er 1  4C rr rr     	jmp trap_dos_closefile
+000221r 1               
+000221r 1               ;	========================
+000221r 1               
+000221r 1               trap_dos_openfile:
+000221r 1               
+000221r 1               	; Opens file in current dirent structure
+000221r 1               	; XXX - This means we must preserve the dirent struct when
+000221r 1               	; context-switching to avoid a race-condition
+000221r 1               
+000221r 1  20 rr rr     	jsr dos_openfile
+000224r 1  90 23        	bcc tdof1
+000226r 1               
+000226r 1  20 rr rr     	jsr checkpoint
+000229r 1  00 74 72 61  	.byte 0,"trap_dos_openfile <success>",0
+00022Dr 1  70 5F 64 6F  
+000231r 1  73 5F 6F 70  
+000246r 1               
+000246r 1  4C rr rr     	jmp return_from_trap_with_success
+000249r 1               
+000249r 1               tdof1:
+000249r 1  20 rr rr     	jsr checkpoint
+00024Cr 1  00 74 72 61  	.byte 0,"trap_dos_openfile <failure>",0
+000250r 1  70 5F 64 6F  
+000254r 1  73 5F 6F 70  
+000269r 1               
+000269r 1  AD rr rr     	lda dos_error_code
+00026Cr 1  4C rr rr     	jmp return_from_trap_with_failure
+00026Fr 1               
+00026Fr 1               ;	========================
+00026Fr 1               
+00026Fr 1               trap_dos_closefile:
+00026Fr 1               
+00026Fr 1  AE 41 D6     	ldx hypervisor_x
+000272r 1  8E rr rr     	stx dos_current_file_descriptor
+000275r 1               
+000275r 1  20 rr rr     	jsr dos_get_file_descriptor_offset
+000278r 1  90 29        	bcc tdcf1
+00027Ar 1  20 rr rr     	jsr dos_closefile
+00027Dr 1  90 24        	bcc tdcf1
+00027Fr 1               
+00027Fr 1  20 rr rr     	jsr checkpoint
+000282r 1  00 74 72 61  	.byte 0,"trap_dos_closefile <success>",0
+000286r 1  70 5F 64 6F  
+00028Ar 1  73 5F 63 6C  
+0002A0r 1               
+0002A0r 1  4C rr rr     	jmp return_from_trap_with_success
+0002A3r 1               tdcf1:
+0002A3r 1  20 rr rr     	jsr checkpoint
+0002A6r 1  00 74 72 61  	.byte 0,"trap_dos_closefile <failure>",0
+0002AAr 1  70 5F 64 6F  
+0002AEr 1  73 5F 63 6C  
+0002C4r 1               
+0002C4r 1  AD rr rr     	lda dos_error_code
+0002C7r 1  4C rr rr     	jmp return_from_trap_with_failure
+0002CAr 1               
+0002CAr 1               ;	========================
+0002CAr 1               
+0002CAr 1               trap_dos_findfile:
+0002CAr 1               
+0002CAr 1  20 rr rr     	jsr dos_findfile
+0002CDr 1  4C rr rr     	jmp return_from_trap_with_carry_flag
+0002D0r 1               
+0002D0r 1               ;	========================
+0002D0r 1               
+0002D0r 1               trap_dos_findfirst:
+0002D0r 1               
+0002D0r 1  20 rr rr     	jsr dos_findfirst
+0002D3r 1  4C rr rr     	jmp return_from_trap_with_carry_flag
+0002D6r 1               
+0002D6r 1               ;	========================
+0002D6r 1               
+0002D6r 1               trap_dos_findnext:
+0002D6r 1               
+0002D6r 1  20 rr rr     	jsr dos_findnext
+0002D9r 1  4C rr rr     	jmp return_from_trap_with_carry_flag
+0002DCr 1               
+0002DCr 1               ;	========================
+0002DCr 1               
+0002DCr 1               trap_dos_geterrorcode:
+0002DCr 1               
+0002DCr 1  AD rr rr     	lda dos_error_code
+0002DFr 1  8D 40 D6     	sta hypervisor_a
+0002E2r 1               
+0002E2r 1  AA           	tax				; convert .X to char-representation for display
+0002E3r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0002E6r 1  8C rr rr     	sty tdgec1+0
+0002E9r 1  8E rr rr     	stx tdgec1+1
+0002ECr 1               
+0002ECr 1  20 rr rr     	jsr checkpoint
+0002EFr 1  00 64 6F 73  	.byte 0,"dos_geterrorcode <=$"
+0002F3r 1  5F 67 65 74  
+0002F7r 1  65 72 72 6F  
+000304r 1  25 25 3E 00  tdgec1:	.byte "%%>",0
+000308r 1               
+000308r 1  4C rr rr     	jmp return_from_trap_with_success
+00030Br 1               
+00030Br 1               ;	========================
+00030Br 1               
+00030Br 1               .EXPORT trap_dos_d81attach
+00030Br 1               trap_dos_d81attach:
+00030Br 1               
+00030Br 1  20 rr rr     	jsr checkpoint
+00030Er 1  00 74 72 61  	.byte 0,"trap_dos_d81attach",0
+000312r 1  70 5F 64 6F  
+000316r 1  73 5F 64 38  
+000322r 1               
+000322r 1  A9 00        	lda #$00
+000324r 1  8D 8B D6     	sta $d68b
+000327r 1  20 rr rr     	jsr dos_d81attach
+00032Ar 1  4C rr rr     	jmp return_from_trap_with_carry_flag
+00032Dr 1               
+00032Dr 1               ;	========================
+00032Dr 1               
+00032Dr 1               trap_dos_d81detach:
+00032Dr 1               
+00032Dr 1  A9 00        	lda #$00
+00032Fr 1  8D 8B D6     	sta $d68b
+000332r 1  4C rr rr     	jmp return_from_trap_with_success
+000335r 1               
+000335r 1               ;	========================
+000335r 1               
+000335r 1               trap_dos_d81writeen:
+000335r 1               
+000335r 1  AD 8B D6     	lda $d68b
+000338r 1  29 03        	and #$03
+00033Ar 1  C9 03        	cmp #$03
+00033Cr 1  D0 08        	bne td81we1
+00033Er 1  09 04         	ora #$04
+000340r 1  8D 8B D6     	sta $d68b
+000343r 1  4C rr rr     	jmp return_from_trap_with_success
+000346r 1               
+000346r 1               td81we1:
+000346r 1               	; No disk image mounted
+000346r 1               	;
+000346r 1               
+000346r 1  20 rr rr     	jsr checkpoint
+000349r 1  00 74 72 61  	.byte 0,"trap_dos_d81writeen-FAIL",0
+00034Dr 1  70 5F 64 6F  
+000351r 1  73 5F 64 38  
+000363r 1               
+000363r 1  A9 80        	lda #dos_errorcode_no_such_disk
+000365r 1  8D rr rr     	sta dos_error_code
+000368r 1  4C rr rr     	jmp return_from_trap_with_failure
+00036Br 1               
+00036Br 1               ;	========================
+00036Br 1               
+00036Br 1               ; BG: the following are placeholders for the future development
+00036Br 1               
+00036Br 1               trap_dos_readfile:
+00036Br 1               trap_dos_getdisksize:
+00036Br 1               trap_dos_getcwd:
+00036Br 1               trap_dos_chdir:
+00036Br 1               trap_dos_mkdir:
+00036Br 1               trap_dos_rmdir:
+00036Br 1               trap_dos_mkfile:
+00036Br 1               trap_dos_writefile:
+00036Br 1               trap_dos_seekfile:
+00036Br 1               trap_dos_rmfile:
+00036Br 1               trap_dos_fstat:
+00036Br 1               trap_dos_rename:
+00036Br 1               trap_dos_filedate:
+00036Br 1               trap_dos_gettasklist:
+00036Br 1               trap_dos_sendmessage:
+00036Br 1               trap_dos_receivemessage:
+00036Br 1               trap_dos_writeintotask:
+00036Br 1               trap_dos_readoutoftask:
+00036Br 1               trap_dos_terminateothertask:
+00036Br 1               trap_dos_create_task_native:
+00036Br 1               trap_dos_load_into_task:
+00036Br 1               trap_dos_create_task_c64:
+00036Br 1               trap_dos_create_task_c65:
+00036Br 1               trap_dos_exit_and_switch_to_task:
+00036Br 1               trap_dos_switch_to_task:
+00036Br 1               trap_dos_exit_task:
+00036Br 1               
+00036Br 1  4C rr rr     	jmp invalid_subfunction;
+00036Er 1               
+00036Er 1               ;	========================
+00036Er 1               
+00036Er 1               ;======================================================================================
+00036Er 1               ;======================================================================================
+00036Er 1               ;======================================================================================
+00036Er 1               
+00036Er 1               ; Clear all file descriptors.
+00036Er 1               ; This just consists of setting the drive number to $ff,
+00036Er 1               ; which indicates "no such drive"
+00036Er 1               ; Drive number field is first byte of file descriptor for convenience
+00036Er 1               
+00036Er 1               .EXPORT dos_clear_filedescriptors
+00036Er 1               dos_clear_filedescriptors:
+00036Er 1               
+00036Er 1               	; XXX - This doesn't close the underlying file descriptors!
+00036Er 1               	;
+00036Er 1  A9 FF        	lda #$ff
+000370r 1  8D rr rr     	sta currenttask_filedescriptor0
+000373r 1  8D rr rr     	sta currenttask_filedescriptor1
+000376r 1  8D rr rr     	sta currenttask_filedescriptor2
+000379r 1  8D rr rr     	sta currenttask_filedescriptor3
+00037Cr 1  38           	sec
+00037Dr 1  60           	rts
+00037Er 1               
+00037Er 1               ;	========================
+00037Er 1               
+00037Er 1               ; Read partition table from SD card.
+00037Er 1               ;
+00037Er 1               ; Add all FAT32 partitions to our list of known disks.
+00037Er 1               ;
+00037Er 1               ; This routine assumes that the SD card has been reset and is ready to
+00037Er 1               ; service requests.
+00037Er 1               ;
+00037Er 1               ; XXX - We don't support extended partition tables! Only the old-fashion
+00037Er 1               ; 4 DOS partitions.  We might get excited and add support for them later
+00037Er 1               ;
+00037Er 1               
+00037Er 1               .EXPORT dos_read_partitiontable
+00037Er 1               dos_read_partitiontable:
+00037Er 1               
+00037Er 1               	; clear error code
+00037Er 1               	;
+00037Er 1  A9 00        	lda #0
+000380r 1  8D rr rr     	sta dos_error_code
+000383r 1               
+000383r 1               	; Clear the list of known disks
+000383r 1               	;
+000383r 1  20 rr rr     	jsr dos_initialise_disklist
+000386r 1               
+000386r 1  20 rr rr     	jsr dos_read_mbr
+000389r 1  93 AF 02     	lbcc drpt_fail
+00038Cr 1               
+00038Cr 1               	; Make the sector buffer visible
+00038Cr 1               	;
+00038Cr 1  20 rr rr     	jsr sd_map_sectorbuffer
+00038Fr 1               
+00038Fr 1  A9 02        	lda #dos_errorcode_bad_signature
+000391r 1  8D rr rr     	sta dos_error_code
+000394r 1               
+000394r 1               	; check for $55, $AA MBR signature
+000394r 1               	;
+000394r 1  AD FE DF     	lda sd_sectorbuffer+$1FE
+000397r 1  C9 55        	cmp #$55
+000399r 1  D3 9F 02     	lbne drpt_fail
+00039Cr 1  AD FF DF     	lda sd_sectorbuffer+$1FF
+00039Fr 1  C9 AA        	cmp #$AA
+0003A1r 1  D3 97 02     	lbne drpt_fail
+0003A4r 1               
+0003A4r 1               	; yes, $55AA MBR signature was found
+0003A4r 1               
+0003A4r 1  20 rr rr     	jsr checkpoint
+0003A7r 1  00 46 6F 75  	.byte 0,"Found $55, $AA at $1FE on MBR",0
+0003ABr 1  6E 64 20 24  
+0003AFr 1  35 35 2C 20  
+0003C6r 1               
+0003C6r 1               	; Partitions start at offsets $1BE, $1CE, $1DE, $1EE
+0003C6r 1               	; so consider each in turn.  Opening the partition causes other sectors to
+0003C6r 1               	; be read, so we must re-read the MBR between each
+0003C6r 1               
+0003C6r 1               	; get pointer to second half of sector buffer so that we can access the
+0003C6r 1               	; partition entries as we see fit.
+0003C6r 1               	;
+0003C6r 1               
+0003C6r 1  A9 BE        	lda #<(sd_sectorbuffer+$1BE)
+0003C8r 1  8D rr rr     	sta dos_scratch_vector
+0003CBr 1  A9 DF        	lda #>(sd_sectorbuffer+$1BE)
+0003CDr 1  8D rr rr     	sta dos_scratch_vector+1
+0003D0r 1  20 rr rr     		jsr checkpoint
+0003D3r 1  00 3D 3D 3D  		.byte 0,"=== Checking Partition #1 at $01BE",0
+0003D7r 1  20 43 68 65  
+0003DBr 1  63 6B 69 6E  
+0003F7r 1  20 rr rr     	jsr dos_consider_partition_entry
+0003FAr 1               
+0003FAr 1  20 rr rr     	jsr dos_read_mbr
+0003FDr 1  93 3B 02     	lbcc drpt_fail
+000400r 1  A9 CE        	lda #<(sd_sectorbuffer+$1CE)
+000402r 1  8D rr rr     	sta dos_scratch_vector
+000405r 1  20 rr rr     		jsr checkpoint
+000408r 1  00 3D 3D 3D  		.byte 0,"=== Checking Partition #2 at $01CE",0
+00040Cr 1  20 43 68 65  
+000410r 1  63 6B 69 6E  
+00042Cr 1  20 rr rr     	jsr dos_consider_partition_entry
+00042Fr 1               
+00042Fr 1  20 rr rr     	jsr dos_read_mbr
+000432r 1  93 06 02     	lbcc drpt_fail
+000435r 1  A9 DE        	lda #<(sd_sectorbuffer+$1DE)
+000437r 1  8D rr rr     	sta dos_scratch_vector
+00043Ar 1  20 rr rr     		jsr checkpoint
+00043Dr 1  00 3D 3D 3D  		.byte 0,"=== Checking Partition #3 at $01DE",0
+000441r 1  20 43 68 65  
+000445r 1  63 6B 69 6E  
+000461r 1  20 rr rr     	jsr dos_consider_partition_entry
+000464r 1               
+000464r 1  20 rr rr     	jsr dos_read_mbr
+000467r 1  93 D1 01     	lbcc drpt_fail
+00046Ar 1  A9 EE        	lda #<(sd_sectorbuffer+$1EE)
+00046Cr 1  8D rr rr     	sta dos_scratch_vector
+00046Fr 1  20 rr rr     		jsr checkpoint
+000472r 1  00 3D 3D 3D  		.byte 0,"=== Checking Partition #4 at $01EE",0
+000476r 1  20 43 68 65  
+00047Ar 1  63 6B 69 6E  
+000496r 1  20 rr rr     	jsr dos_consider_partition_entry
+000499r 1               
+000499r 1  A9 00        	lda #0
+00049Br 1  8D rr rr     	sta dos_error_code
+00049Er 1  38           	sec
+00049Fr 1  60           	rts
+0004A0r 1               
+0004A0r 1               ;	========================
+0004A0r 1               
+0004A0r 1               dos_read_mbr:
+0004A0r 1               
+0004A0r 1               	; Offset zero on disk
+0004A0r 1               	;
+0004A0r 1               
+0004A0r 1  A9 00        	lda #0
+0004A2r 1  8D 81 D6     	sta sd_address_byte0
+0004A5r 1  8D 82 D6     	sta sd_address_byte1
+0004A8r 1  8D 83 D6     	sta sd_address_byte2
+0004ABr 1  8D 84 D6     	sta sd_address_byte3
+0004AEr 1               
+0004AEr 1  20 rr rr     	jsr checkpoint
+0004B1r 1  00 52 65 61  	.byte 0,"Reading MBR @ 0x00000000",0
+0004B5r 1  64 69 6E 67  
+0004B9r 1  20 4D 42 52  
+0004CBr 1               
+0004CBr 1               	; Read sector
+0004CBr 1               	;
+0004CBr 1  20 rr rr     	jsr sd_readsector
+0004CEr 1  93 6A 01     	lbcc drpt_fail
+0004D1r 1  60           	rts
+0004D2r 1               
+0004D2r 1               ;	========================
+0004D2r 1               
+0004D2r 1               dos_initialise_disklist:
+0004D2r 1               
+0004D2r 1  A9 00        	lda #0
+0004D4r 1  8D rr rr     	sta dos_disk_count
+0004D7r 1  60           	rts
+0004D8r 1               
+0004D8r 1               ;	========================
+0004D8r 1               
+0004D8r 1               dos_consider_partition_entry:
+0004D8r 1               
+0004D8r 1  A9 00        	lda #$00
+0004DAr 1  8D rr rr     	sta dos_error_code
+0004DDr 1               
+0004DDr 1               	; Offset within partition table entry of partition type
+0004DDr 1               	;
+0004DDr 1               	; BG: make this a hash-define
+0004DDr 1               	;
+0004DDr 1  A0 04        	ldy #$04
+0004DFr 1               
+0004DFr 1               	; Get partition type byte
+0004DFr 1               	;
+0004DFr 1  B1 rr        	lda (<dos_scratch_vector),y
+0004E1r 1               
+0004E1r 1               	; We like FAT32 partitions, whether LBA or CHS addressed, although we actually
+0004E1r 1               	; use LBA addressing.  XXX - Can this cause problems for CHS partitions?
+0004E1r 1               	; (SD cards which must really use LBA, can still show up with CHS partitions!
+0004E1r 1               	;  this is really annoying.)
+0004E1r 1               	;
+0004E1r 1  C9 0C        	cmp #constant_partition_type_fat32_lba	;compare with 0x0C
+0004E3r 1  F0 52        	beq partitionisinteresting_lba
+0004E5r 1               
+0004E5r 1  C9 0B        	cmp #constant_partition_type_fat32_chs	;compare with 0x0B
+0004E7r 1  F0 75        	beq partitionisinteresting_chs
+0004E9r 1               
+0004E9r 1  C9 41        	cmp #constant_partition_type_megea65_sys ; compare with 0x41
+0004EBr 1  F0 08        	beq partitionisinteresting_mega65sys
+0004EDr 1               
+0004EDr 1  A9 01        	lda #dos_errorcode_partition_not_interesting
+0004EFr 1  8D rr rr     	sta dos_error_code
+0004F2r 1  4C rr rr     	jmp partitionisnotinteresting
+0004F5r 1               
+0004F5r 1               ;	========================
+0004F5r 1               
+0004F5r 1               partitionisinteresting_mega65sys:
+0004F5r 1               
+0004F5r 1  20 rr rr     	jsr checkpoint
+0004F8r 1  00 4D 45 47  	.byte 0,"MEGA65 System Partition (type=0x41)",0
+0004FCr 1  41 36 35 20  
+000500r 1  53 79 73 74  
+00051Dr 1               
+00051Dr 1               	; Only one system partition
+00051Dr 1  AD rr rr     	lda syspart_present
+000520r 1  D3 18 01     	lbne partitionerror
+000523r 1               
+000523r 1               	; Store start and length of System partition
+000523r 1               	; (These are the first two fields of the syspart structure
+000523r 1               	;  to facilitate a simple copy here)
+000523r 1  A0 08        	ldy #$08
+000525r 1  A2 00        	ldx #$00
+000527r 1               
+000527r 1  B1 rr        spc1:	lda (<dos_scratch_vector),y
+000529r 1  9D rr rr     	sta syspart_structure,x
+00052Cr 1  E8           	inx
+00052Dr 1  C8           	iny
+00052Er 1  C0 10        	cpy #$10
+000530r 1  D0 F5        	bne spc1
+000532r 1               
+000532r 1  20 rr rr     	jsr syspart_open
+000535r 1  38           	sec
+000536r 1  60           	rts
+000537r 1               
+000537r 1               partitionisinteresting_lba:
+000537r 1               
+000537r 1  20 rr rr     	jsr checkpoint
+00053Ar 1  00 50 61 72  	.byte 0,"Partn has fat32_lba (type=0x0c)",0
+00053Er 1  74 6E 20 68  
+000542r 1  61 73 20 66  
+00055Br 1               
+00055Br 1  4C rr rr     	jmp partitionisinteresting
+00055Er 1               
+00055Er 1               partitionisinteresting_chs:
+00055Er 1               
+00055Er 1  20 rr rr     	jsr checkpoint
+000561r 1  00 57 41 52  	.byte 0,"WARN:Partn has fat32_chs (type=0x0b)",0
+000565r 1  4E 3A 50 61  
+000569r 1  72 74 6E 20  
+000587r 1               
+000587r 1  4C rr rr     	jmp partitionisinteresting
+00058Ar 1               
+00058Ar 1               ;	========================
+00058Ar 1               
+00058Ar 1               partitionisinteresting:
+00058Ar 1               
+00058Ar 1               	; Make sure we have a spare disk slot
+00058Ar 1  AD rr rr     	lda dos_disk_count
+00058Dr 1  C9 06        	cmp #dos_max_disks
+00058Fr 1  F3 A9 00     	lbeq partitionerror
+000592r 1               
+000592r 1               	; Partition is FAT32 (either 0B or 0C), so add it to the list
+000592r 1               
+000592r 1               	; Disk structures in dos_disk_table are 32 bytes long, so shift count left
+000592r 1               	; 5 times to get offset in dos disk list table
+000592r 1               	;
+000592r 1               	; initially, dos_disk_count=00 so shifting results in =00
+000592r 1               	;
+000592r 1  AD rr rr     	lda dos_disk_count
+000595r 1  0A           	asl
+000596r 1  0A           	asl
+000597r 1  0A           	asl
+000598r 1  0A           	asl
+000599r 1  0A           	asl
+00059Ar 1  AA           	tax
+00059Br 1               
+00059Br 1               	; Copy relevant fields into place
+00059Br 1               	; These are start of partition and length of partition (both in sectors)
+00059Br 1               	; XXX - This requires that our dos_disk_table has these two fields together
+00059Br 1               	; at the start of the structure.
+00059Br 1               	;
+00059Br 1  A0 08        	ldy #$08	; partition_lba_begin (4 bytes)
+00059Dr 1               
+00059Dr 1  B1 rr        dcpe1:	lda (<dos_scratch_vector),y
+00059Fr 1  9D rr rr     	sta dos_disk_table,x
+0005A2r 1  E8           	inx
+0005A3r 1  C8           	iny
+0005A4r 1  C0 10        	cpy #$10	; partition_num_sectors (4 bytes)
+0005A6r 1  D0 F5        	bne dcpe1
+0005A8r 1               
+0005A8r 1               	; Examine the internals of the partition to get the remaining fields.
+0005A8r 1               	; At this point we no longer use the contents of the MBR
+0005A8r 1               	;
+0005A8r 1               
+0005A8r 1  20 rr rr     	jsr dos_disk_openpartition
+0005ABr 1  93 8D 00     	lbcc partitionerror
+0005AEr 1               
+0005AEr 1  20 rr rr     	jsr dump_disk_table
+0005B1r 1               
+0005B1r 1               	; Check if partition is bootable (or the only partition)
+0005B1r 1               	; If so, make the partition the default disk
+0005B1r 1               	;
+0005B1r 1               	; BG, we should examine all four partitions before setting the default disk
+0005B1r 1               	;
+0005B1r 1  AD rr rr     	lda dos_disk_count
+0005B4r 1  F0 06        	beq makethispartitionthedefault
+0005B6r 1  A0 00        	ldy #$00
+0005B8r 1  B1 rr        	lda (<dos_scratch_vector),y
+0005BAr 1  10 2C        	bpl dontmakethispartitionthedefault
+0005BCr 1               
+0005BCr 1               
+0005BCr 1               makethispartitionthedefault:
+0005BCr 1  AD rr rr     	lda dos_disk_count
+0005BFr 1  8D rr rr     	sta dos_default_disk
+0005C2r 1               
+0005C2r 1               	; print out this message to Checkpoint
+0005C2r 1               	;
+0005C2r 1               
+0005C2r 1  AA           	tax				; convert .X to char-representation for display
+0005C3r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0005C6r 1  8C rr rr     	sty mtptd
+0005C9r 1  8E rr rr     	stx mtptd+1
+0005CCr 1               
+0005CCr 1  20 rr rr     	jsr checkpoint
+0005CFr 1  00 64 6F 73  	.byte 0,"dos_default_disk = "
+0005D3r 1  5F 64 65 66  
+0005D7r 1  61 75 6C 74  
+0005E3r 1               mtptd:
+0005E3r 1  78 78 00     	.byte "xx",0
+0005E6r 1               
+0005E6r 1               ;jsr dump_disk_table
+0005E6r 1               
+0005E6r 1               	; return OK
+0005E6r 1               	;
+0005E6r 1  38           	sec
+0005E7r 1  60           	rts
+0005E8r 1               
+0005E8r 1               ;	========================
+0005E8r 1               
+0005E8r 1               dontmakethispartitionthedefault:
+0005E8r 1               
+0005E8r 1  AE rr rr     	ldx dos_disk_count
+0005EBr 1               
+0005EBr 1               	; print out this message to Checkpoint
+0005EBr 1               	;
+0005EBr 1               
+0005EBr 1               					; convert .X to char-representation for display
+0005EBr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+0005EEr 1  8E rr rr     	stx mtptd2
+0005F1r 1               
+0005F1r 1  20 rr rr     	jsr checkpoint
+0005F4r 1  00 50 61 72  	.byte 0,"Part#"
+0005F8r 1  74 23        
+0005FAr 1               mtptd2:
+0005FAr 1  78 20 4E 4F  	.byte "x NOT set to the default_disk",0
+0005FEr 1  54 20 73 65  
+000602r 1  74 20 74 6F  
+000618r 1               
+000618r 1               ;jsr dump_disk_table
+000618r 1               
+000618r 1               	; return OK
+000618r 1               	;
+000618r 1               
+000618r 1  38           	sec
+000619r 1  60           	rts
+00061Ar 1               
+00061Ar 1               ;	========================
+00061Ar 1               
+00061Ar 1               partitionisnotinteresting:
+00061Ar 1               
+00061Ar 1               	; return OK
+00061Ar 1               	;
+00061Ar 1               
+00061Ar 1  20 rr rr     	jsr checkpoint
+00061Dr 1  00 50 61 72  	.byte 0,"Partition not interesting",0
+000621r 1  74 69 74 69  
+000625r 1  6F 6E 20 6E  
+000638r 1               
+000638r 1  38           	sec
+000639r 1  60           	rts
+00063Ar 1               
+00063Ar 1               ;	========================
+00063Ar 1               
+00063Ar 1               drpt_fail:
+00063Ar 1               
+00063Ar 1               	; error code will already be set
+00063Ar 1               
+00063Ar 1               partitionerror:
+00063Ar 1               
+00063Ar 1               	; return ERROR
+00063Ar 1               
+00063Ar 1  AE rr rr     	ldx dos_error_code		; convert .X to char-representation for display
+00063Dr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000640r 1  8C rr rr     	sty perr
+000643r 1  8E rr rr     	stx perr+1
+000646r 1               
+000646r 1  20 rr rr     	jsr checkpoint
+000649r 1  00 70 61 72  	.byte 0,"partitionerror="
+00064Dr 1  74 69 74 69  
+000651r 1  6F 6E 65 72  
+000659r 1  78 78 00     perr:	.byte "xx",0
+00065Cr 1               
+00065Cr 1  18           	clc
+00065Dr 1  60           	rts
+00065Er 1               
+00065Er 1               ;;; ----------------------------------------------------------------------------
+00065Er 1               
+00065Er 1               		; Examine a partition to see if we can mount it.
+00065Er 1               		; This routine fills in the missing fields for the disk entry as required.
+00065Er 1               		; It assumes that fs_start_sector and fs_sector_count have been correctly set.
+00065Er 1               		;
+00065Er 1               
+00065Er 1               fs_dos_disk_table_offsets:
+00065Er 1               
+00065Er 1               ; Each disk entry consists of;
+00065Er 1               ;
+00065Er 1               ; Offset $00 - starting sector (4 bytes)
+00065Er 1                 	 fs_start_sector = $00
+00065Er 1               
+00065Er 1               ; Offset $04 - sector count (4 bytes)
+00065Er 1                 	  fs_sector_count = $04
+00065Er 1               
+00065Er 1               ; Offset $08 - Filesystem type & media source ($0x = FAT32, $xF = SD card, others reserved for now)
+00065Er 1                 	  fs_type_and_source = $08
+00065Er 1               
+00065Er 1               		; Remaining bytes are filesystem dependent:
+00065Er 1               		; For FAT32:
+00065Er 1               		;
+00065Er 1               ; Offset $09 - length of fat (4 bytes) (FAT starts at fs_fat32_system_sectors)
+00065Er 1                 	  fs_fat32_length_of_fat = $09
+00065Er 1               
+00065Er 1               ; Offset $0D - system sectors (2 bytes)
+00065Er 1                 	  fs_fat32_system_sectors = $0D
+00065Er 1               
+00065Er 1               ; Offset $0F - reserved clusters (1 byte)
+00065Er 1                 	  fs_fat32_reserved_clusters = $0F
+00065Er 1               
+00065Er 1               ; Offset $10 - root dir cluster (2 bytes)
+00065Er 1                 	  fs_fat32_root_dir_cluster = $10
+00065Er 1               
+00065Er 1               ; Offset $12 - cluster count (4 bytes)
+00065Er 1                 	  fs_fat32_cluster_count = $12
+00065Er 1               
+00065Er 1               ; Offset $16 - sectors per cluster
+00065Er 1                 	  fs_fat32_sectors_per_cluster = $16
+00065Er 1               
+00065Er 1               ; Offset $17 - copies of FAT
+00065Er 1                 	  fs_fat32_fat_copies = $17
+00065Er 1               
+00065Er 1               ; Offset $18 - first sector of cluster zero (4 bytes)
+00065Er 1                 	  fs_fat32_cluster0_sector = $18
+00065Er 1               
+00065Er 1               ; Offset $1C - Four spare bytes.
+00065Er 1               
+00065Er 1               ;	========================
+00065Er 1               
+00065Er 1               dos_disk_openpartition:
+00065Er 1               
+00065Er 1  20 rr rr     	jsr checkpoint
+000661r 1  00 64 6F 73  	.byte 0,"dos_disk_openpartition: (examine Vol ID)",0
+000665r 1  5F 64 69 73  
+000669r 1  6B 5F 6F 70  
+00068Br 1               
+00068Br 1               	; A contains the disk number we are trying to open.
+00068Br 1               	;
+00068Br 1  A9 00        	lda #$00
+00068Dr 1  8D rr rr     	sta dos_error_code
+000690r 1               
+000690r 1               	; Load first sector of file system and parse.
+000690r 1               	; This is the Volume ID pointed to by the PartitionTable in the MBR
+000690r 1               
+000690r 1               	; Get offset of disk entry in our disk table structure
+000690r 1               	;
+000690r 1  AD rr rr     	lda dos_disk_count
+000693r 1  0A           	asl
+000694r 1  0A           	asl
+000695r 1  0A           	asl
+000696r 1  0A           	asl
+000697r 1  0A           	asl
+000698r 1  8D rr rr     	sta dos_disk_table_offset
+00069Br 1               
+00069Br 1               	; Now pull the start sector from the structure and get ready to request
+00069Br 1               	; that structure from the SD card.
+00069Br 1               	;
+00069Br 1  09 00        	ora #fs_start_sector	; OR with 00 does nothing, but this is the standard
+00069Dr 1  A8           	tay
+00069Er 1  A2 00        	ldx #$00
+0006A0r 1               
+0006A0r 1  B9 rr rr     ddop1:	lda dos_disk_table,y
+0006A3r 1  9D 81 D6     	sta sd_address_byte0,x
+0006A6r 1  C8           	iny
+0006A7r 1  E8           	inx
+0006A8r 1  E0 04        	cpx #$04
+0006AAr 1  D0 F4        	bne ddop1
+0006ACr 1               
+0006ACr 1  20 rr rr     jsr dumpsectoraddress	; debugging
+0006AFr 1               
+0006AFr 1               	; Convert sector number to byte offset for non-HC SD cards
+0006AFr 1               	;
+0006AFr 1               	; BG does not support/understand this routine
+0006AFr 1               	;
+0006AFr 1  20 rr rr     	jsr sd_fix_sectornumber
+0006B2r 1               
+0006B2r 1  20 rr rr     jsr dumpsectoraddress	; debugging
+0006B5r 1               
+0006B5r 1  20 rr rr     	jsr sd_readsector
+0006B8r 1  90 80        	bcc partitionerror
+0006BAr 1               
+0006BAr 1               	; We now have the sector, so parse.
+0006BAr 1               
+0006BAr 1  20 rr rr     	jsr sd_map_sectorbuffer
+0006BDr 1               
+0006BDr 1               ;	========================
+0006BDr 1               
+0006BDr 1               	; Check for 55/AA singature (again, for the Vol-ID of this partition)
+0006BDr 1               	;
+0006BDr 1               
+0006BDr 1  A9 02        	lda #dos_errorcode_bad_signature
+0006BFr 1  8D rr rr     	sta dos_error_code
+0006C2r 1               
+0006C2r 1  AD FE DF     	lda sd_sectorbuffer+$1FE
+0006C5r 1  C9 55        	cmp #$55
+0006C7r 1  F0 03        	beq ddop1a
+0006C9r 1  4C rr rr     	jmp partitionerror
+0006CCr 1               ddop1a:
+0006CCr 1  AD FF DF     	lda sd_sectorbuffer+$1FF
+0006CFr 1  C9 AA        	cmp #$AA
+0006D1r 1  F0 03        	beq ddop1b
+0006D3r 1  4C rr rr     	jmp partitionerror
+0006D6r 1               ddop1b:
+0006D6r 1  20 rr rr     	jsr checkpoint
+0006D9r 1  00 50 61 72  	.byte 0,"Partn has $55, $AA GOOD",0
+0006DDr 1  74 6E 20 68  
+0006E1r 1  61 73 20 24  
+0006F2r 1               
+0006F2r 1               	; Start populating fields
+0006F2r 1               
+0006F2r 1               ;	BG assumes this is all correct...
+0006F2r 1               
+0006F2r 1               ;	========================
+0006F2r 1               
+0006F2r 1               	; Filter out obviously FAT16/FAT12 file systems
+0006F2r 1               	;
+0006F2r 1  A9 03        	lda #dos_errorcode_is_small_fat
+0006F4r 1  8D rr rr     	sta dos_error_code
+0006F7r 1               	;
+0006F7r 1               	; BG i think we dont need to check this for minimal operation
+0006F7r 1               	;
+0006F7r 1               	; for fat32, the 11'th entry is unused, http://www.easeus.com/resource/fat32-disk-structure.htm
+0006F7r 1               	;
+0006F7r 1  AD 11 DE     	lda sd_sectorbuffer+$11	; this is NOT the MBSyte of the number of FATs
+0006FAr 1  D3 3E FF     	lbne partitionerror
+0006FDr 1               
+0006FDr 1               ;	========================
+0006FDr 1               
+0006FDr 1               	; get # copies of fat
+0006FDr 1               	;
+0006FDr 1  AD rr rr     	lda dos_disk_table_offset
+000700r 1  09 17        	ora #fs_fat32_fat_copies	; is $17
+000702r 1  A8           	tay
+000703r 1  AD 10 DE     	lda sd_sectorbuffer+$10	; should be 2
+000706r 1  99 rr rr     	sta dos_disk_table,y
+000709r 1               
+000709r 1               ;	========================
+000709r 1               
+000709r 1               	; With root directory entries = 0, the reserved sector count
+000709r 1               	; is the number of reserved sectors, plus (copies of fat) *
+000709r 1               	; (sectors in one copy of the fat).
+000709r 1               	; the first FAT begins immediately after the reserved sectors
+000709r 1               
+000709r 1               	; Determine system sector count
+000709r 1               	; (= reserved sectors + fat_count * fat_sectors)
+000709r 1               	; $20 + $EE5 + $EE5 = $1DEA
+000709r 1               	; plus partition offset = $81 = $1E6B
+000709r 1               	; partition length = $3BAF7F
+000709r 1               	; $08 sectors / cluster
+000709r 1               	; so data sectors in partition = $3BAF7F - $1DEA = $3B9195
+000709r 1               	; = $77232 clusters
+000709r 1               
+000709r 1               	; BG does not like the above reasoning, ie fixed number of reserved sectors.
+000709r 1               
+000709r 1               	; Reserved sector field on disk is only 2 bytes!
+000709r 1               	;
+000709r 1  AD rr rr     	lda dos_disk_table_offset
+00070Cr 1  09 0D        	ora #fs_fat32_system_sectors	;is $0D
+00070Er 1  A8           	tay
+00070Fr 1  A2 00        	ldx #$00
+000711r 1               
+000711r 1  BD 0E DE     ddop10:	lda sd_sectorbuffer+$0E,x
+000714r 1  99 rr rr     	sta dos_disk_table,y
+000717r 1  C8           	iny
+000718r 1  E8           	inx
+000719r 1  E0 02        	cpx #$02
+00071Br 1  D0 F4        	bne ddop10
+00071Dr 1               
+00071Dr 1               ;	========================
+00071Dr 1               
+00071Dr 1               	; Store length of one copy of the FAT
+00071Dr 1               	;
+00071Dr 1  AD rr rr     	lda dos_disk_table_offset
+000720r 1  09 09        	ora #fs_fat32_length_of_fat	; is $09
+000722r 1  A8           	tay
+000723r 1  A2 00        	ldx #$00
+000725r 1               
+000725r 1  BD 24 DE     ddop11:	lda sd_sectorbuffer+$24,x	; sectors_per_fat
+000728r 1  99 rr rr     	sta dos_disk_table,y
+00072Br 1  C8           	iny
+00072Cr 1  E8           	inx
+00072Dr 1  E0 04        	cpx #$04
+00072Fr 1  D0 F4        	bne ddop11
+000731r 1               
+000731r 1               ;	========================
+000731r 1               
+000731r 1               	; Get number of reserved clusters.  We only allow upto 255 reserved
+000731r 1               	; clusters, so report an error if the upper three bytes are not zero
+000731r 1               	;
+000731r 1               	; BG: why only 255 reserved clusters? and isnt it reserved sectors instead?
+000731r 1               	; and seems to be looking at the root_dir_first_cluster
+000731r 1               	;
+000731r 1  A9 04        	lda #dos_errorcode_too_many_reserved_clusters
+000733r 1  8D rr rr     	sta dos_error_code
+000736r 1               
+000736r 1  AD 2D DE     	lda sd_sectorbuffer+$2C+1
+000739r 1  0D 2E DE     	ora sd_sectorbuffer+$2C+2
+00073Cr 1  0D 2F DE     	ora sd_sectorbuffer+$2C+3
+00073Fr 1               
+00073Fr 1               	; XXX - 16 bit BNE should be fine here! Why doesn't it work?
+00073Fr 1               	;	bne partitionerror
+00073Fr 1               
+00073Fr 1  F0 03        	beq ddop11ok
+000741r 1  4C rr rr     	jmp partitionerror
+000744r 1               
+000744r 1               ;	========================
+000744r 1               
+000744r 1               ddop11ok:
+000744r 1               
+000744r 1               	; <64K reserved clusters, so file system passes this test -- just copy number
+000744r 1               	;
+000744r 1               	; BG does not agree with the logic, of <64k reservedclusters to passes
+000744r 1               	; BG the code below could be changed to be same as lda,ora,tay
+000744r 1               	;
+000744r 1               	; BG, so by design, we reject any Vol_ID that has
+000744r 1               	; RootDirFirstCluster[3..0] not equal to $00000002
+000744r 1               	;
+000744r 1  AC rr rr     	ldy dos_disk_table_offset
+000747r 1  AD 2C DE     	lda sd_sectorbuffer+$2C	; 2c is the ClusterNumberOfFirstRootDir
+00074Ar 1  99 rr rr     	sta dos_disk_table + fs_fat32_reserved_clusters,y
+00074Dr 1               
+00074Dr 1               ;jsr checkpoint
+00074Dr 1               ;.byte 0,"dos_disk_table-1",0
+00074Dr 1               ;jsr dump_disk_table	; debugging
+00074Dr 1               
+00074Dr 1               ; dos_disk_table[00-07] = 00,08,00,00,00,A0,0F,00 = (fs_start_sector),                       (fs_sector_count)
+00074Dr 1               ; dos_disk_table[08-0F] = 00,E6,03,00,00,38,02,02 = type, (sectorsPerFat),(reservedSectors),(reservedClusters)
+00074Dr 1               ; dos_disk_table[10-17] = 00,00,00,00,00,00,00,02 = x..x                                ,(fs_fat32_fat_copies)
+00074Dr 1               ; dos_disk_table[18-1F] = 00,00,00,00,xx,xx,xx,xx
+00074Dr 1               
+00074Dr 1               ;	========================
+00074Dr 1               
+00074Dr 1               	; Now work out the sector of cluster 0, by adding:
+00074Dr 1               	;   fs_fat32_system_sectors
+00074Dr 1               	; + the length of each FAT
+00074Dr 1               	; + start of partition,
+00074Dr 1               	; and store this result in dos_disk_table[18..1B]
+00074Dr 1               	;
+00074Dr 1               	; For efficiency, we pull the fields we need out of the sector buffer,
+00074Dr 1               	; instead of working out their offsets in the dos_disk_table structure.
+00074Dr 1               	; BG disagree, we know the offsets of the fields in dos_disk_table
+00074Dr 1               
+00074Dr 1               	; Start with fs_fat32_system_sectors (which is 16 bits), then pad MSBs with zero
+00074Dr 1               	;
+00074Dr 1  AD rr rr     	lda dos_disk_table_offset
+000750r 1  09 0D        	ora #fs_fat32_system_sectors	; is $0D
+000752r 1  A8           	tay
+000753r 1  AD rr rr     	lda dos_disk_table_offset
+000756r 1  09 18        	ora #fs_fat32_cluster0_sector	; is $18
+000758r 1  AA           	tax
+000759r 1  A3 02        	ldz #$02
+00075Br 1               
+00075Br 1  B9 rr rr     ddop2:	lda dos_disk_table,y
+00075Er 1  9D rr rr     	sta dos_disk_table,x
+000761r 1  C8           	iny
+000762r 1  E8           	inx
+000763r 1  3B           	dez
+000764r 1  D0 F5        	bne ddop2
+000766r 1               
+000766r 1               	; clear top 16 bits of cluster0_sector (dos_disk_table[1A,1B])
+000766r 1               	;
+000766r 1               	; BG: why tza, just do lda#$00
+000766r 1  6B           	tza
+000767r 1  9D rr rr     	sta dos_disk_table+0,x
+00076Ar 1  9D rr rr     	sta dos_disk_table+1,x
+00076Dr 1               
+00076Dr 1               ;jsr checkpoint
+00076Dr 1               ;.byte 0,"dos_disk_table-2",0
+00076Dr 1               ;jsr dump_disk_table	; debugging
+00076Dr 1               
+00076Dr 1               ; dos_disk_table[00-07] = 00,08,00,00,00,A0,0F,00
+00076Dr 1               ; dos_disk_table[08-0F] = 00,E6,03,00,00,38,02,02
+00076Dr 1               ; dos_disk_table[10-17] = 00,00,00,00,00,00,00,02
+00076Dr 1               ; dos_disk_table[18-1F] = 38,02,00,00,xx,xx,xx,xx -> $00000238
+00076Dr 1               
+00076Dr 1               
+00076Dr 1               ;	========================
+00076Dr 1               
+00076Dr 1               	; Now add length of fat for each copy of the fat
+00076Dr 1               	;
+00076Dr 1  A9 05        	lda #dos_errorcode_not_two_fats
+00076Fr 1  8D rr rr     	sta dos_error_code
+000772r 1               
+000772r 1               	; BG #FATs should be sourced from dos_disk_table[17], not from buffer+$10
+000772r 1               
+000772r 1  AB 10 DE     	ldz sd_sectorbuffer+$10     ; # of FAT copies
+000775r 1  F3 C3 FE     	lbeq partitionerror ; There must be at least one copy of the FAT!
+000778r 1  C2 02        	cpz #2
+00077Ar 1  D3 BE FE     	lbne partitionerror
+00077Dr 1               
+00077Dr 1               ddop_addnextfatsectors:
+00077Dr 1               
+00077Dr 1  AD rr rr     	lda dos_disk_table_offset
+000780r 1  09 18        	ora #fs_fat32_cluster0_sector	; is $18
+000782r 1  A8           	tay
+000783r 1  A2 00        	ldx #$00
+000785r 1  18           	clc
+000786r 1  08           	php	; push processor-status (to remember the carry-flag)
+000787r 1               
+000787r 1  28           ddop12:	plp	; pull processor-status
+000788r 1  B9 rr rr     	lda dos_disk_table,y           ; cluster0_sector
+00078Br 1  7D 24 DE     	adc sd_sectorbuffer+$24,x    ; sectors per fat ;BG should load from dos_disk_table[09]
+00078Er 1  99 rr rr     	sta dos_disk_table,y           ; cluster0_sector
+000791r 1  08           	php
+000792r 1  C8           	iny
+000793r 1  E8           	inx
+000794r 1  E0 04        	cpx #$04
+000796r 1  D0 EF        	bne ddop12
+000798r 1               
+000798r 1  28           	plp
+000799r 1               	;
+000799r 1               	; as Z was initially 2 (#FATs), we do this loop twice
+000799r 1               	; resulting in 2x the sectorsPerFat added to "reservedSectors".
+000799r 1  3B           	dez
+00079Ar 1  D0 E1        	bne ddop_addnextfatsectors
+00079Cr 1               
+00079Cr 1               ;jsr checkpoint
+00079Cr 1               ;.byte 0,"dos_disk_table-3",0
+00079Cr 1               ;jsr dump_disk_table	; debugging
+00079Cr 1               
+00079Cr 1               ; dos_disk_table[00-07] = 00,08,00,00,00,A0,0F,00
+00079Cr 1               ; dos_disk_table[08-0F] = 00,E6,03,00,00,38,02,02
+00079Cr 1               ; dos_disk_table[10-17] = 00,00,00,00,00,00,00,02
+00079Cr 1               ; dos_disk_table[18-1F] = 04,0A,00,00,xx,xx,xx,xx -> $00000238 + ($000003e6 + $000003e6) = $00000A04
+00079Cr 1               
+00079Cr 1               ; BG does not agree with the calculations below, why do we need to calculate it this way?
+00079Cr 1               
+00079Cr 1               	; Next, we temporarily need the number of data sectors, so that we can work
+00079Cr 1               	; out the number of clusters in the file system.
+00079Cr 1               	; This is the total number of sectors in the partition, minus the number of
+00079Cr 1               	; reserved sectors.
+00079Cr 1               
+00079Cr 1               	; Subtract (cluster 0 sector = 32 bits) from
+00079Cr 1               	; (length of filesystem in sectors = 32 bits)
+00079Cr 1               
+00079Cr 1  AD rr rr     	lda dos_disk_table_offset
+00079Fr 1  09 18        	ora #fs_fat32_cluster0_sector	; is $18
+0007A1r 1  AA           	tax
+0007A2r 1  AD rr rr     	lda dos_disk_table_offset
+0007A5r 1  09 12        	ora #fs_fat32_cluster_count	; is $12
+0007A7r 1  A8           	tay
+0007A8r 1  38           	sec
+0007A9r 1  AD 20 DE     	lda sd_sectorbuffer+$20+0	; from FAT spec, this is number of sectors in partition
+0007ACr 1  FD rr rr     	sbc dos_disk_table+0,x	; x=$18 initially
+0007AFr 1  99 rr rr     	sta dos_disk_table+0,y	; y=$12 initially
+0007B2r 1  AD 21 DE     	lda sd_sectorbuffer+$20+1
+0007B5r 1  FD rr rr     	sbc dos_disk_table+1,x
+0007B8r 1  99 rr rr     	sta dos_disk_table+1,y
+0007BBr 1  AD 22 DE     	lda sd_sectorbuffer+$20+2
+0007BEr 1  FD rr rr     	sbc dos_disk_table+2,x
+0007C1r 1  99 rr rr     	sta dos_disk_table+2,y
+0007C4r 1  AD 23 DE     	lda sd_sectorbuffer+$20+3
+0007C7r 1  FD rr rr     	sbc dos_disk_table+3,x
+0007CAr 1  99 rr rr     	sta dos_disk_table+3,y
+0007CDr 1               
+0007CDr 1               ;	========================
+0007CDr 1               
+0007CDr 1               get_sec_per_cluster:
+0007CDr 1               	; Get sectors per cluster (and store in dos_disk_table entry)
+0007CDr 1               	; (this gets destoryed below, so we have to re-read it again after)
+0007CDr 1               	;
+0007CDr 1  AD rr rr     	lda dos_disk_table_offset
+0007D0r 1  09 16        	ora #fs_fat32_sectors_per_cluster	; is $16
+0007D2r 1  A8           	tay
+0007D3r 1  AD 0D DE     	lda sd_sectorbuffer+$0D
+0007D6r 1  99 rr rr     	sta dos_disk_table,y
+0007D9r 1               
+0007D9r 1               ;jsr checkpoint
+0007D9r 1               ;.byte 0,"dos_disk_table-4",0
+0007D9r 1               ;jsr dump_disk_table	; debugging
+0007D9r 1               
+0007D9r 1               ; dos_disk_table[00-07] = 00,08,00,00,00,A0,0F,00
+0007D9r 1               ; dos_disk_table[08-0F] = 00,E6,03,00,00,38,02,02
+0007D9r 1               ; dos_disk_table[10-17] = 00,00,FC,95,0F,00,08,02 -> new data appears
+0007D9r 1               ; dos_disk_table[18-1F] = 04,0A,00,00,xx,xx,xx,xx
+0007D9r 1               
+0007D9r 1               
+0007D9r 1               ;	========================
+0007D9r 1               
+0007D9r 1               	; Now divide number of sectors available for clusters by the number of
+0007D9r 1               	; sectors per cluster to obtain the number of actual clusters in the file
+0007D9r 1               	; system.  Since clusters must contain a power-of-two number of sectors,
+0007D9r 1               	; we can implement the division using a simple shift.
+0007D9r 1               
+0007D9r 1               	; copy number of sectors into number of sectors ready for shifting down
+0007D9r 1               
+0007D9r 1               	; Put number of sectors per cluster into Z, and don't shift if there is only
+0007D9r 1               	; one sector per cluster.
+0007D9r 1               	;
+0007D9r 1  AD 0D DE     	lda sd_sectorbuffer+$0D		; because of the checkpoint message above
+0007DCr 1  4B           	taz				; why store .A in .Z anyway
+0007DDr 1               
+0007DDr 1  29 FE        	and #$fe	; #%1111.1110
+0007DFr 1  F0 1E        	beq ddop_gotclustercount
+0007E1r 1               
+0007E1r 1               ddop14:
+0007E1r 1               	; Divide cluster count by two.  This is a 32-bit value, so we have to use
+0007E1r 1               	; ROR to do the shift, and propagate the carry bits between the bytes.
+0007E1r 1               	; This also entails doing it from the last byte, backwards.
+0007E1r 1               
+0007E1r 1               	; Get offset of start of (sectors_per_cluster) field
+0007E1r 1               	;
+0007E1r 1  AD rr rr     	lda dos_disk_table_offset
+0007E4r 1  09 12        	ora #fs_fat32_cluster_count	; is $12
+0007E6r 1               
+0007E6r 1               	; get offset of last byte in this field
+0007E6r 1               	;
+0007E6r 1  18           	clc
+0007E7r 1  69 03        	adc #$03
+0007E9r 1  A8           	tay
+0007EAr 1               
+0007EAr 1  A2 03        	ldx #$03
+0007ECr 1  18           	clc
+0007EDr 1               
+0007EDr 1  B9 rr rr     ddop15:	lda dos_disk_table,y
+0007F0r 1  6A           	ror
+0007F1r 1  99 rr rr     	sta dos_disk_table,y
+0007F4r 1  88           	dey
+0007F5r 1  CA           	dex
+0007F6r 1  10 F5        	bpl ddop15
+0007F8r 1               
+0007F8r 1  6B           	tza
+0007F9r 1  4A           	lsr
+0007FAr 1  4B           	taz
+0007FBr 1  29 FE        	and #$fe
+0007FDr 1  D0 E2        	bne ddop14
+0007FFr 1               
+0007FFr 1               ddop_gotclustercount:
+0007FFr 1               
+0007FFr 1               ;jsr checkpoint
+0007FFr 1               ;.byte 0,"dos_disk_table-5",0
+0007FFr 1               ;jsr dump_disk_table	; debugging
+0007FFr 1               
+0007FFr 1               ; dos_disk_table[00-07] = 00,08,00,00,00,A0,0F,00
+0007FFr 1               ; dos_disk_table[08-0F] = 00,E6,03,00,00,38,02,02
+0007FFr 1               ; dos_disk_table[10-17] = 00,00,AF,7C,00,00,08,02 -> new data appears
+0007FFr 1               ; dos_disk_table[18-1F] = 04,0A,00,00,xx,xx,xx,xx
+0007FFr 1               
+0007FFr 1               
+0007FFr 1               	; Re-get sectors per cluster (and store in dos_disk_table entry)
+0007FFr 1               	; (this was destroyed in the calculation above)
+0007FFr 1               	;
+0007FFr 1  AD rr rr     	lda dos_disk_table_offset
+000802r 1  09 16        	ora #fs_fat32_sectors_per_cluster	; is $16
+000804r 1  A8           	tay
+000805r 1  AD 0D DE     	lda sd_sectorbuffer+$0D
+000808r 1  99 rr rr     	sta dos_disk_table,y
+00080Br 1               
+00080Br 1               ;jsr checkpoint
+00080Br 1               ;.byte 0,"dos_disk_table-6",0
+00080Br 1               ;jsr dump_disk_table	; debugging
+00080Br 1               
+00080Br 1               ; dos_disk_table[00-07] = 00,08,00,00,00,A0,0F,00
+00080Br 1               ; dos_disk_table[08-0F] = 00,E6,03,00,00,38,02,02
+00080Br 1               ; dos_disk_table[10-17] = 00,00,AF,7C,00,00,08,02
+00080Br 1               ; dos_disk_table[18-1F] = 04,0A,00,00,xx,xx,xx,xx
+00080Br 1               
+00080Br 1               ;	========================
+00080Br 1               
+00080Br 1               	; filter out non-FAT32 filesystems
+00080Br 1               	; NOTE: FAT32 can have as few as 65525 clusters, but we do not support
+00080Br 1               	; such file systems, which should be rare, anyway.
+00080Br 1               
+00080Br 1  AD rr rr     	lda dos_disk_table_offset
+00080Er 1  09 16        	ora #fs_fat32_sectors_per_cluster	; is $16
+000810r 1  A8           	tay
+000811r 1  A9 06        	lda #dos_errorcode_too_few_clusters
+000813r 1  8D rr rr     	sta dos_error_code
+000816r 1               
+000816r 1  B9 rr rr     	lda dos_disk_table+3,y	; BG this seems to creep-out-of-bounds from +16 to +19
+000819r 1  19 rr rr     	ora dos_disk_table+2,y
+00081Cr 1  F3 1C FE     	lbeq partitionerror
+00081Fr 1               
+00081Fr 1               	; Now get cluster of root directory.
+00081Fr 1               	;
+00081Fr 1  AD rr rr     	lda dos_disk_table_offset
+000822r 1  09 10        	ora #fs_fat32_root_dir_cluster		; is $10
+000824r 1  A8           	tay
+000825r 1               
+000825r 1  A2 03        	ldx #$03
+000827r 1  BD 2C DE     ddop16:	lda sd_sectorbuffer+$2C,x	; +$2c is rootDirFirstCluster[3..0]
+00082Ar 1  99 rr rr     	sta dos_disk_table,y
+00082Dr 1  CA           	dex
+00082Er 1               ; BG should there be a "dey" here somewhere?
+00082Er 1  10 F7        	bpl ddop16
+000830r 1               
+000830r 1               	; We have now set the following fields:
+000830r 1               	;
+000830r 1               	; fs_fat32_length_of_fat
+000830r 1               	; fs_fat32_system_sectors
+000830r 1               	; fs_fat32_reserved_clusters
+000830r 1               	; fs_fat32_root_dir_cluster
+000830r 1               	; 12,13,14,15 ?
+000830r 1               	; fs_fat32_sectors_per_cluster
+000830r 1               	; fs_fat32_fat_copies
+000830r 1               	; fs_fat32_cluster0_sector
+000830r 1               
+000830r 1               	; Our caller has set:
+000830r 1               	;
+000830r 1               	; fs_start_sector
+000830r 1               	; fs_sector_count
+000830r 1               
+000830r 1               ;jsr checkpoint
+000830r 1               ;.byte 0,"dos_disk_table-7",0
+000830r 1               ;jsr dump_disk_table	; debugging
+000830r 1               
+000830r 1               ; dos_disk_table[00-07] = 00,08,00,00,00,A0,0F,00
+000830r 1               ; dos_disk_table[08-0F] = 00,E6,03,00,00,38,02,02
+000830r 1               ; dos_disk_table[10-17] = 02,00,AF,7C,00,00,08,02 -> new data appears in [10]
+000830r 1               ; dos_disk_table[18-1F] = 04,0A,00,00,xx,xx,xx,xx
+000830r 1               
+000830r 1               	; So all that is left for us is to set fs_type_and_source to $0F
+000830r 1               	; to indicate FAT32 filesystem on the SD card ...
+000830r 1               	;
+000830r 1  AD rr rr     	lda dos_disk_table_offset
+000833r 1  09 08        	ora #fs_type_and_source		; is $08
+000835r 1  A8           	tay
+000836r 1  A9 0F        	lda #$0f
+000838r 1  99 rr rr     	sta dos_disk_table,y
+00083Br 1               
+00083Br 1               ;jsr dump_disk_table	; debugging
+00083Br 1               
+00083Br 1               ; dos_disk_table[00-07] = 00,08,00,00,00,A0,0F,00
+00083Br 1               ; dos_disk_table[08-0F] = 0F,E6,03,00,00,38,02,02 -> new data appears in [08]
+00083Br 1               ; dos_disk_table[10-17] = 02,00,AF,7C,00,00,08,02
+00083Br 1               ; dos_disk_table[18-1F] = 04,0A,00,00,xx,xx,xx,xx
+00083Br 1               
+00083Br 1               
+00083Br 1  20 rr rr     	jsr checkpoint
+00083Er 1  00 46 41 54  	.byte 0,"FAT32 partition data copied to dos_disk_table",0
+000842r 1  33 32 20 70  
+000846r 1  61 72 74 69  
+00086Dr 1               
+00086Dr 1               	; ... and increment the number of disks we know
+00086Dr 1  EE rr rr     	inc dos_disk_count
+000870r 1               
+000870r 1               
+000870r 1               dos_return_success:
+000870r 1               
+000870r 1               	; Return success
+000870r 1               	;
+000870r 1  A9 00        	lda #$00
+000872r 1  8D rr rr     	sta dos_error_code
+000875r 1               
+000875r 1  38           	sec
+000876r 1  60           	rts
+000877r 1               
+000877r 1               ;	========================
+000877r 1               ;	========================
+000877r 1               
+000877r 1               .EXPORT dos_return_error
+000877r 1               dos_return_error:
+000877r 1               
+000877r 1  8D rr rr     	sta dos_error_code
+00087Ar 1               
+00087Ar 1               dos_return_error_already_set:
+00087Ar 1               
+00087Ar 1  18           	clc
+00087Br 1  60           	rts
+00087Cr 1               
+00087Cr 1               ;	========================
+00087Cr 1               
+00087Cr 1               dos_set_current_disk:
+00087Cr 1               
+00087Cr 1               	; Is disk number valid?
+00087Cr 1               	;
+00087Cr 1               	; INPUT: .X = disk
+00087Cr 1               	;
+00087Cr 1  A9 80        	lda #dos_errorcode_no_such_disk
+00087Er 1  8D rr rr     	sta dos_error_code
+000881r 1               
+000881r 1  EC rr rr     	cpx dos_disk_count
+000884r 1  B3 B4 FD     	lbcs partitionerror	; BG shouldnt this be bmi?
+000887r 1               
+000887r 1  8E rr rr     	stx dos_disk_current_disk
+00088Ar 1  8A           	txa
+00088Br 1  0A           	asl
+00088Cr 1  0A           	asl
+00088Dr 1  0A           	asl
+00088Er 1  0A           	asl
+00088Fr 1  0A           	asl
+000890r 1  8D rr rr     	sta dos_disk_table_offset
+000893r 1               
+000893r 1  AE rr rr     	ldx dos_disk_current_disk	; convert .X to char-representation for display
+000896r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000899r 1  8C rr rr     	sty dscd+0
+00089Cr 1  8E rr rr     	stx dscd+1
+00089Fr 1               
+00089Fr 1               		; print debug message
+00089Fr 1               		;
+00089Fr 1  20 rr rr     		jsr checkpoint
+0008A2r 1  00 64 6F 73  		.byte 0,"dos_set_current_disk="
+0008A6r 1  5F 73 65 74  
+0008AAr 1  5F 63 75 72  
+0008B8r 1  78 78 00     dscd:		.byte "xx",0
+0008BBr 1               
+0008BBr 1  38           	sec
+0008BCr 1  60           	rts
+0008BDr 1               
+0008BDr 1               ;	========================
+0008BDr 1               
+0008BDr 1               .EXPORT dos_cdroot
+0008BDr 1               dos_cdroot:
+0008BDr 1               
+0008BDr 1               	; Change to root directory on specified disk
+0008BDr 1               	; (Changes current disk if required)
+0008BDr 1               	;
+0008BDr 1               	; INPUT: .X = disk
+0008BDr 1               
+0008BDr 1  20 rr rr     	jsr dos_set_current_disk
+0008C0r 1  90 B8        	bcc dos_return_error_already_set
+0008C2r 1               
+0008C2r 1               	; get offset of disk entry
+0008C2r 1               	;
+0008C2r 1  AE rr rr     	ldx dos_disk_table_offset
+0008C5r 1  BD rr rr     	lda dos_disk_table + fs_fat32_root_dir_cluster +0,x
+0008C8r 1  8D rr rr     	sta dos_disk_cwd_cluster
+0008CBr 1  BD rr rr     	lda dos_disk_table + fs_fat32_root_dir_cluster +1,x
+0008CEr 1  8D rr rr     	sta dos_disk_cwd_cluster+1
+0008D1r 1               
+0008D1r 1  A9 00        	lda #$00
+0008D3r 1  8D rr rr     	sta dos_disk_cwd_cluster+2	; BG here we assume that the 2x MSB's are zero
+0008D6r 1  8D rr rr     	sta dos_disk_cwd_cluster+3
+0008D9r 1               
+0008D9r 1               	; Nothing else to do, as it doesn't actually affect any existing DOS activity,
+0008D9r 1               	; only future file/directory operations.
+0008D9r 1               
+0008D9r 1  4C rr rr     	jmp dos_return_success
+0008DCr 1               
+0008DCr 1               ;	========================
+0008DCr 1               
+0008DCr 1               dos_cluster_to_sector:
+0008DCr 1               
+0008DCr 1               	; convert a cluster number in dos_current_cluster into a sector number
+0008DCr 1               	; pre-loaded into SD address registers
+0008DCr 1               	; It is assumed to be on the current disk
+0008DCr 1               
+0008DCr 1  A2 03        	ldx #$03
+0008DEr 1  BD rr rr     dcts0:	lda dos_current_cluster,x
+0008E1r 1  9D 81 D6     	sta $d681,x
+0008E4r 1  CA           	dex
+0008E5r 1  10 F7        	bpl dcts0
+0008E7r 1               
+0008E7r 1               	; subtract 2 from the cluster number (clusters 0 and 1 don't actually exist
+0008E7r 1               	; on FAT32).
+0008E7r 1               	;
+0008E7r 1  A9 FF        	lda #$ff
+0008E9r 1  AA           	tax
+0008EAr 1  A8           	tay
+0008EBr 1  4B           	taz
+0008ECr 1  A9 FE        	lda #$fe
+0008EEr 1  20 rr rr     	jsr sdsector_add_uint32
+0008F1r 1               
+0008F1r 1               	; now shift it left according to fs_sectors_per_cluster
+0008F1r 1               	;
+0008F1r 1  AE rr rr     	ldx dos_disk_table_offset
+0008F4r 1  BD rr rr     	lda dos_disk_table+fs_fat32_sectors_per_cluster,x
+0008F7r 1  A8           	tay
+0008F8r 1  29 FE        	and #$fe
+0008FAr 1  F0 14        	beq multipliedclusternumber
+0008FCr 1               
+0008FCr 1  18           dcts1:	clc
+0008FDr 1  2E 81 D6     	rol $D681
+000900r 1  2E 82 D6     	rol $D682
+000903r 1  2E 83 D6     	rol $D683
+000906r 1  2E 84 D6     	rol $D684
+000909r 1  98           	tya
+00090Ar 1  4A           	lsr
+00090Br 1  A8           	tay
+00090Cr 1  29 FE        	and #$fe
+00090Er 1  D0 EC        	bne dcts1
+000910r 1               
+000910r 1               multipliedclusternumber:
+000910r 1               
+000910r 1               	; skip over filesystem reserved and FAT sectors
+000910r 1               	;
+000910r 1  A9 18        	lda #fs_fat32_cluster0_sector
+000912r 1  20 rr rr     	jsr sdsector_add_uint32_from_disktable
+000915r 1               
+000915r 1               	; add start sector of partition
+000915r 1               	;
+000915r 1  A9 00        	lda #fs_start_sector
+000917r 1  20 rr rr     	jsr sdsector_add_uint32_from_disktable
+00091Ar 1               
+00091Ar 1               	; XXX - Check that result does not exceed fs_start_sector+fs_sector_count
+00091Ar 1               	; and run over into another partition
+00091Ar 1               
+00091Ar 1               	; return success
+00091Ar 1  38           	sec
+00091Br 1  60           	rts
+00091Cr 1               
+00091Cr 1               ;	========================
+00091Cr 1               
+00091Cr 1               dos_requested_filename_to_uppercase:
+00091Cr 1               
+00091Cr 1               	; Convert filename to upper case for comparison
+00091Cr 1               	;
+00091Cr 1  AE rr rr     	ldx dos_requested_filename_len
+00091Fr 1  E0 3F        	cpx #$3f
+000921r 1  A9 81        	lda #dos_errorcode_name_too_long
+000923r 1  90 03        	bcc drftu1
+000925r 1  4C rr rr     	jmp dos_return_error
+000928r 1               
+000928r 1               drftu1:
+000928r 1  BD rr rr     	lda dos_requested_filename,x
+00092Br 1  20 rr rr     	jsr toupper
+00092Er 1  9D rr rr     	sta dos_requested_filename,x
+000931r 1  E8           	inx
+000932r 1  EC rr rr     	cpx dos_requested_filename_len
+000935r 1  D0 F1        	bne drftu1
+000937r 1  38           	sec
+000938r 1  60           	rts
+000939r 1               
+000939r 1               ;	========================
+000939r 1               
+000939r 1               dos_get_free_descriptor:
+000939r 1               
+000939r 1  A2 00        	ldx #$00
+00093Br 1               
+00093Br 1  8A           dgfd1:	txa
+00093Cr 1  0A           	asl
+00093Dr 1  0A           	asl
+00093Er 1  0A           	asl
+00093Fr 1  0A           	asl
+000940r 1  A8           	tay
+000941r 1  B9 rr rr     	lda dos_file_descriptors+dos_filedescriptor_offset_diskid,y
+000944r 1  C9 FF        	cmp #$FF
+000946r 1  F0 0A        	beq dgfd_found_free
+000948r 1  E8           	inx
+000949r 1  E0 04        	cpx #dos_filedescriptor_max
+00094Br 1  D0 EE        	bne dgfd1
+00094Dr 1               
+00094Dr 1  A9 84        	lda #dos_errorcode_too_many_open_files
+00094Fr 1  4C rr rr     	jmp dos_return_error
+000952r 1               
+000952r 1               ;	========================
+000952r 1               
+000952r 1               dgfd_found_free:
+000952r 1               
+000952r 1               	; Clear descriptor entry
+000952r 1               	;
+000952r 1  A0 0F        	ldy #$0f
+000954r 1  A9 00        	lda #$00
+000956r 1               
+000956r 1  99 rr rr     dgfd2:	sta dos_file_descriptors,y
+000959r 1  88           	dey
+00095Ar 1  D0 FA        	bne dgfd2
+00095Cr 1               
+00095Cr 1               	; Return file descriptor in X
+00095Cr 1               	;
+00095Cr 1  8E rr rr     	stx dos_current_file_descriptor
+00095Fr 1  8A           	txa
+000960r 1  0A           	asl
+000961r 1  0A           	asl
+000962r 1  0A           	asl
+000963r 1  0A           	asl
+000964r 1  8D rr rr     	sta dos_current_file_descriptor_offset
+000967r 1  38           	sec
+000968r 1  60           	rts
+000969r 1               
+000969r 1               ;	========================
+000969r 1               
+000969r 1               .EXPORT dos_clearall
+000969r 1               dos_clearall:
+000969r 1               
+000969r 1               	; Free all file descriptors with extreme prejudice
+000969r 1               	; Clear dos_disk_table
+000969r 1               
+000969r 1               		; display debug message to uart
+000969r 1               		;
+000969r 1  20 rr rr     		jsr checkpoint
+00096Cr 1  00 64 6F 73  		.byte 0,"dos_clearall:",0
+000970r 1  5F 63 6C 65  
+000974r 1  61 72 61 6C  
+00097Br 1               
+00097Br 1  A9 FF        	lda #$ff
+00097Dr 1  8D rr rr     	sta dos_file_descriptors
+000980r 1  8D rr rr     	sta dos_file_descriptors+$10
+000983r 1  8D rr rr     	sta dos_file_descriptors+$20
+000986r 1  8D rr rr     	sta dos_file_descriptors+$30
+000989r 1  A2 00        	ldx #$00
+00098Br 1  A9 00        	lda #$00
+00098Dr 1  9D rr rr     dca1:	sta dos_disk_table,x
+000990r 1  E8           	inx
+000991r 1  D0 FA        	bne dca1
+000993r 1  38           	sec
+000994r 1  60           	rts
+000995r 1               
+000995r 1               ;	========================
+000995r 1               
+000995r 1               .EXPORT dos_closefile
+000995r 1               dos_closefile:
+000995r 1               
+000995r 1               	; Close the current file/directory
+000995r 1               	; If the file is read-only, we can just free the file descriptor and return.
+000995r 1               	; XXX - If the file is open for write, we might have a buffer to flush.
+000995r 1               	; (Worry about this when we implement writing. Opening files for write will
+000995r 1               	; probably require the caller to nominate a 512 byte buffer in user-space
+000995r 1               	; memory so that the convenience write-byte routine can work.  The other case,
+000995r 1               	; writing a sector at a time, should just be synchronous, so that there is no
+000995r 1               	; buffering required.)
+000995r 1               
+000995r 1  AE rr rr     	ldx dos_current_file_descriptor_offset
+000998r 1  BD rr rr     	lda dos_file_descriptors + dos_filedescriptor_offset_mode,x
+00099Br 1  C9 01        	cmp #dos_filemode_readwrite
+00099Dr 1  D0 00        	bne dcf_simple
+00099Fr 1               
+00099Fr 1               	; This is where we would flush the write buffer, and update file length in
+00099Fr 1               	; directory, if required.  Note that to save space, we don't actually keep the
+00099Fr 1               	; location of the directory entry of the file in the file descriptor.  This
+00099Fr 1               	; complicates things somewhat, and we might need to change this.  However, the
+00099Fr 1               	; file descriptor table must be a power of two in length, and there isn't any
+00099Fr 1               	; space to double its' size.  Thus we will need a separate table that holds the
+00099Fr 1               	; directory sector and entry for any file being written to.  We might save a
+00099Fr 1               	; few bytes by allowing less than dos_filedescriptor_max files to be open for
+00099Fr 1               	; writing at any point in time.
+00099Fr 1               
+00099Fr 1               dcf_simple:
+00099Fr 1               
+00099Fr 1  AE rr rr     	ldx dos_current_file_descriptor_offset
+0009A2r 1  A9 FF        	lda #$ff ; not allocated flag for file descriptor
+0009A4r 1  9D rr rr     	sta dos_file_descriptors + dos_filedescriptor_offset_diskid,x
+0009A7r 1  38           	sec
+0009A8r 1  60           	rts
+0009A9r 1               
+0009A9r 1               ;	========================
+0009A9r 1               
+0009A9r 1               dos_openfile:
+0009A9r 1               
+0009A9r 1               	; Open the file that is in the dirent structure
+0009A9r 1               	; (to open a file by arbitrary name, you must first call dos_findfile)
+0009A9r 1               
+0009A9r 1               	; Check if the file is a directory, if so, refuse to open it.
+0009A9r 1               	;
+0009A9r 1  AD rr rr     	lda dos_dirent_type_and_attribs
+0009ACr 1  29 10        	and #fs_fat32_attribute_isdirectory
+0009AEr 1  F0 05        	beq dof_not_a_directory
+0009B0r 1               
+0009B0r 1  A9 86        	lda #dos_errorcode_is_a_directory
+0009B2r 1  4C rr rr     	jmp dos_return_error
+0009B5r 1               
+0009B5r 1               ;	========================
+0009B5r 1               
+0009B5r 1               dof_not_a_directory:
+0009B5r 1               
+0009B5r 1  20 rr rr     	jsr dos_set_current_file_from_dirent
+0009B8r 1  93 C0 FE     	lbcc dos_return_error_already_set
+0009BBr 1               
+0009BBr 1  4C rr rr     	jmp dos_open_current_file
+0009BEr 1               
+0009BEr 1               ;	========================
+0009BEr 1               
+0009BEr 1               .EXPORT dos_findfile
+0009BEr 1               dos_findfile:
+0009BEr 1               
+0009BEr 1               	; Convenience wrapper around dos_findfirst to make sure that we don't
+0009BEr 1               	; leave any hanging file descriptors.
+0009BEr 1               
+0009BEr 1  20 rr rr     	jsr dos_findfirst
+0009C1r 1  08           	php
+0009C2r 1  20 rr rr     	jsr dos_closefile
+0009C5r 1  28           	plp
+0009C6r 1  93 B2 FE     	lbcc dos_return_error_already_set
+0009C9r 1  38           	sec
+0009CAr 1  60           	rts
+0009CBr 1               
+0009CBr 1               ;	========================
+0009CBr 1               
+0009CBr 1               dos_findfirst:
+0009CBr 1               
+0009CBr 1               	; Search for file in current directory
+0009CBr 1               
+0009CBr 1               	; Convert name to upper case for searching
+0009CBr 1               	;
+0009CBr 1  20 rr rr     	jsr dos_requested_filename_to_uppercase
+0009CEr 1  93 AA FE     	lbcc dos_return_error_already_set
+0009D1r 1               
+0009D1r 1  20 rr rr     	jsr dos_opendir
+0009D4r 1  93 A4 FE     	lbcc dos_return_error_already_set
+0009D7r 1               
+0009D7r 1               	; Directory is now open, and we can now iterate through directory entries
+0009D7r 1               	;
+0009D7r 1  4C rr rr     	jmp dos_findnext
+0009DAr 1               
+0009DAr 1               ;	========================
+0009DAr 1               
+0009DAr 1               dos_findnext:
+0009DAr 1               
+0009DAr 1               	; Keep searching in directory for another match
+0009DAr 1               
+0009DAr 1               dff_try_next_entry:
+0009DAr 1               
+0009DAr 1               	; Get next directory entry
+0009DAr 1               	;
+0009DAr 1  20 rr rr     	jsr dos_readdir
+0009DDr 1  B0 08        	bcs dff_have_next_entry
+0009DFr 1               
+0009DFr 1  20 rr rr     	jsr dos_closefile
+0009E2r 1               
+0009E2r 1  A9 88        	lda #dos_errorcode_file_not_found
+0009E4r 1  4C rr rr     	jmp dos_return_error
+0009E7r 1               
+0009E7r 1               dff_have_next_entry:
+0009E7r 1               
+0009E7r 1               	; Compare dos_dirent_longfilename with dos_requested_filename
+0009E7r 1               	;
+0009E7r 1  20 rr rr     	jsr dos_dirent_compare_name_to_requested
+0009EAr 1               
+0009EAr 1               	; no match? try next entry
+0009EAr 1               	;
+0009EAr 1  90 EE        	bcc dff_try_next_entry
+0009ECr 1               
+0009ECr 1               	; we have a match, so return success
+0009ECr 1               	; (we don't close the file handle for the directory search, because the
+0009ECr 1               	; caller may want to find multiple matches)
+0009ECr 1               	;
+0009ECr 1  38           	sec
+0009EDr 1  60           	rts
+0009EEr 1               
+0009EEr 1               ;	========================
+0009EEr 1               
+0009EEr 1               dos_opendir:
+0009EEr 1               
+0009EEr 1               	; Open the current directory as a file
+0009EEr 1               	;
+0009EEr 1  20 rr rr     	jsr dos_get_free_descriptor
+0009F1r 1  93 87 FE     	lbcc dos_return_error_already_set
+0009F4r 1               
+0009F4r 1               	; get offset in file descriptor table
+0009F4r 1               	;
+0009F4r 1  8A           	txa
+0009F5r 1  0A           	asl
+0009F6r 1  0A           	asl
+0009F7r 1  0A           	asl
+0009F8r 1  0A           	asl
+0009F9r 1  A8           	tay
+0009FAr 1               
+0009FAr 1               	; set disk id
+0009FAr 1               	;
+0009FAr 1  AD rr rr     	lda dos_disk_current_disk
+0009FDr 1  99 rr rr     	sta dos_file_descriptors+dos_filedescriptor_offset_diskid,y
+000A00r 1               
+000A00r 1               	; load cluster of dir into file descriptor
+000A00r 1               	;
+000A00r 1  A2 00        	ldx #$00
+000A02r 1               
+000A02r 1  BD rr rr     dff1:	lda dos_disk_cwd_cluster,x
+000A05r 1  99 rr rr     	sta dos_file_descriptors+dos_filedescriptor_offset_startcluster,y
+000A08r 1  99 rr rr     	sta dos_file_descriptors+dos_filedescriptor_offset_currentcluster,y
+000A0Br 1  C8           	iny
+000A0Cr 1  E8           	inx
+000A0Dr 1  E0 04        	cpx #$04
+000A0Fr 1  D0 F1        	bne dff1
+000A11r 1               
+000A11r 1               	; Mark file descriptor as being a directory
+000A11r 1               	;
+000A11r 1  AE rr rr     	ldx dos_current_file_descriptor_offset
+000A14r 1  A9 80        	lda #dos_filemode_directoryaccess
+000A16r 1  9D rr rr     	sta dos_file_descriptors + dos_filedescriptor_offset_mode,x
+000A19r 1               
+000A19r 1  20 rr rr     	jsr dos_open_current_file
+000A1Cr 1  93 5C FE     	lbcc dos_return_error_already_set
+000A1Fr 1  60           	rts
+000A20r 1               
+000A20r 1               ;	========================
+000A20r 1               
+000A20r 1               dos_readdir:
+000A20r 1               
+000A20r 1               	; Get the current file entry, and advance pointer
+000A20r 1               	; This requires parsing the current directory entry onwards, accumulating
+000A20r 1               	; long filename parts as required.  We only support filenames to 64 chars,
+000A20r 1               	; so long names longer than that will get ignored.
+000A20r 1               	; LFN entries have an attribute byte of $0F (normally indicates volume label)
+000A20r 1               	; LFN entries use 16-bit unicode values. For now we will just keep the lower
+000A20r 1               	; byte of these
+000A20r 1               
+000A20r 1               	; clear long file name data from last call
+000A20r 1               	;
+000A20r 1  A9 00        	lda #0
+000A22r 1  8D rr rr     	sta dos_dirent_longfilename_length
+000A25r 1               
+000A25r 1  20 rr rr     	jsr dos_file_read_current_sector
+000A28r 1               
+000A28r 1               ;debug info, unsure what byte is being displayed...
+000A28r 1               ;
+000A28r 1  20 rr rr     	jsr checkpoint	; just a (near) blank line
+000A2Br 1  00 2D 00     	.byte 0,"-",0
+000A2Er 1               
+000A2Er 1  AC rr rr     	ldy dos_current_file_descriptor_offset
+000A31r 1  18           	clc
+000A32r 1  B9 rr rr     	lda dos_file_descriptors + dos_filedescriptor_offset_offsetinsector +0,y
+000A35r 1               
+000A35r 1  AA           	tax				; convert .X to char-representation for display
+000A36r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000A39r 1  8C rr rr     	sty drdcp0+2
+000A3Cr 1  8E rr rr     	stx drdcp0+3
+000A3Fr 1               
+000A3Fr 1  AC rr rr     	ldy dos_current_file_descriptor_offset
+000A42r 1  18           	clc
+000A43r 1  B9 rr rr     	lda dos_file_descriptors + dos_filedescriptor_offset_offsetinsector +1,y
+000A46r 1               
+000A46r 1  AA           	tax				; convert .X to char-representation for display
+000A47r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000A4Ar 1  8C rr rr     	sty drdcp0+0
+000A4Dr 1  8E rr rr     	stx drdcp0+1
+000A50r 1               
+000A50r 1  20 rr rr     	jsr checkpoint
+000A53r 1  00 64 6F 73  	.byte 0,"dos_readdir["
+000A57r 1  5F 72 65 61  
+000A5Br 1  64 64 69 72  
+000A60r 1  78 78 79 79  drdcp0:	.byte"xxyy]==========================================",0
+000A64r 1  5D 3D 3D 3D  
+000A68r 1  3D 3D 3D 3D  
+000A90r 1               
+000A90r 1  20 rr rr     jsr dumpsectoraddress	;debug
+000A93r 1  20 rr rr     jsr dumpfddata		;debug
+000A96r 1               
+000A96r 1               ; end of debug
+000A96r 1               
+000A96r 1  AE rr rr     	ldx dos_current_file_descriptor_offset
+000A99r 1  BD rr rr     	lda dos_file_descriptors + dos_filedescriptor_offset_mode ,x
+000A9Cr 1  C9 80        	cmp #dos_filemode_directoryaccess
+000A9Er 1  F0 0E        	beq drd_isdir
+000AA0r 1  C9 81        	cmp #dos_filemode_end_of_directory
+000AA2r 1  D0 05        	bne drd_notadir
+000AA4r 1               
+000AA4r 1  A9 FF        	lda #dos_errorcode_eof
+000AA6r 1  4C rr rr     	jmp dos_return_error
+000AA9r 1               
+000AA9r 1               ;	========================
+000AA9r 1               
+000AA9r 1               drd_notadir:
+000AA9r 1               	; refuse to read files as directories
+000AA9r 1               	;
+000AA9r 1  A9 87        	lda #dos_errorcode_not_a_directory
+000AABr 1  4C rr rr     	jmp dos_return_error
+000AAEr 1               
+000AAEr 1               ;	========================
+000AAEr 1               
+000AAEr 1               drd_isdir:
+000AAEr 1               
+000AAEr 1               	; Clear dirent structure
+000AAEr 1               	; WARNING - Uses carnal knowledge to know that dirent structure is
+000AAEr 1               	; 64+1+11+4+4+1 = 85 contiguous bytes
+000AAEr 1               	;
+000AAEr 1  A2 54        	ldx #dos_dirent_structure_length-1
+000AB0r 1  A9 00        	lda #$00
+000AB2r 1               
+000AB2r 1  9D rr rr     drce1:	sta dos_dirent_longfilename,x
+000AB5r 1  CA           	dex
+000AB6r 1  10 FA        	bpl drce1
+000AB8r 1               
+000AB8r 1               	; Read current sector
+000AB8r 1               	;
+000AB8r 1  20 rr rr     	jsr dos_file_read_current_sector
+000ABBr 1  93 BD FD     	lbcc dos_return_error_already_set
+000ABEr 1               
+000ABEr 1  20 rr rr     	jsr sd_map_sectorbuffer
+000AC1r 1               
+000AC1r 1               drce_next_piece:
+000AC1r 1               
+000AC1r 1               	; Offset in sector correctly indicates where we need to read.
+000AC1r 1               	; Sectors are 512 bytes, so we can't just do a register index.
+000AC1r 1               	; Instead we will setup a 16-bit pointer.
+000AC1r 1               	;
+000AC1r 1  AD rr rr     	lda dos_current_file_descriptor_offset
+000AC4r 1  09 0B        	ora #dos_filedescriptor_offset_offsetinsector
+000AC6r 1  AA           	tax
+000AC7r 1  BD rr rr     	lda dos_file_descriptors,x
+000ACAr 1  8D rr rr     	sta dos_scratch_vector
+000ACDr 1  BD rr rr     	lda dos_file_descriptors+1,x
+000AD0r 1  18           	clc
+000AD1r 1  69 DE        	adc #$DE   ; high byte of SD card sector buffer
+000AD3r 1  8D rr rr     	sta dos_scratch_vector+1
+000AD6r 1               
+000AD6r 1               	; (dos_scratch_vector) now has the address of the directory entry
+000AD6r 1               
+000AD6r 1  DA           	phx	; as the code below clobbers X
+000AD7r 1               
+000AD7r 1               	; print out filename and attrib
+000AD7r 1               	;
+000AD7r 1  A0 00        	ldy #fs_fat32_dirent_offset_shortname
+000AD9r 1  A2 00        	ldx #0
+000ADBr 1               eight31:
+000ADBr 1  B1 rr        	lda (<dos_scratch_vector),y
+000ADDr 1  20 rr rr     	jsr makeprintable
+000AE0r 1  9D rr rr     	sta eight3,x
+000AE3r 1  C8           	iny
+000AE4r 1  E8           	inx
+000AE5r 1  E0 0B        	cpx #11		; 11 chars in the filename (8+3)
+000AE7r 1  D0 F2        	bne eight31
+000AE9r 1               	;
+000AE9r 1               	; attrib
+000AE9r 1               	;
+000AE9r 1  A0 0B        	ldy #fs_fat32_dirent_offset_attributes	; = 0x0B
+000AEBr 1  B1 rr        	lda (<dos_scratch_vector),y
+000AEDr 1  AA           	tax				; convert .X to char-representation for display
+000AEEr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000AF1r 1  8C rr rr     	sty eight3attrib+0
+000AF4r 1  8E rr rr     	stx eight3attrib+1
+000AF7r 1               	;
+000AF7r 1               	; char1
+000AF7r 1               	;
+000AF7r 1  A0 00        	ldy #$00
+000AF9r 1  B1 rr        	lda (<dos_scratch_vector),y
+000AFBr 1  AA           	tax				; convert .X to char-representation for display
+000AFCr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000AFFr 1  8C rr rr     	sty eight3char1+0
+000B02r 1  8E rr rr     	stx eight3char1+1
+000B05r 1               
+000B05r 1               	;
+000B05r 1               
+000B05r 1  20 rr rr     	jsr checkpoint
+000B08r 1  00 20 28 38  	.byte 0," (8.3)+(ATTRIB)+(NAME[0]) = "
+000B0Cr 1  2E 33 29 2B  
+000B10r 1  28 41 54 54  
+000B25r 1  46 49 4C 45  eight3:	.byte "FILENAMEEXT "
+000B29r 1  4E 41 4D 45  
+000B2Dr 1  45 58 54 20  
+000B31r 1  78 78 20     eight3attrib:	.byte "xx "
+000B34r 1  78 78 00     eight3char1:	.byte "xx",0
+000B37r 1               
+000B37r 1  FA           	plx	; as the code above clobbers X
+000B38r 1               
+000B38r 1               ;	========================
+000B38r 1               
+000B38r 1               	; first, check if the entry begins with zero, suggesting END-OF-DIRECTORY
+000B38r 1               
+000B38r 1  A0 00        	ldy #fs_fat32_dirent_offset_shortname	; Y=0 (first char of entry)
+000B3Ar 1  B1 rr        	lda (<dos_scratch_vector),y
+000B3Cr 1  C9 00        	cmp #$00
+000B3Er 1  F3 C7 01     	lbeq drd_end_of_directory
+000B41r 1               
+000B41r 1               	; then check if the entry begins with $E5, suggesting deleted
+000B41r 1  C9 E5        	cmp #$e5
+000B43r 1  F3 95 03     	lbeq drd_deleted_or_invalid_entry
+000B46r 1               
+000B46r 1               	; now check the attrib
+000B46r 1               
+000B46r 1  A0 0B        	ldy #fs_fat32_dirent_offset_attributes	; = 0x0B
+000B48r 1  B1 rr        	lda (<dos_scratch_vector),y
+000B4Ar 1               
+000B4Ar 1               	; check the kind of data we are looking at:
+000B4Ar 1               	; bit 5 = 1         -> is a Archive
+000B4Ar 1               	; bit 4 = 1         -> is a Directory
+000B4Ar 1               	; bit 3 = 1         -> is a Volume ID
+000B4Ar 1               	; bit 2 = 1         -> is a System
+000B4Ar 1               	; bit 1 = 1         -> is a Hidden
+000B4Ar 1               	; bit 0 = 1         -> is a Readonly
+000B4Ar 1               
+000B4Ar 1  A8           	tay	; for safe keeping
+000B4Br 1               
+000B4Br 1               	; if bits xx3210 = xx1111 -> is a long filename
+000B4Br 1               	; we process these differently to the standard (shortname) entries
+000B4Br 1               	;
+000B4Br 1  29 0F        	and #$0f
+000B4Dr 1  C9 0F        	cmp #$0f		;%00001111 LFN entry special attribute value (xxxx1111)
+000B4Fr 1  D0 03        	bne drce_cont0
+000B51r 1  4C rr rr     	jmp drce_longname	; MATCH -> must be LFN
+000B54r 1               
+000B54r 1               drce_cont0:
+000B54r 1  98           	tya	;from safe keeping
+000B55r 1               
+000B55r 1               	;if bit-4 = 1 -> Directory
+000B55r 1               	; we ignore directories (for now)
+000B55r 1               	;
+000B55r 1  29 10        	and #$10
+000B57r 1  C9 10        	cmp #$10		;%00010000 Directory
+000B59r 1  D0 03        	bne drce_cont1
+000B5Br 1  4C rr rr     	jmp drce_directory	; MATCH -> must be Directory
+000B5Er 1               
+000B5Er 1               drce_cont1:
+000B5Er 1  98           	tya	;from safe keeping
+000B5Fr 1               
+000B5Fr 1               	;if bit-3 = 1 -> Vol ID
+000B5Fr 1               	; we process the Vol ID different (for now)
+000B5Fr 1               	;
+000B5Fr 1  29 08        	and #$08
+000B61r 1  C9 08        	cmp #$08		;%00001000 Vol-ID
+000B63r 1  D0 03        	bne drce_cont2
+000B65r 1  4C rr rr     	jmp drce_volumeid	; MATCH -> must be Vol-ID
+000B68r 1               
+000B68r 1               drce_cont2:
+000B68r 1  98           	tya	;from safe keeping
+000B69r 1               
+000B69r 1               	;check for bits 2 or 1 asserted
+000B69r 1               	; we should ignore these hidden/system files (for now)
+000B69r 1               	;
+000B69r 1  29 06        	and #$06		;%00000110
+000B6Br 1  F0 03        	beq drce_cont3	; branch if equal to zero (ie not Hidden OR System)
+000B6Dr 1  4C rr rr     	jmp drce_hidden
+000B70r 1               
+000B70r 1               drce_cont3:
+000B70r 1               
+000B70r 1               	; was not hidden/system, or Vol-ID, or LFN,
+000B70r 1               	; so we process this entry regardless of if read-only (bit0) or not
+000B70r 1               
+000B70r 1  4C rr rr     	jmp drce_normalrecord
+000B73r 1               
+000B73r 1               ;	========================
+000B73r 1               
+000B73r 1               drce_hidden:
+000B73r 1               
+000B73r 1  20 rr rr     	jsr checkpoint
+000B76r 1  00 20 69 73  	.byte 0," is hidden/system, so skip this record",0
+000B7Ar 1  20 68 69 64  
+000B7Er 1  64 65 6E 2F  
+000B9Er 1               
+000B9Er 1  4C rr rr     	jmp drce_cont_next_part
+000BA1r 1               
+000BA1r 1               ;	========================
+000BA1r 1               
+000BA1r 1               drce_volumeid:
+000BA1r 1               
+000BA1r 1  20 rr rr     	jsr checkpoint
+000BA4r 1  00 20 69 73  	.byte 0," is Volume ID, so skip this record",0
+000BA8r 1  20 56 6F 6C  
+000BACr 1  75 6D 65 20  
+000BC8r 1               
+000BC8r 1  4C rr rr     	jmp drce_cont_next_part
+000BCBr 1               
+000BCBr 1               ;	========================
+000BCBr 1               
+000BCBr 1               drce_directory:
+000BCBr 1               
+000BCBr 1  20 rr rr     	jsr checkpoint
+000BCEr 1  00 20 69 73  	.byte 0," is Directory, so skip this record",0
+000BD2r 1  20 44 69 72  
+000BD6r 1  65 63 74 6F  
+000BF2r 1               
+000BF2r 1  4C rr rr     	jmp drce_cont_next_part
+000BF5r 1               
+000BF5r 1               ;	========================
+000BF5r 1               
+000BF5r 1               drce_longname:
+000BF5r 1               
+000BF5r 1  20 rr rr     	jsr checkpoint
+000BF8r 1  00 20 69 73  	.byte 0," is LFN, so skip this record",0
+000BFCr 1  20 4C 46 4E  
+000C00r 1  2C 20 73 6F  
+000C16r 1               
+000C16r 1  4C rr rr     	jmp drce_cont_next_part
+000C19r 1               
+000C19r 1               	; make sure long entry type is "filename" (=$00)
+000C19r 1               	;
+000C19r 1  A0 0C        	ldy #fs_fat32_dirent_offset_lfn_type
+000C1Br 1  B1 rr        	lda (<dos_scratch_vector),y
+000C1Dr 1  D3 12 01     	lbne drce_normalrecord
+000C20r 1               
+000C20r 1               	; verify checksum of long name
+000C20r 1               	; XXX - Actually, we need to keep the checksum, and then compare it with the
+000C20r 1               	; checksum we compute on the short name to check if this is the right long
+000C20r 1               	; name.  We are just going to ignore this for now, and assume (and hope) that
+000C20r 1               	; the LFN structure is always healthy.  I am sure this will come back to bite
+000C20r 1               	; us at some point, and it can be fixed at that point in time.
+000C20r 1               
+000C20r 1               	; It's a long filename piece
+000C20r 1               	; byte 0 gives the position in the LFN of this piece.
+000C20r 1               	; Each piece has 13 16-bit unicode values.
+000C20r 1               	; For now, we will only use the lower byte.  later we should gather the
+000C20r 1               	; long filenames as UTF-16, and then convert them to UTF-8.
+000C20r 1               
+000C20r 1  A0 00        	ldy #fs_fat32_dirent_offset_lfn_part_number
+000C22r 1  B1 rr        	lda (<dos_scratch_vector),y
+000C24r 1  29 3F        	and #$3f ; mask out end of LFN indicator
+000C26r 1  3A           	dec ; subtract one, since pieces are numbered from 1 upwards
+000C27r 1               
+000C27r 1               	; each piece has 13 chars, and we only allow 64 characters total, so any
+000C27r 1               	; piece number >4 can be ignored
+000C27r 1               	;
+000C27r 1  C9 05        	cmp #5
+000C29r 1  B3 9D 00     	lbcs drce_ignore_lfn_piece
+000C2Cr 1  AA           	tax
+000C2Dr 1  BD rr rr     	lda lfn_piece_offsets,x
+000C30r 1  AA           	tax
+000C31r 1               
+000C31r 1  20 rr rr     	jsr checkpoint
+000C34r 1  00 20 66 6F  	.byte 0," found LFN piece <start>",0
+000C38r 1  75 6E 64 20  
+000C3Cr 1  4C 46 4E 20  
+000C4Er 1               
+000C4Er 1               	; Copy first part of LFN
+000C4Er 1               	;
+000C4Er 1  A0 01        	ldy #fs_fat32_dirent_offset_lfn_part1_start
+000C50r 1  A3 05        	ldz #fs_fat32_dirent_offset_lfn_part1_chars
+000C52r 1  B1 rr        drce2:	lda (<dos_scratch_vector),y
+000C54r 1  F0 40        	beq drce_eot_in_filename
+000C56r 1  9D rr rr     	sta dos_dirent_longfilename,x
+000C59r 1  8E rr rr     	stx dos_dirent_longfilename_length
+000C5Cr 1  E8           	inx
+000C5Dr 1               	; protect against over-long LFNs
+000C5Dr 1  E0 40        	cpx #$40
+000C5Fr 1  F0 35        	beq drce_eot_in_filename
+000C61r 1  C8           	iny
+000C62r 1  C8           	iny
+000C63r 1  3B           	dez
+000C64r 1  D0 EC        	bne drce2
+000C66r 1               
+000C66r 1               	; Copy second part of LFN
+000C66r 1               	;
+000C66r 1  A0 0E        	ldy #fs_fat32_dirent_offset_lfn_part2_start
+000C68r 1  A3 06        	ldz #fs_fat32_dirent_offset_lfn_part2_chars
+000C6Ar 1  B1 rr        drce3:	lda (<dos_scratch_vector),y
+000C6Cr 1  F0 28        	beq drce_eot_in_filename
+000C6Er 1  9D rr rr     	sta dos_dirent_longfilename,x
+000C71r 1  8E rr rr     	stx dos_dirent_longfilename_length
+000C74r 1  E8           	inx
+000C75r 1               	; protect against over-long LFNs
+000C75r 1  E0 40        	cpx #$40
+000C77r 1  F0 1D        	beq drce_eot_in_filename
+000C79r 1  C8           	iny
+000C7Ar 1  C8           	iny
+000C7Br 1  3B           	dez
+000C7Cr 1  D0 EC        	bne drce3
+000C7Er 1               
+000C7Er 1               	; Copy first part of LFN
+000C7Er 1               	;
+000C7Er 1  A0 1C        	ldy #fs_fat32_dirent_offset_lfn_part3_start
+000C80r 1  A3 02        	ldz #fs_fat32_dirent_offset_lfn_part3_chars
+000C82r 1  B1 rr        drce4:	lda (<dos_scratch_vector),y
+000C84r 1  F0 10        	beq drce_eot_in_filename
+000C86r 1  9D rr rr     	sta dos_dirent_longfilename,x
+000C89r 1  8E rr rr     	stx dos_dirent_longfilename_length
+000C8Cr 1  E8           	inx
+000C8Dr 1               	; protect against over-long LFNs
+000C8Dr 1  E0 40        	cpx #$40
+000C8Fr 1  F0 05        	beq drce_eot_in_filename
+000C91r 1  C8           	iny
+000C92r 1  C8           	iny
+000C93r 1  3B           	dez
+000C94r 1  D0 EC        	bne drce4
+000C96r 1               
+000C96r 1               drce_eot_in_filename:
+000C96r 1               
+000C96r 1  20 rr rr     	jsr checkpoint
+000C99r 1  00 42 47 4F  	.byte 0,"BGOK drce_eot_in_filename",0
+000C9Dr 1  4B 20 64 72  
+000CA1r 1  63 65 5F 65  
+000CB4r 1               
+000CB4r 1               	; got all characters from this LFN piece
+000CB4r 1               	;
+000CB4r 1  EC rr rr     	cpx dos_dirent_longfilename_length
+000CB7r 1  90 0F        	bcc drce_piece_didnt_grow_name_length
+000CB9r 1  8E rr rr     	stx dos_dirent_longfilename_length
+000CBCr 1  E0 3F        	cpx #$3f
+000CBEr 1  B0 08        	bcs drce_eot_in_filename2
+000CC0r 1               
+000CC0r 1               	; null terminate if there is space, for convenience
+000CC0r 1               	;
+000CC0r 1  A9 00        	lda #$00
+000CC2r 1  9D rr rr     	sta dos_dirent_longfilename,x
+000CC5r 1  8E rr rr     	stx dos_dirent_longfilename_length
+000CC8r 1               
+000CC8r 1               drce_eot_in_filename2:
+000CC8r 1               
+000CC8r 1               drce_piece_didnt_grow_name_length:
+000CC8r 1               
+000CC8r 1               drce_ignore_lfn_piece:
+000CC8r 1               
+000CC8r 1  20 rr rr     	jsr checkpoint
+000CCBr 1  00 42 47 4F  	.byte 0,"BGOK drce_ignore_lfn_piece",0
+000CCFr 1  4B 20 64 72  
+000CD3r 1  63 65 5F 69  
+000CE7r 1               
+000CE7r 1               	; We have finished processing this piece of long name.
+000CE7r 1               	; bump directory entry, read next sector if required, and re-enter loop
+000CE7r 1               	; above to keep accumulating
+000CE7r 1               
+000CE7r 1               drce_cont_next:
+000CE7r 1               
+000CE7r 1  20 rr rr     	jsr checkpoint
+000CEAr 1  00 42 47 4F  	.byte 0,"BGOK drce_cont_next",0
+000CEEr 1  4B 20 64 72  
+000CF2r 1  63 65 5F 63  
+000CFFr 1               
+000CFFr 1  20 rr rr     	jsr dos_readdir_advance_to_next_entry
+000D02r 1  90 03        	bcc drce_no_more_pieces
+000D04r 1               
+000D04r 1  4C rr rr     	jmp drce_next_piece
+000D07r 1               
+000D07r 1               drd_end_of_directory:
+000D07r 1               	; If we have pieces, then emit the final filename,
+000D07r 1               	; else return EOF on the directory by falling through to the following
+000D07r 1               	; Can we ever be in such a position?  Let's assume for the time being that
+000D07r 1               	; we can't.  If we start losing the last name in a directory list, then we
+000D07r 1               	; can worry about fixing it then.
+000D07r 1               
+000D07r 1               	; FALL THROUGH to drce_no_more_pieces
+000D07r 1               
+000D07r 1               ;	========================
+000D07r 1               
+000D07r 1               drce_no_more_pieces:
+000D07r 1  20 rr rr     	jsr checkpoint
+000D0Ar 1  00 20 46 4F  	.byte 0," FOUND END_OF_DIRECTORY",0
+000D0Er 1  55 4E 44 20  
+000D12r 1  45 4E 44 5F  
+000D23r 1               
+000D23r 1  A9 FF        	lda #dos_errorcode_eof
+000D25r 1  4C rr rr     	jmp dos_return_error
+000D28r 1               
+000D28r 1               ;	========================
+000D28r 1               
+000D28r 1               
+000D28r 1               drce_cont_next_part:
+000D28r 1               
+000D28r 1  20 rr rr     	jsr dos_readdir_advance_to_next_entry
+000D2Br 1  B3 F3 FC     	lbcs dos_readdir
+000D2Er 1  4C rr rr     	jmp dos_return_error_already_set
+000D31r 1               
+000D31r 1               ;	========================
+000D31r 1               
+000D31r 1               drce_normalrecord:
+000D31r 1               	; PGS: We have found a short name.
+000D31r 1               
+000D31r 1               
+000D31r 1  20 rr rr     	jsr checkpoint
+000D34r 1  00 20 70 72  	.byte 0," processing SHORT-name",0
+000D38r 1  6F 63 65 73  
+000D3Cr 1  73 69 6E 67  
+000D4Cr 1               
+000D4Cr 1               	; store short name
+000D4Cr 1               	;
+000D4Cr 1  A0 00        	ldy #fs_fat32_dirent_offset_shortname
+000D4Er 1               
+000D4Er 1               ; this test has already been done
+000D4Er 1               ;
+000D4Er 1               ;	; Ignore empty and deleted entries (first byte $00 or $E5 respectively)
+000D4Er 1               ;	;
+000D4Er 1               ;	lda (<dos_scratch_vector),y
+000D4Er 1               ;	beq drd_end_of_directory
+000D4Er 1               ;	cmp #$e5
+000D4Er 1               ;	beq drd_deleted_or_invalid_entry
+000D4Er 1               
+000D4Er 1  A2 00        	ldx #$00
+000D50r 1  B1 rr        drce5:	lda (<dos_scratch_vector),y
+000D52r 1  9D rr rr     	sta dos_dirent_shortfilename,x
+000D55r 1  E8           	inx
+000D56r 1  C8           	iny
+000D57r 1  E0 0B        	cpx #11
+000D59r 1  D0 F5        	bne drce5
+000D5Br 1               
+000D5Br 1               	; If we have no long name, copy it also to long name, inserting "." between
+000D5Br 1               	; name and extension as required.
+000D5Br 1               	;
+000D5Br 1  AD rr rr     	lda dos_dirent_longfilename_length
+000D5Er 1  D0 44        	bne drce_already_have_long_name
+000D60r 1               
+000D60r 1               	; copy name part
+000D60r 1               	;
+000D60r 1  A0 00        	ldy #fs_fat32_dirent_offset_shortname
+000D62r 1  A2 00        	ldx #$00
+000D64r 1  B1 rr        drce7:	lda (<dos_scratch_vector),y
+000D66r 1  9D rr rr     	sta dos_dirent_longfilename,x
+000D69r 1  8E rr rr     	stx dos_dirent_longfilename_length
+000D6Cr 1  E8           	inx
+000D6Dr 1  C8           	iny
+000D6Er 1  C9 20        	cmp #$20            ; space indicates end of short name before extension
+000D70r 1  F0 05        	beq drce_insert_dot
+000D72r 1  E0 08        	cpx #8
+000D74r 1  D0 EE        	bne drce7
+000D76r 1  E8           	inx
+000D77r 1               
+000D77r 1               drce_insert_dot:
+000D77r 1  CA           	dex
+000D78r 1  A9 2E        	lda #'.'
+000D7Ar 1  9D rr rr     	sta dos_dirent_longfilename,x
+000D7Dr 1  8E rr rr     	stx dos_dirent_longfilename_length
+000D80r 1  E8           	inx
+000D81r 1               
+000D81r 1               	; copy extension part
+000D81r 1               	;
+000D81r 1  A0 08        	ldy #fs_fat32_dirent_offset_shortname+8
+000D83r 1  A3 00        	ldz #0
+000D85r 1  B1 rr        drce6:	lda (<dos_scratch_vector),y
+000D87r 1  9D rr rr     	sta dos_dirent_longfilename,x
+000D8Ar 1  8E rr rr     	stx dos_dirent_longfilename_length
+000D8Dr 1  E8           	inx
+000D8Er 1  C8           	iny
+000D8Fr 1  1B           	inz
+000D90r 1  C2 03        	cpz #3  ; short name extensions are <=3 chars
+000D92r 1  F0 08        	beq drce_copied_extension
+000D94r 1               
+000D94r 1               	; also terminate extensions early if they are <3 chars
+000D94r 1               	;
+000D94r 1  C9 20        	cmp #$20
+000D96r 1  F0 04        	beq drce_copied_extension
+000D98r 1  E0 0C        	cpx #8+1+3
+000D9Ar 1  D0 E9        	bne drce6
+000D9Cr 1               
+000D9Cr 1               drce_copied_extension:
+000D9Cr 1               
+000D9Cr 1               	; null terminate short name for convenience in our debugging
+000D9Cr 1               	;
+000D9Cr 1  A9 00        	lda #$00
+000D9Er 1  9D rr rr     	sta dos_dirent_longfilename,x
+000DA1r 1               
+000DA1r 1               	; record length of short name
+000DA1r 1  8E rr rr     	stx dos_dirent_longfilename_length
+000DA4r 1               
+000DA4r 1               	; fall through
+000DA4r 1               
+000DA4r 1               drce_already_have_long_name:
+000DA4r 1               
+000DA4r 1               	; now copy attribute field and other useful data
+000DA4r 1               
+000DA4r 1               	; starting cluster
+000DA4r 1               	;
+000DA4r 1  A0 1A        	ldy #fs_fat32_dirent_offset_clusters_low
+000DA6r 1  B1 rr        	lda (<dos_scratch_vector),y
+000DA8r 1  8D rr rr     	sta dos_dirent_cluster
+000DABr 1  C8           	iny
+000DACr 1  B1 rr        	lda (<dos_scratch_vector),y
+000DAEr 1  8D rr rr     	sta dos_dirent_cluster+1
+000DB1r 1               
+000DB1r 1  A0 14        	ldy #fs_fat32_dirent_offset_clusters_high
+000DB3r 1  B1 rr        	lda (<dos_scratch_vector),y
+000DB5r 1  8D rr rr     	sta dos_dirent_cluster+2
+000DB8r 1  C8           	iny
+000DB9r 1  B1 rr        	lda (<dos_scratch_vector),y
+000DBBr 1  8D rr rr     	sta dos_dirent_cluster+3
+000DBEr 1               
+000DBEr 1               
+000DBEr 1               	; file length in bytes
+000DBEr 1               	;
+000DBEr 1  A0 1C        	ldy #fs_fat32_dirent_offset_file_length
+000DC0r 1  A2 00        	ldx #0
+000DC2r 1               drce_fl:
+000DC2r 1  B1 rr        	lda (<dos_scratch_vector),y
+000DC4r 1  9D rr rr     	sta dos_dirent_length,x
+000DC7r 1  C8           	iny
+000DC8r 1  E8           	inx
+000DC9r 1  E0 04        	cpx #4
+000DCBr 1  D0 F5        	bne drce_fl
+000DCDr 1               
+000DCDr 1               	; attributes
+000DCDr 1               	;
+000DCDr 1  A0 0B        	ldy #fs_fat32_dirent_offset_attributes
+000DCFr 1  B1 rr        	lda (<dos_scratch_vector),y
+000DD1r 1  8D rr rr     	sta dos_dirent_type_and_attribs
+000DD4r 1               
+000DD4r 1  20 rr rr     	jsr checkpoint
+000DD7r 1  00 20 64 72  	.byte 0," drce_fl populated fields",0
+000DDBr 1  63 65 5F 66  
+000DDFr 1  6C 20 70 6F  
+000DF2r 1               
+000DF2r 1  20 rr rr     	jsr dos_readdir_advance_to_next_entry
+000DF5r 1  B0 2B        	bcs drce_not_eof
+000DF7r 1               
+000DF7r 1               drce_is_eof:
+000DF7r 1               
+000DF7r 1  20 rr rr     	jsr checkpoint
+000DFAr 1  00 20 44 45  	.byte 0," DEBUG drce_is_eof <!>",0
+000DFEr 1  42 55 47 20  
+000E02r 1  64 72 63 65  
+000E12r 1               
+000E12r 1               	; We need to pass the error through here to indicate EOF in directory,
+000E12r 1               	; but in a way that can be defered to the next call to dos_readdir, because
+000E12r 1               	; we have a valid entry right now.  We do this with a special file mode which
+000E12r 1               	; is EOF of directory (dos_filemode_end_of_directory)
+000E12r 1               	;
+000E12r 1  AE rr rr     	ldx dos_current_file_descriptor_offset
+000E15r 1  A9 81        	lda #dos_filemode_end_of_directory
+000E17r 1  9D rr rr     	sta dos_file_descriptors + dos_filedescriptor_offset_mode ,x
+000E1Ar 1               
+000E1Ar 1  AE rr rr     	ldx dos_current_file_descriptor_offset
+000E1Dr 1  BD rr rr     	lda dos_file_descriptors + dos_filedescriptor_offset_mode,x
+000E20r 1               
+000E20r 1  38           	sec
+000E21r 1  60           	rts
+000E22r 1               
+000E22r 1               drce_not_eof:
+000E22r 1               
+000E22r 1  20 rr rr     	jsr checkpoint
+000E25r 1  00 20 64 72  	.byte 0," drce_not_eof CHECK<1/3>",0
+000E29r 1  63 65 5F 6E  
+000E2Dr 1  6F 74 5F 65  
+000E3Fr 1               
+000E3Fr 1               	; Ignore zero-length filenames (corresponding to empty directory entries)
+000E3Fr 1               	;
+000E3Fr 1  AD rr rr     	lda dos_dirent_longfilename_length
+000E42r 1  C9 00        	cmp #0
+000E44r 1  F3 DA FB     	lbeq dos_readdir
+000E47r 1               
+000E47r 1  20 rr rr     	jsr checkpoint
+000E4Ar 1  00 20 64 72  	.byte 0," drce_not_eof CHECK<2/3>",0
+000E4Er 1  63 65 5F 6E  
+000E52r 1  6F 74 5F 65  
+000E64r 1               
+000E64r 1  AD rr rr     	lda dos_dirent_shortfilename
+000E67r 1  F3 B7 FB     	lbeq dos_readdir
+000E6Ar 1  C9 20        	cmp #$20
+000E6Cr 1  F3 B2 FB     	lbeq dos_readdir
+000E6Fr 1               
+000E6Fr 1  20 rr rr     	jsr checkpoint
+000E72r 1  00 20 64 72  	.byte 0," drce_not_eof CHECK<3/3>",0
+000E76r 1  63 65 5F 6E  
+000E7Ar 1  6F 74 5F 65  
+000E8Cr 1               
+000E8Cr 1  AE rr rr     	ldx dos_dirent_longfilename_length
+000E8Fr 1  20 rr rr     	jsr lfndebug
+000E92r 1               
+000E92r 1  38           	sec
+000E93r 1  60           	rts
+000E94r 1               
+000E94r 1               ;	========================
+000E94r 1               
+000E94r 1               lfndebug:
+000E94r 1               	; requires .X to be set
+000E94r 1               	;
+000E94r 1               					; convert .X to char-representation for display
+000E94r 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000E97r 1  8C rr rr     	sty fnmsg1-5
+000E9Ar 1  8E rr rr     	stx fnmsg1-4
+000E9Dr 1               
+000E9Dr 1               	; Show what we have in the filename so far
+000E9Dr 1               	;
+000E9Dr 1  DA           	phx	;safekeep
+000E9Er 1               
+000E9Er 1  A2 1D        	ldx #29
+000EA0r 1  BD rr rr     drce23:	lda dos_dirent_longfilename,x
+000EA3r 1  20 rr rr     	jsr makeprintable
+000EA6r 1  9D rr rr     	sta fnmsg1,x
+000EA9r 1  CA           	dex
+000EAAr 1  10 F4        	bpl drce23
+000EACr 1               
+000EACr 1  FA           	plx	;unsafekeep
+000EADr 1               
+000EADr 1  20 rr rr     	jsr checkpoint
+000EB0r 1  00 4C 46 4E  	.byte 0,"LFN(xx): " ; the "xx" can be replaced with the name_length
+000EB4r 1  28 78 78 29  
+000EB8r 1  3A 20        
+000EBAr 1               fnmsg1:
+000EBAr 1  2E 2E 2E 2E  	.byte "..............................",0 ; BG: why only 30 chars?
+000EBEr 1  2E 2E 2E 2E  
+000EC2r 1  2E 2E 2E 2E  
+000ED9r 1               
+000ED9r 1  60           	rts
+000EDAr 1               
+000EDAr 1               ;	========================
+000EDAr 1               
+000EDAr 1               drd_deleted_or_invalid_entry:
+000EDAr 1               
+000EDAr 1  AA           	tax
+000EDBr 1               					; convert .X to char-representation for display
+000EDBr 1  20 rr rr     	jsr checkpoint_bytetohex	; returns: .X and .Y (Y is MSB, X is LSB, print YX)
+000EDEr 1  8C rr rr     	sty ddie+0
+000EE1r 1  8E rr rr     	stx ddie+1
+000EE4r 1               
+000EE4r 1  20 rr rr     	jsr checkpoint
+000EE7r 1  00           	.byte 0
+000EE8r 1  78 78 20 64  ddie:	.byte "xx drd_deleted_or_invalid_entry",0
+000EECr 1  72 64 5F 64  
+000EF0r 1  65 6C 65 74  
+000F08r 1               
+000F08r 1  20 rr rr     	jsr dos_readdir_advance_to_next_entry
+000F0Br 1  B3 13 FB     	lbcs dos_readdir
+000F0Er 1  4C rr rr     	jmp dos_return_error_already_set
+000F11r 1               
+000F11r 1               ;	========================
+000F11r 1               
+000F11r 1               lfn_piece_offsets:
+000F11r 1  00 0D 1A 27  	.byte 0,13,13*2,13*3,13*4
+000F15r 1  34           
+000F16r 1               
+000F16r 1               ;	========================
+000F16r 1               
+000F16r 1               dos_dirent_compare_name_to_requested:
+000F16r 1               
+000F16r 1               	; print debug message showing what we are comparing
+000F16r 1               
+000F16r 1               	; print filename for debug
+000F16r 1               
+000F16r 1               	; Do the cheap check of comparing the lengths first
+000F16r 1               	;
+000F16r 1  AD rr rr     	lda dos_dirent_longfilename_length
+000F19r 1  CD rr rr     	cmp dos_requested_filename_len
+000F1Cr 1  D0 27        	bne dff3
+000F1Er 1               
+000F1Er 1               	; lengths match, so compare bytes
+000F1Er 1               	; XXX - Needs to support * and ?
+000F1Er 1               	; see http://6502.org/source/strings/patmatch.htm for a routine to take
+000F1Er 1               	; inspiration from.
+000F1Er 1               	;
+000F1Er 1  AE rr rr     	ldx dos_dirent_longfilename_length
+000F21r 1  CA           	dex
+000F22r 1  BD rr rr     dff4:	lda dos_dirent_longfilename,x
+000F25r 1  DD rr rr     	cmp dos_requested_filename,x
+000F28r 1  D0 1B        	bne dff3
+000F2Ar 1  CA           	dex
+000F2Br 1  D0 F5        	bne dff4
+000F2Dr 1               
+000F2Dr 1               	; File names match, so return success
+000F2Dr 1               
+000F2Dr 1  20 rr rr     	jsr checkpoint
+000F30r 1  00 46 6F 75  	.byte 0,"Found the file...",0
+000F34r 1  6E 64 20 74  
+000F38r 1  68 65 20 66  
+000F43r 1               
+000F43r 1  38           	sec
+000F44r 1  60           	rts
+000F45r 1               
+000F45r 1               dff3:
+000F45r 1               	; file names don't match, so return failure
+000F45r 1  18           	clc
+000F46r 1  60           	rts
+000F47r 1               
+000F47r 1               ;	========================
+000F47r 1               
+000F47r 1               dos_readdir_advance_to_next_entry:
+000F47r 1               
+000F47r 1  AC rr rr     	ldy dos_current_file_descriptor_offset
+000F4Ar 1               
+000F4Ar 1  18           	clc
+000F4Br 1  B9 rr rr     	lda dos_file_descriptors + dos_filedescriptor_offset_offsetinsector +0,y
+000F4Er 1  69 20        	adc #$20 ; length of FAT32/VFAT directory entry
+000F50r 1  99 rr rr     	sta dos_file_descriptors + dos_filedescriptor_offset_offsetinsector +0,y
+000F53r 1  D0 0B        	bne dratne_done
+000F55r 1               
+000F55r 1               	; Increment upper byte
+000F55r 1               	;
+000F55r 1  B9 rr rr     	lda dos_file_descriptors + dos_filedescriptor_offset_offsetinsector +1,y
+000F58r 1  1A           	inc
+000F59r 1  C9 01        	cmp #$01
+000F5Br 1  D0 05        	bne drce_end_of_sector
+000F5Dr 1  99 rr rr     	sta dos_file_descriptors + dos_filedescriptor_offset_offsetinsector +1,y
+000F60r 1               
+000F60r 1               dratne_done:
+000F60r 1  38           	sec
+000F61r 1  60           	rts
+000F62r 1               
+000F62r 1               ;	========================
+000F62r 1               
+000F62r 1               drce_end_of_sector:
+000F62r 1               
+000F62r 1               	; Reset pointer back to start of sector
+000F62r 1               	;
+000F62r 1  A9 00        	lda #$00
+000F64r 1  99 rr rr     	sta dos_file_descriptors+dos_filedescriptor_offset_offsetinsector+1,y
+000F67r 1               
+000F67r 1  20 rr rr     	jsr dos_file_advance_to_next_sector
+000F6Ar 1  60           	rts
+000F6Br 1               
+000F6Br 1               ;	========================
+000F6Br 1               
+000F6Br 1               dos_set_current_file_from_dirent:
+000F6Br 1               
+000F6Br 1               	; copy start cluster from dirent to start and current cluster
+000F6Br 1               	;
+000F6Br 1  20 rr rr     	jsr dos_get_free_descriptor
+000F6Er 1  20 rr rr     	jsr dos_get_file_descriptor_offset
+000F71r 1  93 07 F9     	lbcc dos_return_error_already_set
+000F74r 1               
+000F74r 1               	; set disk id
+000F74r 1               	;
+000F74r 1  AD rr rr     	lda dos_disk_current_disk
+000F77r 1  9D rr rr     	sta dos_file_descriptors+dos_filedescriptor_offset_diskid,x
+000F7Ar 1               
+000F7Ar 1               	; set current cluster to start cluster
+000F7Ar 1               	;
+000F7Ar 1  A0 00        	ldy #0
+000F7Cr 1               dscffd1:
+000F7Cr 1  B9 rr rr     	lda dos_dirent_cluster,y
+000F7Fr 1  9D rr rr     	sta dos_file_descriptors+dos_filedescriptor_offset_startcluster,x
+000F82r 1  9D rr rr     	sta dos_file_descriptors+dos_filedescriptor_offset_currentcluster,x
+000F85r 1  E8           	inx
+000F86r 1  C8           	iny
+000F87r 1  C0 04        	cpy #4
+000F89r 1  D0 F1        	bne dscffd1
+000F8Br 1               
+000F8Br 1  20 rr rr     	jsr dos_get_file_descriptor_offset
+000F8Er 1  93 EA F8     	lbcc dos_return_error_already_set
+000F91r 1               
+000F91r 1               	; set disk id
+000F91r 1               	;
+000F91r 1  AD rr rr     	lda dos_disk_current_disk
+000F94r 1  9D rr rr     	sta dos_file_descriptors+dos_filedescriptor_offset_diskid,x
+000F97r 1               
+000F97r 1               	; set mode
+000F97r 1               	;
+000F97r 1  A9 00        	lda #dos_filemode_readonly
+000F99r 1  9D rr rr     	sta dos_file_descriptors+dos_filedescriptor_offset_mode,x
+000F9Cr 1               
+000F9Cr 1               	; set sector in cluster (set to 0)
+000F9Cr 1               	;
+000F9Cr 1  A9 00        	lda #$00
+000F9Er 1  9D rr rr     	sta dos_file_descriptors+dos_filedescriptor_offset_sectorincluster,x
+000FA1r 1               
+000FA1r 1               	; set offset in sector (set to 0)
+000FA1r 1               	;
+000FA1r 1  9D rr rr     	sta dos_file_descriptors+dos_filedescriptor_offset_offsetinsector+0,x
+000FA4r 1  9D rr rr     	sta dos_file_descriptors+dos_filedescriptor_offset_offsetinsector+1,x
+000FA7r 1               
+000FA7r 1  38           	sec
+000FA8r 1  60           	rts
+000FA9r 1               
+000FA9r 1               ;	========================
+000FA9r 1               
+000FA9r 1               dos_open_current_file:
+000FA9r 1               
+000FA9r 1               	; copy start cluster to current cluster, and zero position in file
+000FA9r 1               	;
+000FA9r 1  20 rr rr     	jsr dos_get_file_descriptor_offset
+000FACr 1  93 CC F8     	lbcc dos_return_error_already_set
+000FAFr 1               
+000FAFr 1               	; Copy start cluster to current cluster
+000FAFr 1               	;
+000FAFr 1  A0 03        	ldy #3
+000FB1r 1  BD rr rr     docf1:	lda dos_file_descriptors + dos_filedescriptor_offset_startcluster   ,x
+000FB4r 1  9D rr rr     	sta dos_file_descriptors + dos_filedescriptor_offset_currentcluster ,x
+000FB7r 1  E8           	inx
+000FB8r 1  88           	dey
+000FB9r 1  10 F6        	bpl docf1
+000FBBr 1               
+000FBBr 1  20 rr rr     	jsr dos_get_file_descriptor_offset
+000FBEr 1  A9 00        	lda #$00
+000FC0r 1               
+000FC0r 1               	; sectorincluster, offsetinsector, fileoffset are contiguous, which allows
+000FC0r 1               	; us to clear these more efficiently.
+000FC0r 1               	;
+000FC0r 1  A0 06        	ldy #6
+000FC2r 1  9D rr rr     docf2:	sta dos_file_descriptors+dos_filedescriptor_offset_sectorincluster,x
+000FC5r 1  E8           	inx
+000FC6r 1  88           	dey
+000FC7r 1  D0 F9        	bne docf2
+000FC9r 1               
+000FC9r 1  20 rr rr     	jsr dos_get_file_descriptor_offset
+000FCCr 1               
+000FCCr 1  38           	sec
+000FCDr 1  60           	rts
+000FCEr 1               
+000FCEr 1               ;	========================
+000FCEr 1               
+000FCEr 1               	; Load A & X with the offset of the current file descriptor, relative to
+000FCEr 1               	; dos_file_descriptors.
+000FCEr 1               
+000FCEr 1               .EXPORT dos_get_file_descriptor_offset
+000FCEr 1               dos_get_file_descriptor_offset:
+000FCEr 1               
+000FCEr 1  AD rr rr     	lda dos_current_file_descriptor
+000FD1r 1  C9 04        	cmp #4
+000FD3r 1  B0 07        	bcs dos_bad_file_descriptor
+000FD5r 1  0A           	asl
+000FD6r 1  0A           	asl
+000FD7r 1  0A           	asl
+000FD8r 1  0A           	asl
+000FD9r 1  AA           	tax
+000FDAr 1  38           	sec
+000FDBr 1  60           	rts
+000FDCr 1               
+000FDCr 1               ;	========================
+000FDCr 1               
+000FDCr 1               dos_bad_file_descriptor:
+000FDCr 1               
+000FDCr 1  A9 89        	lda #dos_errorcode_invalid_file_descriptor
+000FDEr 1  4C rr rr     	jmp dos_return_error
+000FE1r 1               
+000FE1r 1               ;	========================
+000FE1r 1               
+000FE1r 1               dos_set_current_cluster_from_file:
+000FE1r 1               
+000FE1r 1               	; copy cluster number in file to current cluster
+000FE1r 1               	;
+000FE1r 1  20 rr rr     	jsr dos_get_file_descriptor_offset
+000FE4r 1  93 94 F8     	lbcc dos_return_error_already_set
+000FE7r 1               
+000FE7r 1  A0 00        	ldy #$00
+000FE9r 1  BD rr rr     dfrcs1:	lda dos_file_descriptors+dos_filedescriptor_offset_currentcluster,x
+000FECr 1  99 rr rr     	sta dos_current_cluster,y
+000FEFr 1  E8           	inx
+000FF0r 1  C8           	iny
+000FF1r 1  C0 04        	cpy #$04
+000FF3r 1  D0 F4        	bne dfrcs1
+000FF5r 1  60           	rts
+000FF6r 1               
+000FF6r 1               ;	========================
+000FF6r 1               
+000FF6r 1               dos_file_read_current_sector:
+000FF6r 1               
+000FF6r 1  20 rr rr     	jsr dos_get_file_descriptor_offset
+000FF9r 1  20 rr rr     	jsr dos_set_current_cluster_from_file
+000FFCr 1  20 rr rr     	jsr dos_cluster_to_sector
+000FFFr 1               
+000FFFr 1               	; Add sector within cluster
+000FFFr 1               	;
+000FFFr 1  20 rr rr     	jsr dos_get_file_descriptor_offset
+001002r 1  93 76 F8     	lbcc dos_return_error_already_set
+001005r 1               
+001005r 1               	; Set A to the offset of the sectorincluster field of the current
+001005r 1               	; file descriptor
+001005r 1               	;
+001005r 1  09 0A        	ora #dos_filedescriptor_offset_sectorincluster
+001007r 1               
+001007r 1               	; Now put that offset in y, so that we can load the sector number in the
+001007r 1               	; current cluster for the current file descriptor
+001007r 1               	;
+001007r 1  A8           	tay
+001008r 1  B9 rr rr     	lda dos_file_descriptors,y
+00100Br 1               
+00100Br 1               	; add sector number in cluster to current sector number (which is the
+00100Br 1                       ; start of the cluster)
+00100Br 1               	;
+00100Br 1  20 rr rr     	jsr sdsector_add_uint8
+00100Er 1               
+00100Er 1  20 rr rr     	jsr sd_fix_sectornumber
+001011r 1  4C rr rr     	jmp sd_readsector
+001014r 1               
+001014r 1               ;	========================
+001014r 1               
+001014r 1               dos_file_advance_to_next_sector:
+001014r 1               
+001014r 1               	; Increment file position offset by 2 pages
+001014r 1               	;
+001014r 1  AE rr rr     	ldx dos_current_file_descriptor_offset
+001017r 1               
+001017r 1  BD rr rr     	lda dos_file_descriptors + dos_filedescriptor_offset_fileoffset+0 ,x
+00101Ar 1  18           	clc
+00101Br 1  69 02        	adc #$02
+00101Dr 1  9D rr rr     	sta dos_file_descriptors + dos_filedescriptor_offset_fileoffset+0 ,x
+001020r 1  90 08        	bcc dfatns1
+001022r 1  FE rr rr     	inc dos_file_descriptors + dos_filedescriptor_offset_fileoffset+1 ,x
+001025r 1  D0 03        	bne dfatns1
+001027r 1  FE rr rr     	inc dos_file_descriptors + dos_filedescriptor_offset_fileoffset+2 ,x
+00102Ar 1               dfatns1:
+00102Ar 1               
+00102Ar 1               	; increase sector
+00102Ar 1               	;
+00102Ar 1  FE rr rr     	inc dos_file_descriptors + dos_filedescriptor_offset_sectorincluster ,x
+00102Dr 1  BD rr rr     	lda dos_file_descriptors + dos_filedescriptor_offset_sectorincluster ,x
+001030r 1  AC rr rr     	ldy dos_disk_table_offset
+001033r 1               
+001033r 1  D9 rr rr     	cmp dos_disk_table + fs_fat32_sectors_per_cluster ,y
+001036r 1               
+001036r 1               	; and if necessary, advance to next cluster
+001036r 1               	;
+001036r 1  F0 02        	beq dos_file_advance_to_next_cluster
+001038r 1  38           	sec
+001039r 1  60           	rts
+00103Ar 1               
+00103Ar 1               ;	========================
+00103Ar 1               
+00103Ar 1               dos_file_advance_to_next_cluster:
+00103Ar 1               
+00103Ar 1               	; set to sector 0 in cluster
+00103Ar 1               	;
+00103Ar 1  AC rr rr     	ldy dos_current_file_descriptor_offset
+00103Dr 1  A9 00        	lda #$00
+00103Fr 1  99 rr rr     	sta dos_file_descriptors+dos_filedescriptor_offset_sectorincluster,y
+001042r 1               
+001042r 1               	; read chained cluster number for fs_clusternumber
+001042r 1               
+001042r 1               	; FAT32 uses 32-bit cluster numbers.
+001042r 1               ; the text below may be misleading, as we have 8 sectors per cluster
+001042r 1               	; 512 / 4 = 128 cluster numbers per sector.
+001042r 1               	; To get the sector of the FAT containin a particular
+001042r 1               	; cluster entry, we thus need to shift the cluster number
+001042r 1               	; right 7 bits.  Then we add the start sector number of the FAT.
+001042r 1               
+001042r 1  20 rr rr     	jsr dos_set_current_cluster_from_file
+001045r 1               
+001045r 1               	; copy cluster to sector number
+001045r 1               	;
+001045r 1  A2 03        	ldx #$03
+001047r 1               dfanc1:
+001047r 1  BD rr rr     	lda dos_current_cluster,x
+00104Ar 1  9D rr rr     	sta dos_current_sector,x
+00104Dr 1  CA           	dex
+00104Er 1  10 F7        	bpl dfanc1
+001050r 1               
+001050r 1               	; Remember low byte of cluster number so that we can pull the
+001050r 1               	; cluster number for the next cluster out of the FAT sector
+001050r 1               	;
+001050r 1  AD rr rr     	lda dos_current_cluster
+001053r 1  8D rr rr     	sta dos_scratch_byte_1
+001056r 1               
+001056r 1               	; shift right 7 times = divide by 128
+001056r 1               	;
+001056r 1  A0 07        	ldy #$07
+001058r 1  18           dfanc2:	clc
+001059r 1  6E rr rr     	ror dos_current_cluster+3
+00105Cr 1  6E rr rr     	ror dos_current_cluster+2
+00105Fr 1  6E rr rr     	ror dos_current_cluster+1
+001062r 1  6E rr rr     	ror dos_current_cluster+0
+001065r 1  88           	dey
+001066r 1  D0 F0        	bne dfanc2
+001068r 1               
+001068r 1               	; add start of partition offset
+001068r 1               	;
+001068r 1  AC rr rr     	ldy dos_disk_table_offset
+00106Br 1  A2 00        	ldx #$00
+00106Dr 1  18           	clc
+00106Er 1  08           	php
+00106Fr 1  28           dfanc3:	plp
+001070r 1  BD rr rr     	lda dos_current_cluster,x
+001073r 1  79 rr rr     	adc dos_disk_table + fs_start_sector ,y
+001076r 1  9D rr rr     	sta dos_current_cluster,x
+001079r 1  08           	php
+00107Ar 1  C8           	iny
+00107Br 1  E8           	inx
+00107Cr 1  E0 04        	cpx #$04
+00107Er 1  D0 EF        	bne dfanc3
+001080r 1  28           	plp
+001081r 1               
+001081r 1               	; add start of fat offset
+001081r 1               	;
+001081r 1  AC rr rr     	ldy dos_disk_table_offset
+001084r 1  A2 00        	ldx #$00
+001086r 1  18           	clc
+001087r 1  08           	php
+001088r 1  28           dfanc4:	plp
+001089r 1  BD rr rr     	lda dos_current_cluster,x
+00108Cr 1  79 rr rr     	adc dos_disk_table + fs_fat32_system_sectors ,y
+00108Fr 1  9D rr rr     	sta dos_current_cluster,x
+001092r 1  08           	php
+001093r 1  C8           	iny
+001094r 1  E8           	inx
+001095r 1  E0 02        	cpx #$02
+001097r 1  D0 EF        	bne dfanc4
+001099r 1               
+001099r 1               	; copy from current cluster to SD sector address register
+001099r 1               	;
+001099r 1  A2 03        	ldx #$03
+00109Br 1               dfanc41:
+00109Br 1  BD rr rr     	lda dos_current_cluster,x
+00109Er 1  9D 81 D6     	sta $d681,x
+0010A1r 1  CA           	dex
+0010A2r 1  10 F7        	bpl dfanc41
+0010A4r 1               
+0010A4r 1               dfanc44:
+0010A4r 1  28           	plp
+0010A5r 1  BD rr rr     	lda dos_current_cluster,x
+0010A8r 1  69 00        	adc #$00
+0010AAr 1  9D rr rr     	sta dos_current_cluster,x
+0010ADr 1  08           	php
+0010AEr 1  E8           	inx
+0010AFr 1  E0 04        	cpx #$04
+0010B1r 1  D0 F1        	bne dfanc44
+0010B3r 1               
+0010B3r 1  28           	plp
+0010B4r 1               
+0010B4r 1               	; turn sector number into byte address for non-SDHC cards
+0010B4r 1               	;
+0010B4r 1  20 rr rr     	jsr sd_fix_sectornumber
+0010B7r 1               
+0010B7r 1               	; read FAT sector
+0010B7r 1               	;
+0010B7r 1  20 rr rr     	jsr sd_readsector
+0010BAr 1  93 BE F7     	lbcc dos_return_error_already_set
+0010BDr 1               
+0010BDr 1  20 rr rr     	jsr sd_map_sectorbuffer
+0010C0r 1               
+0010C0r 1               	; now read the right four bytes out.
+0010C0r 1               	; cluster number needs to be shifted left 2 bits.
+0010C0r 1               	; we only need the lowest order byte.
+0010C0r 1               	; Get low byte of old cluster number from dos_scratch_byte_1
+0010C0r 1               	; where we put it.
+0010C0r 1               	;
+0010C0r 1  AD rr rr     	lda dos_scratch_byte_1
+0010C3r 1  0A           	asl
+0010C4r 1  0A           	asl
+0010C5r 1  AA           	tax
+0010C6r 1               
+0010C6r 1               	; get offset to current cluster field in current file descriptor ...
+0010C6r 1  AD rr rr     	lda dos_current_file_descriptor_offset
+0010C9r 1  09 06        	ora #dos_filedescriptor_offset_currentcluster
+0010CBr 1  A8           	tay
+0010CCr 1               
+0010CCr 1               	; ... and keep it handy, because we will need it a few times
+0010CCr 1               	;
+0010CCr 1  8C rr rr     	sty dos_scratch_byte_2
+0010CFr 1               
+0010CFr 1               	; get offset of current cluster number field in file descriptor
+0010CFr 1               	; so that we can write the new cluster number in there.
+0010CFr 1               	;
+0010CFr 1  AC rr rr     	ldy dos_scratch_byte_2
+0010D2r 1               
+0010D2r 1  A3 00        	ldz #$00
+0010D4r 1  AD rr rr     	lda dos_scratch_byte_1
+0010D7r 1  29 40        	and #$40
+0010D9r 1  D0 0F        	bne dfanc_high
+0010DBr 1               
+0010DBr 1  BD 00 DE     dfanc6:	lda $de00,x
+0010DEr 1  99 rr rr     	sta dos_file_descriptors,y
+0010E1r 1  E8           	inx
+0010E2r 1  C8           	iny
+0010E3r 1  1B           	inz
+0010E4r 1  C2 04        	cpz #$04
+0010E6r 1  D0 F3        	bne dfanc6
+0010E8r 1  80 0D        	bra dfanc_check
+0010EAr 1               
+0010EAr 1               dfanc_high:
+0010EAr 1  BD 00 DF     	lda $df00,x
+0010EDr 1  99 rr rr     	sta dos_file_descriptors,y
+0010F0r 1  E8           	inx
+0010F1r 1  C8           	iny
+0010F2r 1  1B           	inz
+0010F3r 1  C2 04        	cpz #$04
+0010F5r 1  D0 F3        	bne dfanc_high
+0010F7r 1               
+0010F7r 1               dfanc_check:
+0010F7r 1               	; check that resulting cluster number is valid.
+0010F7r 1               
+0010F7r 1               ;	jsr debug_show_cluster_number
+0010F7r 1               
+0010F7r 1               	; get current cluster field address again
+0010F7r 1               	;
+0010F7r 1  AC rr rr     	ldy dos_scratch_byte_2
+0010FAr 1               
+0010FAr 1               	; First, only the lower 28-bits are valid
+0010FAr 1               	;
+0010FAr 1  B9 rr rr     	lda dos_file_descriptors+3,y
+0010FDr 1  29 0F        	and #$0f
+0010FFr 1  99 rr rr     	sta dos_file_descriptors+3,y
+001102r 1               
+001102r 1               	; Now check for special values:
+001102r 1               	; cluster 0 is invalid
+001102r 1               	;
+001102r 1  B9 rr rr     	lda dos_file_descriptors+3,y
+001105r 1  19 rr rr     	ora dos_file_descriptors+2,y
+001108r 1  19 rr rr     	ora dos_file_descriptors+1,y
+00110Br 1  19 rr rr     	ora dos_file_descriptors,y
+00110Er 1  C9 00        	cmp #$00
+001110r 1  F0 1C        	beq dfanc_fail
+001112r 1               
+001112r 1               	; $FFFFFF7 = bad cluster
+001112r 1               	; $FFFFFFF = end of file
+001112r 1               	; (we'll treat anything from $FFFFFF0-F as bad/invalid for simplicity)
+001112r 1  B9 rr rr     	lda dos_file_descriptors+3,y
+001115r 1  C9 0F        	cmp #$0f
+001117r 1  D0 13        	bne dfanc_ok
+001119r 1  B9 rr rr     	lda dos_file_descriptors+2,y
+00111Cr 1  39 rr rr     	and dos_file_descriptors+1,y
+00111Fr 1  C9 FF        	cmp #$ff
+001121r 1  D0 09        	bne dfanc_ok
+001123r 1  B9 rr rr     	lda dos_file_descriptors,y
+001126r 1  29 F0        	and #$f0
+001128r 1  C9 F0        	cmp #$f0
+00112Ar 1  F0 02        	beq dfanc_fail
+00112Cr 1               
+00112Cr 1               dfanc_ok:
+00112Cr 1               	; cluster number is okay
+00112Cr 1  38           	sec
+00112Dr 1  60           	rts
+00112Er 1               
+00112Er 1               dfanc_fail:
+00112Er 1  A9 85        	lda #dos_errorcode_invalid_cluster
+001130r 1  4C rr rr     	jmp dos_return_error
+001133r 1               
+001133r 1               ;	========================
+001133r 1               
+001133r 1               dos_print_current_cluster:
+001133r 1               
+001133r 1               	; prints a message to the screen
+001133r 1               	;
+001133r 1  A2 rr        	ldx #<msg_clusternumber
+001135r 1  A0 rr        	ldy #>msg_clusternumber
+001137r 1  20 rr rr     	jsr printmessage
+00113Ar 1  A0 00        	ldy #$00
+00113Cr 1  AB rr rr     	ldz dos_current_cluster+3
+00113Fr 1  20 rr rr     	jsr printhex
+001142r 1  AB rr rr     	ldz dos_current_cluster+2
+001145r 1  20 rr rr     	jsr printhex
+001148r 1  AB rr rr     	ldz dos_current_cluster+1
+00114Br 1  20 rr rr     	jsr printhex
+00114Er 1  AB rr rr     	ldz dos_current_cluster+0
+001151r 1  20 rr rr     	jsr printhex
+001154r 1               
+001154r 1  20 rr rr     	jsr checkpoint
+001157r 1  00 64 6F 73  	.byte 0,"dos_print_current_cluster",0
+00115Br 1  5F 70 72 69  
+00115Fr 1  6E 74 5F 63  
+001172r 1               
+001172r 1  60           	rts
+001173r 1               
+001173r 1               ;	========================
+001173r 1               
+001173r 1               .EXPORT dos_readfileintomemory
+001173r 1               dos_readfileintomemory:
+001173r 1               
+001173r 1               	; assumes that filename is already set using "dos_setname", which
+001173r 1               	; copies filename string into "dos_requested_filename",
+001173r 1               	;        and sets length into "dos_requested_filename_length".
+001173r 1               	;
+001173r 1               	; assumes that the 32-bit load-address pointer is set by
+001173r 1               	; storing load-address at "dos_file_loadaddress+{0-3}"
+001173r 1               
+001173r 1               	; print some debug information
+001173r 1               	;
+001173r 1               	;	jsr dos_print_current_cluster
+001173r 1               
+001173r 1               	; Clear number of sectors read
+001173r 1  A2 00        	ldx #$00
+001175r 1  8E rr rr     	stx dos_sectorsread
+001178r 1  8E rr rr     	stx dos_sectorsread+1
+00117Br 1               
+00117Br 1  20 rr rr     	jsr dos_findfirst
+00117Er 1  08           	php
+00117Fr 1               
+00117Fr 1               	; close directory now that we have what we were looking for ...
+00117Fr 1               	;
+00117Fr 1  20 rr rr     	jsr dos_closefile
+001182r 1  28           	plp
+001183r 1               
+001183r 1               	; ... but report if we hit an error
+001183r 1               	;
+001183r 1  93 F5 F6     	lbcc dos_return_error_already_set
+001186r 1               
+001186r 1  20 rr rr     	jsr dos_openfile
+001189r 1  93 EF F6     	lbcc dos_return_error_already_set
+00118Cr 1               
+00118Cr 1  20 rr rr     	jsr sd_map_sectorbuffer
+00118Fr 1               
+00118Fr 1               ;	========================
+00118Fr 1               
+00118Fr 1               drfim_sector_loop:
+00118Fr 1               
+00118Fr 1  20 rr rr     	jsr dos_file_read_current_sector
+001192r 1  90 33        	bcc drfim_eof
+001194r 1               
+001194r 1               	; copy sector to memory
+001194r 1               	;
+001194r 1  A2 00        	ldx #$00
+001196r 1  A3 00        	ldz #$00
+001198r 1               drfim_rr1:
+001198r 1  BD 00 DE     	lda sd_sectorbuffer,x		; is $DE00
+00119Br 1  EA           	nop ; 32-bit pointer access follows
+00119Cr 1  92 rr        	sta (<dos_file_loadaddress),z
+00119Er 1  1B           	inz
+00119Fr 1  E8           	inx
+0011A0r 1  D0 F6        	bne drfim_rr1
+0011A2r 1               
+0011A2r 1  E3 rr        	inw <dos_file_loadaddress+1
+0011A4r 1               
+0011A4r 1               drfim_rr1b:
+0011A4r 1  BD 00 DF     	lda sd_sectorbuffer+$100,x	; is $DF00
+0011A7r 1  EA           	nop ; 32-bit pointer access follows
+0011A8r 1  92 rr        	sta (<dos_file_loadaddress),z
+0011AAr 1  1B           	inz
+0011ABr 1  E8           	inx
+0011ACr 1  D0 F6        	bne drfim_rr1b
+0011AEr 1               
+0011AEr 1  20 rr rr     	jsr dos_file_advance_to_next_sector
+0011B1r 1  90 14        	bcc drfim_eof
+0011B3r 1               
+0011B3r 1               	; BG: this comment does not belong here, as here does not do actual checking
+0011B3r 1               	; We only allow loading into a 16MB space
+0011B3r 1               	; Provided that we check the load address before starting,
+0011B3r 1               	; this ensures that a user-land request cannot load a huge file
+0011B3r 1               	; that eventually overwrites the hypervisor and results in privilege
+0011B3r 1               	; escalation.
+0011B3r 1               	;
+0011B3r 1  E3 rr        	inw <dos_file_loadaddress+1
+0011B5r 1               
+0011B5r 1               	; Increment number of sectors read (16 bit valie)
+0011B5r 1               	;
+0011B5r 1  EE rr rr     	inc dos_sectorsread
+0011B8r 1  D0 D5        	bne drfim_sector_loop
+0011BAr 1               
+0011BAr 1  EE rr rr     	inc dos_sectorsread+1
+0011BDr 1               	; see if there is another sector
+0011BDr 1  D0 D0        	bne drfim_sector_loop
+0011BFr 1               
+0011BFr 1  20 rr rr     	jsr dos_closefile
+0011C2r 1               
+0011C2r 1               	; File is >65535 sectors (32MB), report error
+0011C2r 1               	;
+0011C2r 1  A9 83        	lda #dos_errorcode_file_too_long
+0011C4r 1  4C rr rr     	jmp dos_return_error
+0011C7r 1               
+0011C7r 1               ;	========================
+0011C7r 1               
+0011C7r 1               drfim_eof:
+0011C7r 1               
+0011C7r 1  20 rr rr     	jsr dos_closefile
+0011CAr 1  4C rr rr     	jmp dos_return_success
+0011CDr 1               
+0011CDr 1               ;	========================
+0011CDr 1               
+0011CDr 1               .EXPORT dos_setname
+0011CDr 1               dos_setname:
+0011CDr 1               
+0011CDr 1               	; INPUT: .X .Y = pointer to filename,
+0011CDr 1               	;		filename string must be terminated with $00
+0011CDr 1               	;		filename string must be <= $3F chars
+0011CDr 1               
+0011CDr 1  8E rr rr     	stx dos_scratch_vector
+0011D0r 1  8C rr rr     	sty dos_scratch_vector+1
+0011D3r 1  A0 00        	ldy #$00
+0011D5r 1               
+0011D5r 1  B1 rr        lr11:	lda (<dos_scratch_vector),y
+0011D7r 1  99 rr rr     	sta dos_requested_filename,y
+0011DAr 1  F0 0E        	beq dsn_eon
+0011DCr 1  C8           	iny
+0011DDr 1  C0 40        	cpy #$40
+0011DFr 1  D0 F4        	bne lr11
+0011E1r 1               
+0011E1r 1  A9 00        	lda #0
+0011E3r 1  8D rr rr     	sta dos_requested_filename_len
+0011E6r 1  A9 81        	lda #dos_errorcode_name_too_long
+0011E8r 1  18           	clc
+0011E9r 1  60           	rts
+0011EAr 1               
+0011EAr 1               dsn_eon:
+0011EAr 1  8C rr rr     	sty dos_requested_filename_len
+0011EDr 1               
+0011EDr 1  38           	sec
+0011EEr 1  60           	rts
+0011EFr 1               
+0011EFr 1               ;	========================
+0011EFr 1               
+0011EFr 1               .EXPORT dos_d81attach
+0011EFr 1               dos_d81attach:
+0011EFr 1               
+0011EFr 1  20 rr rr     	jsr checkpoint
+0011F2r 1  00 64 6F 73  	.byte 0,"dos_d81attach <checking>",0
+0011F6r 1  5F 64 38 31  
+0011FAr 1  61 74 74 61  
+00120Cr 1               
+00120Cr 1               	; Assumes only that D81 file name has been set with dos_setname.
+00120Cr 1               		;
+00120Cr 1  20 rr rr     		jsr dos_findfile
+00120Fr 1  B0 04        		bcs d81a1
+001211r 1               
+001211r 1  A9 88        		lda #dos_errorcode_file_not_found
+001213r 1  18           		clc
+001214r 1  60           		rts
+001215r 1               
+001215r 1               ;	========================
+001215r 1               
+001215r 1               d81a1:		; XXX - Why do we call closefile here?
+001215r 1  20 rr rr     		jsr dos_closefile
+001218r 1               
+001218r 1               		; now we need to check that the file is long enough,
+001218r 1               		; and also that the clusters are contiguous.
+001218r 1               
+001218r 1               		; Start by opening the file
+001218r 1               		;
+001218r 1  20 rr rr     		jsr dos_set_current_file_from_dirent
+00121Br 1  93 59 01     		lbcc nod81
+00121Er 1               
+00121Er 1  20 rr rr     		jsr dos_openfile
+001221r 1  93 53 01     		lbcc nod81
+001224r 1               
+001224r 1               		; work out how many clusters we need
+001224r 1               		; We need 1600 sectors, so halve for every zero tail
+001224r 1               		; bit in sectors per cluster.  we can do this because
+001224r 1               		; clusters in FAT must be 2^n sectors.
+001224r 1               		;
+001224r 1  A9 00        		lda #$00
+001226r 1  8D rr rr     		sta d81_clustercount
+001229r 1  8D rr rr     		sta d81_clustercount+1
+00122Cr 1  A9 40        		lda #<1600
+00122Er 1  8D rr rr     		sta d81_clustersneeded
+001231r 1  A9 06        		lda #>1600
+001233r 1  8D rr rr     		sta d81_clustersneeded+1
+001236r 1               
+001236r 1               		; get sectors per cluster of disk
+001236r 1               		;
+001236r 1  AE rr rr     		ldx dos_disk_table_offset
+001239r 1  BD rr rr     		lda dos_disk_table+fs_fat32_sectors_per_cluster,x
+00123Cr 1  4B           		taz
+00123Dr 1               
+00123Dr 1  6B           l94:		tza
+00123Er 1  29 01        		and #$01
+001240r 1  D0 0C        		bne d81firstcluster
+001242r 1  6B           		tza
+001243r 1  4A           		lsr
+001244r 1  4B           		taz
+001245r 1  4E rr rr     		lsr d81_clustersneeded+1
+001248r 1  6E rr rr     		ror d81_clustersneeded
+00124Br 1  4C rr rr     		jmp l94
+00124Er 1               
+00124Er 1               d81firstcluster:
+00124Er 1               		; Get current cluster of D81 file, so that
+00124Er 1               		; we can check that clusters in file are contiguous
+00124Er 1               		;
+00124Er 1  AE rr rr     		ldx dos_current_file_descriptor_offset
+001251r 1  A0 00        		ldy #0
+001253r 1               
+001253r 1  BD rr rr     l94b:		lda dos_file_descriptors+dos_filedescriptor_offset_currentcluster,x
+001256r 1  99 rr rr     		sta d81_clusternumber,y
+001259r 1  E8           		inx
+00125Ar 1  C8           		iny
+00125Br 1  C0 04        		cpy #4
+00125Dr 1  D0 F4        		bne l94b
+00125Fr 1               
+00125Fr 1               d81nextcluster:
+00125Fr 1               		; Now read through clusters and make sure that all is
+00125Fr 1               		; well.
+00125Fr 1               
+00125Fr 1               		; check that it matches expected cluster number
+00125Fr 1               		;
+00125Fr 1  AE rr rr     		ldx dos_current_file_descriptor_offset
+001262r 1  A0 00        		ldy #0
+001264r 1               
+001264r 1  BD rr rr     l94a:		lda dos_file_descriptors+dos_filedescriptor_offset_currentcluster,x
+001267r 1  D9 rr rr     		cmp d81_clusternumber,y
+00126Ar 1  D3 E4 00     		lbne d81isfragged
+00126Dr 1  E8           		inx
+00126Er 1  C8           		iny
+00126Fr 1  C0 04        		cpy #4
+001271r 1  D0 F1        		bne l94a
+001273r 1               
+001273r 1               		; increment number of clusters found so far
+001273r 1               		;
+001273r 1  EE rr rr     		inc d81_clustercount
+001276r 1  D0 03        		bne l96
+001278r 1  EE rr rr     		inc d81_clustercount+1
+00127Br 1               l96:
+00127Br 1               
+00127Br 1               		; increment expected cluster number
+00127Br 1               		;
+00127Br 1  18           		clc
+00127Cr 1  AD rr rr     		lda d81_clusternumber
+00127Fr 1  69 01        		adc #$01
+001281r 1  8D rr rr     		sta d81_clusternumber
+001284r 1  AD rr rr     		lda d81_clusternumber+1
+001287r 1  69 00        		adc #$00
+001289r 1  8D rr rr     		sta d81_clusternumber+1
+00128Cr 1  AD rr rr     		lda d81_clusternumber+2
+00128Fr 1  69 00        		adc #$00
+001291r 1  8D rr rr     		sta d81_clusternumber+2
+001294r 1  AD rr rr     		lda d81_clusternumber+3
+001297r 1  69 00        		adc #$00
+001299r 1  8D rr rr     		sta d81_clusternumber+3
+00129Cr 1               
+00129Cr 1  20 rr rr     		jsr dos_file_advance_to_next_cluster
+00129Fr 1  B0 BE        		bcs d81nextcluster
+0012A1r 1               
+0012A1r 1               		; The above continues until EOF is reached, so clear DOS
+0012A1r 1               		; error after.
+0012A1r 1               		;
+0012A1r 1  A9 00        		lda #$00
+0012A3r 1  8D rr rr     		sta dos_error_code
+0012A6r 1               
+0012A6r 1  20 rr rr     		jsr checkpoint
+0012A9r 1  00 64 6F 73  		.byte 0,"dos_d81attach <measured end of image>",0
+0012ADr 1  5F 64 38 31  
+0012B1r 1  61 74 74 61  
+0012D0r 1               
+0012D0r 1  20 rr rr     		jsr dos_closefile
+0012D3r 1               
+0012D3r 1               		; we have read to end of D81 file, and it is contiguous
+0012D3r 1               		; now check that it is the right length
+0012D3r 1               
+0012D3r 1  AD rr rr     		lda d81_clustersneeded
+0012D6r 1  CD rr rr     		cmp d81_clustercount
+0012D9r 1  D0 4D        		bne d81wronglength
+0012DBr 1               
+0012DBr 1  AD rr rr     		lda d81_clustersneeded+1
+0012DEr 1  CD rr rr     		cmp d81_clustercount+1
+0012E1r 1  D0 45        		bne d81wronglength
+0012E3r 1               
+0012E3r 1               		; D81 is good.
+0012E3r 1               
+0012E3r 1               		; Get cluster number again, convert to sector, and copy to
+0012E3r 1               		; SD controller FDC emulation disk image offset registers
+0012E3r 1               		;
+0012E3r 1  AE rr rr     		ldx dos_current_file_descriptor_offset
+0012E6r 1  A0 00        		ldy #0
+0012E8r 1               
+0012E8r 1  BD rr rr     l94c:		lda dos_file_descriptors+dos_filedescriptor_offset_startcluster,x
+0012EBr 1  99 rr rr     		sta dos_current_cluster,y
+0012EEr 1  E8           		inx
+0012EFr 1  C8           		iny
+0012F0r 1  C0 04        		cpy #4
+0012F2r 1  D0 F4        		bne l94c
+0012F4r 1               
+0012F4r 1  20 rr rr     		jsr dos_cluster_to_sector
+0012F7r 1  20 rr rr     		jsr sd_fix_sectornumber
+0012FAr 1               
+0012FAr 1               		; copy sector number from $D681 to $D68c
+0012FAr 1               		;
+0012FAr 1  A2 03        		ldx #$03
+0012FCr 1  BD 81 D6     l94d:		lda $d681,x
+0012FFr 1  9D 8C D6     		sta $d68c,x
+001302r 1  CA           		dex
+001303r 1  10 F7        		bpl l94d
+001305r 1               
+001305r 1               
+001305r 1               		; Set flags to indicate it is mounted (and read-write)
+001305r 1               		;
+001305r 1  A9 03        		lda #$03
+001307r 1  8D 8B D6     		sta $d68b
+00130Ar 1               
+00130Ar 1  20 rr rr     		jsr checkpoint
+00130Dr 1  00 64 6F 73  		.byte 0,"dos_d81attach <success>",0
+001311r 1  5F 64 38 31  
+001315r 1  61 74 74 61  
+001326r 1               
+001326r 1  38           		sec
+001327r 1  60           		rts
+001328r 1               
+001328r 1               ;	========================
+001328r 1               
+001328r 1               d81wronglength:
+001328r 1  20 rr rr     		jsr checkpoint
+00132Br 1  00 64 6F 73  		.byte 0,"dos_d81attach <wrong length>",0
+00132Fr 1  5F 64 38 31  
+001333r 1  61 74 74 61  
+001349r 1               
+001349r 1  A9 8A        		lda #dos_errorcode_image_wrong_length
+00134Br 1  8D rr rr     		sta dos_error_code
+00134Er 1  18           		clc
+00134Fr 1  60           		rts
+001350r 1               
+001350r 1               ;	========================
+001350r 1               
+001350r 1               d81isfragged:
+001350r 1  20 rr rr     		jsr checkpoint
+001353r 1  00 64 6F 73  		.byte 0,"dos_d81attach <fragmented>",0
+001357r 1  5F 64 38 31  
+00135Br 1  61 74 74 61  
+00136Fr 1               
+00136Fr 1  A9 8B        		lda #dos_errorcode_image_fragmented
+001371r 1  8D rr rr     		sta dos_error_code
+001374r 1  18           		clc
+001375r 1  60           		rts
+001376r 1               
+001376r 1               ;	========================
+001376r 1               
+001376r 1               nod81:
+001376r 1  20 rr rr     		jsr checkpoint
+001379r 1  00 64 6F 73  		.byte 0,"dos_d81attach <file not found>",0
+00137Dr 1  5F 64 38 31  
+001381r 1  61 74 74 61  
+001399r 1               
+001399r 1  18           		clc
+00139Ar 1  60           		rts
+00139Br 1               
+00139Br 1               ;	========================
+00139Br 1               
+00139Br 1               sdsector_add_uint8:
+00139Br 1               
+00139Br 1  48           		pha
+00139Cr 1  A9 00        		lda #0
+00139Er 1  AA           		tax
+00139Fr 1  A8           		tay
+0013A0r 1  4B           		taz
+0013A1r 1  68           		pla
+0013A2r 1               		; FALL THROUGH to sdsector_add_uint32
+0013A2r 1               
+0013A2r 1               sdsector_add_uint32:
+0013A2r 1               
+0013A2r 1               		; Add the 32-bit value contained in A,X,Y,Z to
+0013A2r 1               		; $D681-$D684, the SD card sector number.
+0013A2r 1               		;
+0013A2r 1  18           		clc
+0013A3r 1  6D 81 D6     		adc $D681
+0013A6r 1  8D 81 D6     		sta $D681
+0013A9r 1  8A           		txa
+0013AAr 1  6D 82 D6     		adc $d682
+0013ADr 1  8D 82 D6     		sta $d682
+0013B0r 1  98           		tya
+0013B1r 1  6D 83 D6     		adc $d683
+0013B4r 1  8D 83 D6     		sta $d683
+0013B7r 1  6B           		tza
+0013B8r 1  6D 84 D6     		adc $d684
+0013BBr 1  8D 84 D6     		sta $d684
+0013BEr 1  A3 00        		ldz #$00
+0013C0r 1  60           		rts
+0013C1r 1               
+0013C1r 1               ;	========================
+0013C1r 1               
+0013C1r 1               sdsector_add_uint32_from_disktable:
+0013C1r 1               
+0013C1r 1  0D rr rr     		ora dos_disk_table_offset
+0013C4r 1  A8           		tay
+0013C5r 1  A2 00        		ldx #$00
+0013C7r 1  18           		clc
+0013C8r 1  08           		php
+0013C9r 1  28           l23:		plp
+0013CAr 1  BD 81 D6     		lda $D681,x
+0013CDr 1  79 rr rr     		adc dos_disk_table,y
+0013D0r 1  9D 81 D6     		sta $D681,x
+0013D3r 1  08           		php
+0013D4r 1  C8           		iny
+0013D5r 1  E8           		inx
+0013D6r 1  E0 04        		cpx #$04
+0013D8r 1  D0 EF        		bne l23
+0013DAr 1  28           		plp
+0013DBr 1  60           		rts
+0013DCr 1               
+0013DCr 1               ;	========================
+0013DCr 1               
+0013DCr 1               makeprintable:
+0013DCr 1               		; Convert unprintable ASCII characters to question marks
+0013DCr 1               
+0013DCr 1  C9 20        		cmp #$20
+0013DEr 1  90 05        		bcc unprintable
+0013E0r 1  C9 7F        		cmp #$7f
+0013E2r 1  B0 01        		bcs unprintable
+0013E4r 1  60           		rts
+0013E5r 1               
+0013E5r 1  A9 3F        unprintable:	lda #$3f
+0013E7r 1  60           		rts
+0013E8r 1               
+0013E8r 1               ;	========================
+0013E8r 1               
+0013E8r 1               

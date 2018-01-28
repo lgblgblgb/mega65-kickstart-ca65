@@ -1,0 +1,648 @@
+ca65 V2.15
+Main file   : kickstart_freeze.a65
+Current file: kickstart_freeze.a65
+
+000000r 1               .INCLUDE "kickstart.i65"
+000000r 2               ; My try to define some stuff can be included from every kickstart related sources.
+000000r 2               
+000000r 2               .SETCPU	"4510"	; Set CPU to "4510 mode"
+000000r 2               
+000000r 2               
+000000r 2               ; Try to make it clear that we want to use zero page addressing. The intended usage:
+000000r 2               ; LDA ZP(zp_temp_byte)
+000000r 2               ; I *think* it's may be better than this syntax which is even complained by ca65 as
+000000r 2               ; a warning:   LDA <zp_temp_byte
+000000r 2               
+000000r 2               .DEFINE ZP(n) .LOBYTE(n)
+000000r 2               
+000000r 2               .MACRO space label,bytes
+000000r 2               label: .res bytes
+000000r 2               .ENDMACRO
+000000r 2               
+000000r 2               
+000000r 1               .INCLUDE "kickstart_machine.a65"
+000000r 2               
+000000r 2               	reset_vector = $fffc
+000000r 2               	irq_vector = $fffe
+000000r 2               	nmi_vector = $fffa
+000000r 2               
+000000r 2               
+000000r 2               	hypervisor_a = $d640
+000000r 2               	hypervisor_x = $d641
+000000r 2               	hypervisor_y = $d642
+000000r 2               	hypervisor_z = $d643
+000000r 2               	hypervisor_b = $d644
+000000r 2               	hypervisor_spl = $d645
+000000r 2               	hypervisor_sph = $d646
+000000r 2               	hypervisor_flags = $d647
+000000r 2               	hypervisor_pcl = $d648
+000000r 2               	hypervisor_pch = $d649
+000000r 2               	hypervisor_maplolo = $d64a
+000000r 2               	hypervisor_maplohi = $d64b
+000000r 2               	hypervisor_maphilo = $d64c
+000000r 2               	hypervisor_maphihi = $d64d
+000000r 2               	hypervisor_maplomb = $d64e
+000000r 2               	hypervisor_maphimb = $d64f
+000000r 2               	hypervisor_cpuport00 = $d650
+000000r 2               	hypervisor_cpuport01 = $d651
+000000r 2               	hypervisor_iomode = $d652
+000000r 2               	hypervisor_dmagic_srcmb = $d653
+000000r 2               	hypervisor_dmagic_dstmb = $d654
+000000r 2               	hypervisor_dmagic_list0 = $d655
+000000r 2               	hypervisor_dmagic_list1 = $d656
+000000r 2               	hypervisor_dmagic_list2 = $d657
+000000r 2               	hypervisor_dmagic_list3 = $d658
+000000r 2               	hypervisor_hardware_virtualisation = $d659
+000000r 2               
+000000r 2               	; d65a
+000000r 2               	; d65b
+000000r 2               	; d65c
+000000r 2               
+000000r 2               	hypervisor_vm_currentpage_lo = $d65d
+000000r 2               	hypervisor_vm_currentpage_mid = $d65e
+000000r 2               	hypervisor_vm_currentpage_hi = $d65f
+000000r 2               
+000000r 2               	hypervisor_vm_pagetable = $d660
+000000r 2               	hypervisor_vm_pagetable0_logicalpage_lo = $d660
+000000r 2               	hypervisor_vm_pagetable0_logicalpage_hi = $d661
+000000r 2               	hypervisor_vm_pagetable0_physicalpage_lo = $d662
+000000r 2               	hypervisor_vm_pagetable0_physicalpage_hi = $d663
+000000r 2               	hypervisor_vm_pagetable1_logicalpage_lo = $d664
+000000r 2               	hypervisor_vm_pagetable1_logicalpage_hi = $d665
+000000r 2               	hypervisor_vm_pagetable1_physicalpage_lo = $d666
+000000r 2               	hypervisor_vm_pagetable1_physicalpage_hi = $d667
+000000r 2               	hypervisor_vm_pagetable2_logicalpage_lo = $d668
+000000r 2               	hypervisor_vm_pagetable2_logicalpage_hi = $d669
+000000r 2               	hypervisor_vm_pagetable2_physicalpage_lo = $d66a
+000000r 2               	hypervisor_vm_pagetable2_physicalpage_hi = $d66b
+000000r 2               	hypervisor_vm_pagetable3_logicalpage_lo = $d66c
+000000r 2               	hypervisor_vm_pagetable3_logicalpage_hi = $d66d
+000000r 2               	hypervisor_vm_pagetable3_physicalpage_lo = $d66e
+000000r 2               	hypervisor_vm_pagetable3_physicalpage_hi = $d66f
+000000r 2               
+000000r 2               	hypervisor_georam_base_mb = $d670
+000000r 2               	hypervsior_georam_block_mask = $d671
+000000r 2               
+000000r 2               	; d672 110 010
+000000r 2               	hypervisor_secure_mode_flags = $d672
+000000r 2               
+000000r 2               	; d673
+000000r 2               	; d674
+000000r 2               	; d675
+000000r 2               	; d676
+000000r 2               	; d677
+000000r 2               	; d678
+000000r 2               	; d679
+000000r 2               	; d67a
+000000r 2               	; d67b
+000000r 2               
+000000r 2               	hypervisor_write_char_to_serial_monitor = $d67c
+000000r 2               
+000000r 2               	hypervisor_feature_enables = $d67d
+000000r 2               	hypervisor_kickedup_flag = $d67e
+000000r 2               	hypervisor_cartridge_flags = $d67e
+000000r 2               	hypervisor_enterexit_trigger = $d67f
+000000r 2               
+000000r 2               	; Where sector buffer maps (over = $DE00-$DFFF IO expansion space)
+000000r 2               	sd_sectorbuffer = $DE00
+000000r 2               	sd_address_byte0 = $D681
+000000r 2               	sd_address_byte1 = $D682
+000000r 2               	sd_address_byte2 = $D683
+000000r 2               	sd_address_byte3 = $D684
+000000r 2               
+000000r 2               	fpga_switches_low = $d6ec
+000000r 2               	fpga_switches_high = $d6ed
+000000r 2               
+000000r 2               	VICIV_MAGIC = $d02f
+000000r 2               
+000000r 2               ; LGB moved here
+000000r 2               
+000000r 2               ; Current file descriptors
+000000r 2               ; Each descriptor has:
+000000r 2               ;   disk id : 1 byte ($00-$07 = file open, $FF = file closed)
+000000r 2               ;   access mode : 1 byte ($00 = read only)
+000000r 2               ;   start cluster : 4 bytes
+000000r 2               ;   current cluster : 4 bytes
+000000r 2               ;   current sector in cluster : 1 byte
+000000r 2               ;   offset in sector: 2 bytes
+000000r 2               ;   file offset / $100 : 3 bytes
+000000r 2               ;
+000000r 2               
+000000r 2                   dos_filedescriptor_max = 4
+000000r 2                   dos_filedescriptor_offset_diskid = 0
+000000r 2                   dos_filedescriptor_offset_mode = 1
+000000r 2                   dos_filedescriptor_offset_startcluster = 2
+000000r 2                   dos_filedescriptor_offset_currentcluster = 6
+000000r 2               ;
+000000r 2               ; These last three fields must be contiguous, as dos_open_current_file
+000000r 2               ; relies on it.
+000000r 2               ;
+000000r 2                   dos_filedescriptor_offset_sectorincluster = 10
+000000r 2                   dos_filedescriptor_offset_offsetinsector = 11
+000000r 2                   dos_filedescriptor_offset_fileoffset = 13
+000000r 2               
+000000r 2               ;
+000000r 2                               ; WARNING: dos_readdir_read_next_entry uses carnal knowledge about the following
+000000r 2                               ;          structure, particularly the length as calculated here:
+000000r 2                               ;
+000000r 2                               dos_dirent_structure_length =  64+1+11+4+4+1
+000000r 2               
+000000r 2               dos_max_disks = 6
+000000r 2               
+000000r 2               dos_errorcode_invalid_address = $10
+000000r 2               dos_errorcode_read_timeout = $07
+000000r 2               
+000000r 2               syspart_error_nosyspart = $ff
+000000r 2               
+000000r 2               
+000000r 1               
+000000r 1               .SEGMENT "CODE"
+000000r 1               
+000000r 1               .AUTOIMPORT +
+000000r 1               
+000000r 1               .EXPORT freeze_to_slot
+000000r 1               freeze_to_slot:
+000000r 1               	; Freeze current running process to the specified slot
+000000r 1               
+000000r 1               	; Slot in XXYY
+000000r 1               
+000000r 1  AD rr rr     	lda syspart_present
+000003r 1  D0 07        	bne f2s1
+000005r 1  A9 FF        	lda #syspart_error_nosyspart
+000007r 1  8D rr rr     	sta syspart_error_code
+00000Ar 1  18           	clc
+00000Br 1  60           	rts
+00000Cr 1               f2s1:
+00000Cr 1  20 rr rr     	jsr syspart_locate_freezeslot
+00000Fr 1               
+00000Fr 1  20 rr rr     	jsr freeze_save_to_sdcard_immediate
+000012r 1  38           	sec
+000013r 1  60           	rts
+000014r 1               
+000014r 1               
+000014r 1               freeze_save_to_sdcard_immediate:
+000014r 1               
+000014r 1               	; Save the current process to the SD card. $D681-4 are expected to
+000014r 1               	; already be pointing to the first sector of the freeze slot
+000014r 1               
+000014r 1               	; Stash SD card registers to scratch area
+000014r 1  20 rr rr     	jsr do_freeze_prep_sdcard_regs_to_scratch
+000017r 1               
+000017r 1               	; Save current SD card sector buffer contents
+000017r 1  20 rr rr     	jsr freeze_write_sector_and_wait
+00001Ar 1               
+00001Ar 1               	; XXX Save each region in the list
+00001Ar 1  A2 00        	ldx #$00
+00001Cr 1               freeze_next_region:
+00001Cr 1  20 rr rr     	jsr freeze_save_region
+00001Fr 1  8A           	txa
+000020r 1  18           	clc
+000021r 1  69 08        	adc #$08
+000023r 1  AA           	tax
+000024r 1  BD rr rr     	lda freeze_mem_list+7,x
+000027r 1  C9 FF        	cmp #$ff
+000029r 1  D0 F1        	bne freeze_next_region
+00002Br 1               
+00002Br 1  60           	rts
+00002Cr 1               
+00002Cr 1               freeze_write_sector_and_wait:
+00002Cr 1               
+00002Cr 1  AD 81 D6     	lda $d681
+00002Fr 1  8D 08 08     	sta $0808
+000032r 1  AD 82 D6     	lda $d682
+000035r 1  8D 09 08     	sta $0809
+000038r 1  AD 83 D6     	lda $d683
+00003Br 1  8D 0A 08     	sta $080a
+00003Er 1  AD 84 D6     	lda $d684
+000041r 1  8D 0B 08     	sta $080b
+000044r 1               
+000044r 1               	; Require SHIFT press and release between every sector
+000044r 1  AD 11 D6     fww1:	lda $d611
+000047r 1  F0 FB        	beq fww1
+000049r 1  AD 11 D6     fww2: 	lda $d611
+00004Cr 1  D0 FB        	bne fww2
+00004Er 1               
+00004Er 1  A9 00        	lda #$00
+000050r 1  8D rr rr     	sta freeze_write_tries+0
+000053r 1  8D rr rr     	sta freeze_write_tries+1
+000056r 1               
+000056r 1  AD 81 D6     	lda $d681
+000059r 1  48           	pha
+00005Ar 1  AD 82 D6     	lda $d682
+00005Dr 1  48           	pha
+00005Er 1  AD 83 D6     	lda $d683
+000061r 1  48           	pha
+000062r 1  AD 84 D6     	lda $d684
+000065r 1  48           	pha
+000066r 1               
+000066r 1               freeze_write_busywait0:
+000066r 1  EE rr rr     	inc freeze_write_tries+0
+000069r 1  D0 15        	bne fwb1
+00006Br 1  EE rr rr     	inc freeze_write_tries+1
+00006Er 1  D0 10        	bne fwb1
+000070r 1               	; If it takes too long to get ready, reset the SD card
+000070r 1  A9 00        	lda #$00
+000072r 1  8D 80 D6     	sta $d680
+000075r 1               
+000075r 1  20 rr rr     	jsr sdwaitawhile
+000078r 1  20 rr rr     	jsr sdwaitawhile
+00007Br 1               
+00007Br 1  A9 01        	lda #$01
+00007Dr 1  8D 80 D6     	sta $d680
+000080r 1               
+000080r 1  AD 80 D6     fwb1:	lda $d680
+000083r 1  29 03        	and #$03
+000085r 1  D0 DF        	bne freeze_write_busywait0
+000087r 1               
+000087r 1  A9 03        	lda #$03
+000089r 1  8D 80 D6     	sta $d680
+00008Cr 1               
+00008Cr 1  A9 00        	lda #$00
+00008Er 1  8D rr rr     	sta freeze_write_tries+0
+000091r 1  8D rr rr     	sta freeze_write_tries+1
+000094r 1               
+000094r 1               freeze_write_busywait1:
+000094r 1  EE rr rr     	inc freeze_write_tries+0
+000097r 1  D0 1D        	bne fwb11
+000099r 1  EE rr rr     	inc freeze_write_tries+1
+00009Cr 1  D0 18        	bne fwb11
+00009Er 1               
+00009Er 1               	; If it takes too long to get ready, reset the SD card
+00009Er 1  A9 00        	lda #$00
+0000A0r 1  8D 80 D6     	sta $d680
+0000A3r 1               
+0000A3r 1  20 rr rr     	jsr sdwaitawhile
+0000A6r 1  20 rr rr     	jsr sdwaitawhile
+0000A9r 1               
+0000A9r 1               	; End reset
+0000A9r 1  A9 01        	lda #$01
+0000ABr 1  8D 80 D6     	sta $d680
+0000AEr 1               
+0000AEr 1  20 rr rr     	jsr sdwaitawhile
+0000B1r 1               
+0000B1r 1               	; Re-issue the write
+0000B1r 1  A9 03        	lda #$03
+0000B3r 1  8D 80 D6     	sta $d680
+0000B6r 1               
+0000B6r 1               fwb11:
+0000B6r 1  A0 04        	ldy #$04
+0000B8r 1  88           fwb111:	dey
+0000B9r 1  D0 FD        	bne fwb111
+0000BBr 1               
+0000BBr 1  AD 80 D6     	lda $d680
+0000BEr 1  29 03        	and #$03
+0000C0r 1  D0 D2        	bne freeze_write_busywait1
+0000C2r 1               
+0000C2r 1               
+0000C2r 1               
+0000C2r 1               freeze_write_busywait:
+0000C2r 1  AD 80 D6     	lda $d680
+0000C5r 1  29 03        	and #$03
+0000C7r 1  D0 F9        	bne freeze_write_busywait
+0000C9r 1               
+0000C9r 1               	; Work around SD bug by reading the sector again
+0000C9r 1  A9 02        	lda #$02
+0000CBr 1  8D 80 D6     	sta $d680
+0000CEr 1               
+0000CEr 1  68           	pla
+0000CFr 1  8D 84 D6     	sta $d684
+0000D2r 1  68           	pla
+0000D3r 1  8D 83 D6     	sta $d683
+0000D6r 1  68           	pla
+0000D7r 1  8D 82 D6     	sta $d682
+0000DAr 1  68           	pla
+0000DBr 1  8D 81 D6     	sta $d681
+0000DEr 1               
+0000DEr 1               	; Increment freeze slot sector number
+0000DEr 1  20 rr rr     	jsr sd_inc_fixedsectornumber
+0000E1r 1               
+0000E1r 1  60           	rts
+0000E2r 1               
+0000E2r 1               freeze_write_tries:
+0000E2r 1  00 00        	.word $0
+0000E4r 1               
+0000E4r 1               freeze_save_region:
+0000E4r 1               	; X = offset into freeze_mem_list
+0000E4r 1               
+0000E4r 1               	; Check if end of list, if so, do nothing and return
+0000E4r 1  BD rr rr     	lda freeze_mem_list+7,x
+0000E7r 1  C9 FF        	cmp #$ff
+0000E9r 1  D0 01        	bne fsr1
+0000EBr 1  60           	rts
+0000ECr 1               fsr1:
+0000ECr 1               	; Get address of region
+0000ECr 1  BD rr rr     	lda freeze_mem_list+0,x
+0000EFr 1  8D rr rr     	sta freeze_region_dmalist_source_start+0
+0000F2r 1  BD rr rr     	lda freeze_mem_list+1,x
+0000F5r 1  8D rr rr     	sta freeze_region_dmalist_source_start+1
+0000F8r 1               
+0000F8r 1               	; Source address is 32-bit, and we need bits 20-27
+0000F8r 1               	; for the source MB (upper 4 bits are ignored)
+0000F8r 1  BD rr rr     	lda freeze_mem_list+2,x
+0000FBr 1  4A           	lsr
+0000FCr 1  4A           	lsr
+0000FDr 1  4A           	lsr
+0000FEr 1  4A           	lsr
+0000FFr 1  8D rr rr     	sta freeze_region_dmalist_source_mb
+000102r 1  BD rr rr     	lda freeze_mem_list+3,x
+000105r 1  0A           	asl
+000106r 1  0A           	asl
+000107r 1  0A           	asl
+000108r 1  0A           	asl
+000109r 1  0D rr rr     	ora freeze_region_dmalist_source_mb
+00010Cr 1  8D rr rr     	sta freeze_region_dmalist_source_mb
+00010Fr 1               
+00010Fr 1               	; Bank is a bit fiddly: Lower nybl is bits
+00010Fr 1               	; 16-19 of address.  Then we have to add the IO flag
+00010Fr 1               	; The IO flag is used if the source MB value = $FF.
+00010Fr 1               	; However, because we use 28-bit addresses for everything
+00010Fr 1               	; the IO bit should be zero, as should the other special
+00010Fr 1               	; bits.
+00010Fr 1               
+00010Fr 1  BD rr rr     	lda freeze_mem_list+2,X
+000112r 1  29 0F        	and #$0f
+000114r 1  8D rr rr     	sta freeze_region_dmalist_source_bank
+000117r 1               
+000117r 1               	; At this point, we have the DMA list source setup.
+000117r 1               
+000117r 1               	; Point the destination to the SD card direct job
+000117r 1               	; sector buffer ($FFD6E00).
+000117r 1  A9 00        	lda #$00
+000119r 1  8D rr rr     	sta freeze_region_dmalist_dest_start+0
+00011Cr 1  A9 6E        	lda #$6E
+00011Er 1  8D rr rr     	sta freeze_region_dmalist_dest_start+1
+000121r 1  A9 0D        	lda #$0D
+000123r 1  8D rr rr     	sta freeze_region_dmalist_dest_bank
+000126r 1  A9 FF        	lda #$ff
+000128r 1  8D rr rr     	sta freeze_region_dmalist_dest_mb
+00012Br 1               
+00012Br 1               	; Now DMA source and destination addresses have been set
+00012Br 1               	; We now need to step through the region $200 bytes at a
+00012Br 1               	; time, until there are no bytes left.
+00012Br 1               	; If the length is $0000 initially, then it means 64KB.
+00012Br 1               	; The tricky bit is for regions <$200 bytes long, as we need
+00012Br 1               	; to make sure we don't copy more than we should (it could
+00012Br 1               	; be from Hypervisor memory, for example, or to some
+00012Br 1               	; important IO registers, such as the Hypervisor enter/exit
+00012Br 1               	; trap).
+00012Br 1               
+00012Br 1               	; Get length of region
+00012Br 1  BD rr rr     	lda freeze_mem_list+4,x
+00012Er 1  8D rr rr     	sta freeze_dma_length_remaining+0
+000131r 1  BD rr rr     	lda freeze_mem_list+5,x
+000134r 1  8D rr rr     	sta freeze_dma_length_remaining+1
+000137r 1  BD rr rr     	lda freeze_mem_list+6,x
+00013Ar 1  8D rr rr     	sta freeze_dma_length_remaining+2
+00013Dr 1               
+00013Dr 1               freeze_region_dma_loop:
+00013Dr 1               
+00013Dr 1  AD rr rr     	lda freeze_dma_length_remaining
+000140r 1  8D 10 08     	sta $0810
+000143r 1  AD rr rr     	lda freeze_dma_length_remaining+1
+000146r 1  8D 11 08     	sta $0811
+000149r 1  AD rr rr     	lda freeze_dma_length_remaining+2
+00014Cr 1  8D 12 08     	sta $0812
+00014Fr 1               
+00014Fr 1               	; Check if remaining length is negative or zero. If so, stop
+00014Fr 1  AD rr rr     	lda freeze_dma_length_remaining+2
+000152r 1  30 5A        	bmi freeze_region_dma_done
+000154r 1  0D rr rr     	ora freeze_dma_length_remaining+1
+000157r 1  0D rr rr     	ora freeze_dma_length_remaining+0
+00015Ar 1  F0 52        	beq freeze_region_dma_done
+00015Cr 1               
+00015Cr 1  AD rr rr     	lda freeze_dma_length_remaining+0
+00015Fr 1  8D rr rr     	sta freeze_region_dmalist_count+0
+000162r 1  AD rr rr     	lda freeze_dma_length_remaining+1
+000165r 1  8D rr rr     	sta freeze_region_dmalist_count+1
+000168r 1  C9 02        	cmp #$02
+00016Ar 1  90 05        	bcc not_too_big
+00016Cr 1               	; remaining length too great
+00016Cr 1  A9 02        	lda #$02
+00016Er 1  8D rr rr     	sta freeze_region_dmalist_count+1
+000171r 1               not_too_big:
+000171r 1               	; DMA count is set, subtract from remaining length
+000171r 1  38           	sec
+000172r 1  AD rr rr     	lda freeze_dma_length_remaining+0
+000175r 1  ED rr rr     	sbc freeze_region_dmalist_count+0
+000178r 1  8D rr rr     	sta freeze_dma_length_remaining+0
+00017Br 1  AD rr rr     	lda freeze_dma_length_remaining+1
+00017Er 1  ED rr rr     	sbc freeze_region_dmalist_count+1
+000181r 1  8D rr rr     	sta freeze_dma_length_remaining+1
+000184r 1               
+000184r 1  AD rr rr     	lda freeze_region_dmalist_count+0
+000187r 1  8D 18 08     	sta $0818
+00018Ar 1  AD rr rr     	lda freeze_region_dmalist_count+1
+00018Dr 1  8D 19 08     	sta $0819
+000190r 1               
+000190r 1               	; Execute DMA job
+000190r 1  A9 FF        	lda #$ff
+000192r 1  8D 02 D7     	sta $d702
+000195r 1  8D 04 D7     	sta $d704
+000198r 1  A9 rr        	lda #>freeze_region_dmalist
+00019Ar 1  8D 01 D7     	sta $d701
+00019Dr 1  A9 rr        	lda #<freeze_region_dmalist
+00019Fr 1  8D 05 D7     	sta $d705
+0001A2r 1               
+0001A2r 1               	; Write SD-card direct sector buffer to freeze slot
+0001A2r 1               	; Flash a different colour while actually writing sector
+0001A2r 1  EE 20 D0     	inc $d020
+0001A5r 1               
+0001A5r 1  20 rr rr     	jsr freeze_write_sector_and_wait
+0001A8r 1               
+0001A8r 1  CE 20 D0     	dec $d020
+0001ABr 1               
+0001ABr 1  4C rr rr     	jmp freeze_region_dma_loop
+0001AEr 1               
+0001AEr 1               freeze_region_dma_done:
+0001AEr 1               
+0001AEr 1               	; And increase screen colour after writing each region
+0001AEr 1  EE 20 D0     	inc $d020
+0001B1r 1               
+0001B1r 1  60           	rts
+0001B2r 1               
+0001B2r 1               freeze_dma_length_remaining:
+0001B2r 1  00 00 00     	.byte 0,0,0
+0001B5r 1               
+0001B5r 1               dispatch_freeze_prep:
+0001B5r 1               	; X = Freeze prep ID byte
+0001B5r 1               	; (all of which are even, so that we can use an indirect
+0001B5r 1               	; X indexed jump table to efficiently do the dispatch)
+0001B5r 1               
+0001B5r 1  7C rr rr     	jmp (freeze_prep_jump_table,x)
+0001B8r 1               
+0001B8r 1               freeze_prep_jump_table:
+0001B8r 1               	freeze_prep_none = 0
+0001B8r 1  rr rr        	.word do_freeze_prep_sdcard_regs_to_scratch
+0001BAr 1               	freeze_prep_palette0 = 2
+0001BAr 1               	freeze_prep_palette1 = 4
+0001BAr 1               	freeze_prep_palette2 = 6
+0001BAr 1               	freeze_prep_palette3 = 8
+0001BAr 1  rr rr        	.word do_freeze_prep_palette_select
+0001BCr 1  rr rr        	.word do_freeze_prep_palette_select
+0001BEr 1  rr rr        	.word do_freeze_prep_palette_select
+0001C0r 1  rr rr        	.word do_freeze_prep_palette_select
+0001C2r 1               
+0001C2r 1               do_freeze_prep_sdcard_regs_to_scratch:
+0001C2r 1               	; Copy the main SD card access registers to a
+0001C2r 1               	; scratch area, so that we can save them, and thus restore
+0001C2r 1               	; them after unfreezing.
+0001C2r 1               	; (This is done outside of the automatic loop, because
+0001C2r 1               	; it has to be handled specially.)
+0001C2r 1  A2 0F        	ldx #$0f
+0001C4r 1  BD 80 D6     dfp1:	lda $d680,x
+0001C7r 1  9D rr rr     	sta freeze_scratch_area,x
+0001CAr 1  CA           	dex
+0001CBr 1  10 F7        	bpl dfp1
+0001CDr 1  60           	rts
+0001CEr 1               
+0001CEr 1               freeze_scratch_area:
+0001CEr 1  00 00 00 00  	.byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+0001D2r 1  00 00 00 00  
+0001D6r 1  00 00 00 00  
+0001DEr 1               
+0001DEr 1               freeze_region_dmalist:
+0001DEr 1  0A           	.byte $0A ; F011A format DMA list
+0001DFr 1  80           	.byte $80 ; Source MB option follows
+0001E0r 1               freeze_region_dmalist_source_mb:
+0001E0r 1  00           	.byte $00
+0001E1r 1  81           	.byte $81 ; Dest MB option follows
+0001E2r 1               freeze_region_dmalist_dest_mb:
+0001E2r 1  00           	.byte $00
+0001E3r 1  00           	.byte $00 ; end of enhanced DMA option list
+0001E4r 1               
+0001E4r 1               	; F011A format DMA list
+0001E4r 1  00           	.byte $00 ; copy + last request in chain
+0001E5r 1               freeze_region_dmalist_count:
+0001E5r 1  00 00        	.word $0000 ; size of copy
+0001E7r 1               freeze_region_dmalist_source_start:
+0001E7r 1  00 00        	.word $0000 ; source address lower 16 bits
+0001E9r 1               freeze_region_dmalist_source_bank:
+0001E9r 1  00           	.byte $00   ;
+0001EAr 1               freeze_region_dmalist_dest_start:
+0001EAr 1  00 00        	.word $0000
+0001ECr 1               freeze_region_dmalist_dest_bank:
+0001ECr 1  00           	.byte $00
+0001EDr 1  00 00        	.word $0000 ; modulo (unused)
+0001EFr 1               
+0001EFr 1               do_freeze_prep_palette_select:
+0001EFr 1               	; X = 6, 8, 10 or 12
+0001EFr 1               	; Use this to pick which of the four palette banks
+0001EFr 1               	; is visible at $D100-$D3FF
+0001EFr 1  8A           	txa
+0001F0r 1  18           	clc
+0001F1r 1  E9 02        	sbc #freeze_prep_palette0
+0001F3r 1  0A           	asl
+0001F4r 1  0A           	asl
+0001F5r 1  0A           	asl
+0001F6r 1  0A           	asl
+0001F7r 1  0A           	asl
+0001F8r 1  8D 70 D0     	sta $d070
+0001FBr 1  60           	rts
+0001FCr 1               
+0001FCr 1               
+0001FCr 1               
+0001FCr 1               
+0001FCr 1               
+0001FCr 1               
+0001FCr 1               freeze_mem_list:
+0001FCr 1               	; start address (4 bytes), length (3 bytes),
+0001FCr 1               	; preparatory action required before reading/writing (1 byte)
+0001FCr 1               	; Each segment will live in its own sector (or sectors if
+0001FCr 1               	; >512 bytes) when frozen. So we should avoid excessive
+0001FCr 1               	; numbers of blocks.
+0001FCr 1               
+0001FCr 1               	; core SDcard registers we need to be ready to start writing
+0001FCr 1               	; sectors. We copy these out and in manually at the start
+0001FCr 1               	; and end of the freeze and unfreeze routines, respectively.
+0001FCr 1               	; So they are not done here
+0001FCr 1               	;	.dword freezer_scratch_area
+0001FCr 1               	;       .byte 0
+0001FCr 1               	;	.word $0010
+0001FCr 1               	;	.byte freeze_prep_none
+0001FCr 1               
+0001FCr 1               	; SDcard sector buffer
+0001FCr 1               	; We have to save this before anything much else, because
+0001FCr 1               	; we need it for freezing
+0001FCr 1  00 6E FD 0F  	.dword $ffd6e00
+000200r 1  00 02        	.word $0200
+000202r 1  00           	.byte 0
+000203r 1  00           	.byte freeze_prep_none
+000204r 1               
+000204r 1               	; SDcard and related registers
+000204r 1  80 36 FD 0F  	.dword $ffd3680
+000208r 1  80 00        	.word $0080
+00020Ar 1  00           	.byte 0
+00020Br 1  00           	.byte freeze_prep_none
+00020Cr 1               
+00020Cr 1               	; SDcard sector buffer (F011)
+00020Cr 1  00 6C FD 0F  	.dword $ffd6c00
+000210r 1  00 02        	.word $0200
+000212r 1  00           	.byte 0
+000213r 1  00           	.byte freeze_prep_none
+000214r 1               
+000214r 1               	; Process scratch space
+000214r 1  rr rr rr rr  	.dword currenttask_block
+000218r 1  00 01        	.word $0100
+00021Ar 1  00           	.byte 0
+00021Br 1  00           	.byte freeze_prep_none
+00021Cr 1               
+00021Cr 1               	; $D640-$D67E hypervisor state registers
+00021Cr 1  40 36 FD 0F  	.dword $ffd3640
+000220r 1  3F 00        	.word $003F
+000222r 1  00           	.byte 0
+000223r 1  00           	.byte freeze_prep_none
+000224r 1               
+000224r 1               	; VIC-IV, F011 $D000-$D0FF
+000224r 1  00 30 FD 0F  	.dword $ffd3000
+000228r 1  00 01        	.word $0100
+00022Ar 1  00           	.byte 0
+00022Br 1  00           	.byte freeze_prep_none
+00022Cr 1               
+00022Cr 1               	; VIC-IV palette block 0
+00022Cr 1  00 31 FD 0F  	.dword $ffd3100
+000230r 1  00 03        	.word $0300
+000232r 1  00           	.byte 0
+000233r 1  02           	.byte freeze_prep_palette0
+000234r 1               
+000234r 1               	; VIC-IV palette block 1
+000234r 1  00 31 FD 0F  	.dword $ffd3100
+000238r 1  00 03        	.word $0300
+00023Ar 1  00           	.byte 0
+00023Br 1  04           	.byte freeze_prep_palette1
+00023Cr 1               
+00023Cr 1               	; VIC-IV palette block 2
+00023Cr 1  00 31 FD 0F  	.dword $ffd3100
+000240r 1  00 03        	.word $0300
+000242r 1  00           	.byte 0
+000243r 1  06           	.byte freeze_prep_palette2
+000244r 1               
+000244r 1               	; VIC-IV palette block 3
+000244r 1  00 31 FD 0F  	.dword $ffd3100
+000248r 1  00 03        	.word $0300
+00024Ar 1  00           	.byte 0
+00024Br 1  08           	.byte freeze_prep_palette3
+00024Cr 1               
+00024Cr 1               	; $D700-$D7FF CPU registers
+00024Cr 1  00 37 FD 0F  	.dword $ffd3700
+000250r 1  00 01        	.word $0100
+000252r 1  00           	.byte 0
+000253r 1  00           	.byte freeze_prep_none
+000254r 1               
+000254r 1               	; 128KB RAM + 128KB "ROM"
+000254r 1  00 00 00 00  	.dword $0000000
+000258r 1  00 00        	.word $0000
+00025Ar 1  04           	.byte 4          ; =4x64K blocks = 128K + 128K
+00025Br 1  00           	.byte freeze_prep_none
+00025Cr 1               
+00025Cr 1               	; 32KB colour RAM
+00025Cr 1  00 00 F8 0F  	.dword $ff80000
+000260r 1  00 80        	.word $8000
+000262r 1  00           	.byte $00
+000263r 1  00           	.byte freeze_prep_none
+000264r 1               
+000264r 1               	; End of list
+000264r 1  FF FF FF FF  	.dword $FFFFFFFF
+000268r 1  FF FF        	.word $FFFF
+00026Ar 1  FF           	.byte $FF
+00026Br 1  FF           	.byte $FF
+00026Br 1               

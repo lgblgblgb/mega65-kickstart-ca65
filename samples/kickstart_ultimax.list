@@ -1,0 +1,228 @@
+ca65 V2.15
+Main file   : kickstart_ultimax.a65
+Current file: kickstart_ultimax.a65
+
+000000r 1               .INCLUDE "kickstart.i65"
+000000r 2               ; My try to define some stuff can be included from every kickstart related sources.
+000000r 2               
+000000r 2               .SETCPU	"4510"	; Set CPU to "4510 mode"
+000000r 2               
+000000r 2               
+000000r 2               ; Try to make it clear that we want to use zero page addressing. The intended usage:
+000000r 2               ; LDA ZP(zp_temp_byte)
+000000r 2               ; I *think* it's may be better than this syntax which is even complained by ca65 as
+000000r 2               ; a warning:   LDA <zp_temp_byte
+000000r 2               
+000000r 2               .DEFINE ZP(n) .LOBYTE(n)
+000000r 2               
+000000r 2               .MACRO space label,bytes
+000000r 2               label: .res bytes
+000000r 2               .ENDMACRO
+000000r 2               
+000000r 2               
+000000r 1               .INCLUDE "kickstart_machine.a65"
+000000r 2               
+000000r 2               	reset_vector = $fffc
+000000r 2               	irq_vector = $fffe
+000000r 2               	nmi_vector = $fffa
+000000r 2               
+000000r 2               
+000000r 2               	hypervisor_a = $d640
+000000r 2               	hypervisor_x = $d641
+000000r 2               	hypervisor_y = $d642
+000000r 2               	hypervisor_z = $d643
+000000r 2               	hypervisor_b = $d644
+000000r 2               	hypervisor_spl = $d645
+000000r 2               	hypervisor_sph = $d646
+000000r 2               	hypervisor_flags = $d647
+000000r 2               	hypervisor_pcl = $d648
+000000r 2               	hypervisor_pch = $d649
+000000r 2               	hypervisor_maplolo = $d64a
+000000r 2               	hypervisor_maplohi = $d64b
+000000r 2               	hypervisor_maphilo = $d64c
+000000r 2               	hypervisor_maphihi = $d64d
+000000r 2               	hypervisor_maplomb = $d64e
+000000r 2               	hypervisor_maphimb = $d64f
+000000r 2               	hypervisor_cpuport00 = $d650
+000000r 2               	hypervisor_cpuport01 = $d651
+000000r 2               	hypervisor_iomode = $d652
+000000r 2               	hypervisor_dmagic_srcmb = $d653
+000000r 2               	hypervisor_dmagic_dstmb = $d654
+000000r 2               	hypervisor_dmagic_list0 = $d655
+000000r 2               	hypervisor_dmagic_list1 = $d656
+000000r 2               	hypervisor_dmagic_list2 = $d657
+000000r 2               	hypervisor_dmagic_list3 = $d658
+000000r 2               	hypervisor_hardware_virtualisation = $d659
+000000r 2               
+000000r 2               	; d65a
+000000r 2               	; d65b
+000000r 2               	; d65c
+000000r 2               
+000000r 2               	hypervisor_vm_currentpage_lo = $d65d
+000000r 2               	hypervisor_vm_currentpage_mid = $d65e
+000000r 2               	hypervisor_vm_currentpage_hi = $d65f
+000000r 2               
+000000r 2               	hypervisor_vm_pagetable = $d660
+000000r 2               	hypervisor_vm_pagetable0_logicalpage_lo = $d660
+000000r 2               	hypervisor_vm_pagetable0_logicalpage_hi = $d661
+000000r 2               	hypervisor_vm_pagetable0_physicalpage_lo = $d662
+000000r 2               	hypervisor_vm_pagetable0_physicalpage_hi = $d663
+000000r 2               	hypervisor_vm_pagetable1_logicalpage_lo = $d664
+000000r 2               	hypervisor_vm_pagetable1_logicalpage_hi = $d665
+000000r 2               	hypervisor_vm_pagetable1_physicalpage_lo = $d666
+000000r 2               	hypervisor_vm_pagetable1_physicalpage_hi = $d667
+000000r 2               	hypervisor_vm_pagetable2_logicalpage_lo = $d668
+000000r 2               	hypervisor_vm_pagetable2_logicalpage_hi = $d669
+000000r 2               	hypervisor_vm_pagetable2_physicalpage_lo = $d66a
+000000r 2               	hypervisor_vm_pagetable2_physicalpage_hi = $d66b
+000000r 2               	hypervisor_vm_pagetable3_logicalpage_lo = $d66c
+000000r 2               	hypervisor_vm_pagetable3_logicalpage_hi = $d66d
+000000r 2               	hypervisor_vm_pagetable3_physicalpage_lo = $d66e
+000000r 2               	hypervisor_vm_pagetable3_physicalpage_hi = $d66f
+000000r 2               
+000000r 2               	hypervisor_georam_base_mb = $d670
+000000r 2               	hypervsior_georam_block_mask = $d671
+000000r 2               
+000000r 2               	; d672 110 010
+000000r 2               	hypervisor_secure_mode_flags = $d672
+000000r 2               
+000000r 2               	; d673
+000000r 2               	; d674
+000000r 2               	; d675
+000000r 2               	; d676
+000000r 2               	; d677
+000000r 2               	; d678
+000000r 2               	; d679
+000000r 2               	; d67a
+000000r 2               	; d67b
+000000r 2               
+000000r 2               	hypervisor_write_char_to_serial_monitor = $d67c
+000000r 2               
+000000r 2               	hypervisor_feature_enables = $d67d
+000000r 2               	hypervisor_kickedup_flag = $d67e
+000000r 2               	hypervisor_cartridge_flags = $d67e
+000000r 2               	hypervisor_enterexit_trigger = $d67f
+000000r 2               
+000000r 2               	; Where sector buffer maps (over = $DE00-$DFFF IO expansion space)
+000000r 2               	sd_sectorbuffer = $DE00
+000000r 2               	sd_address_byte0 = $D681
+000000r 2               	sd_address_byte1 = $D682
+000000r 2               	sd_address_byte2 = $D683
+000000r 2               	sd_address_byte3 = $D684
+000000r 2               
+000000r 2               	fpga_switches_low = $d6ec
+000000r 2               	fpga_switches_high = $d6ed
+000000r 2               
+000000r 2               	VICIV_MAGIC = $d02f
+000000r 2               
+000000r 2               ; LGB moved here
+000000r 2               
+000000r 2               ; Current file descriptors
+000000r 2               ; Each descriptor has:
+000000r 2               ;   disk id : 1 byte ($00-$07 = file open, $FF = file closed)
+000000r 2               ;   access mode : 1 byte ($00 = read only)
+000000r 2               ;   start cluster : 4 bytes
+000000r 2               ;   current cluster : 4 bytes
+000000r 2               ;   current sector in cluster : 1 byte
+000000r 2               ;   offset in sector: 2 bytes
+000000r 2               ;   file offset / $100 : 3 bytes
+000000r 2               ;
+000000r 2               
+000000r 2                   dos_filedescriptor_max = 4
+000000r 2                   dos_filedescriptor_offset_diskid = 0
+000000r 2                   dos_filedescriptor_offset_mode = 1
+000000r 2                   dos_filedescriptor_offset_startcluster = 2
+000000r 2                   dos_filedescriptor_offset_currentcluster = 6
+000000r 2               ;
+000000r 2               ; These last three fields must be contiguous, as dos_open_current_file
+000000r 2               ; relies on it.
+000000r 2               ;
+000000r 2                   dos_filedescriptor_offset_sectorincluster = 10
+000000r 2                   dos_filedescriptor_offset_offsetinsector = 11
+000000r 2                   dos_filedescriptor_offset_fileoffset = 13
+000000r 2               
+000000r 2               ;
+000000r 2                               ; WARNING: dos_readdir_read_next_entry uses carnal knowledge about the following
+000000r 2                               ;          structure, particularly the length as calculated here:
+000000r 2                               ;
+000000r 2                               dos_dirent_structure_length =  64+1+11+4+4+1
+000000r 2               
+000000r 2               dos_max_disks = 6
+000000r 2               
+000000r 2               dos_errorcode_invalid_address = $10
+000000r 2               dos_errorcode_read_timeout = $07
+000000r 2               
+000000r 2               syspart_error_nosyspart = $ff
+000000r 2               
+000000r 2               
+000000r 1               
+000000r 1               .AUTOIMPORT +
+000000r 1               
+000000r 1               .SEGMENT "CODE"
+000000r 1               
+000000r 1               
+000000r 1               .EXPORT setup_for_ultimax_cartridge
+000000r 1               setup_for_ultimax_cartridge:
+000000r 1               
+000000r 1  AD 7E D6     		lda hypervisor_cartridge_flags
+000003r 1  29 60        		and #$60
+000005r 1  C9 40        		cmp #$40
+000007r 1  F0 01        		beq is_ultimax_cartridge
+000009r 1  60           		rts
+00000Ar 1               
+00000Ar 1               is_ultimax_cartridge:
+00000Ar 1               
+00000Ar 1               		; It's an ultimax cartridge, so we have a couple of things to
+00000Ar 1               		; handle differently.
+00000Ar 1               		; 1. Read reset vector directly from $FFFx, where it will be
+00000Ar 1               		; currently visible.
+00000Ar 1               		; 2. Copy $F000-$FFFF to $3xxx, $7xxx, $Bxxx and $Fxxx in 1st 64KB
+00000Ar 1               		; of RAM to simulate the way that a C64 makes the top 4KB of Ultimax
+00000Ar 1               		; mode ROMs visible to the VIC-II at these locations.
+00000Ar 1               		; This means copying from $701Fxxx to $000{3,7,B,F}xxx, as DMA doesn't
+00000Ar 1               		; see mapped ROMs.
+00000Ar 1               		; (We  use one list 4x with different destination,
+00000Ar 1               		; as it uses less bytes than a chained DMA list
+00000Ar 1               		; with all four.)
+00000Ar 1               
+00000Ar 1  AD FC FF     		lda reset_vector
+00000Dr 1  8D 48 D6     		sta hypervisor_pcl
+000010r 1  AD FD FF     		lda reset_vector+1
+000013r 1  8D 49 D6     		sta hypervisor_pch
+000016r 1               		; Use DMA to quickly do the copy
+000016r 1  A9 rr        		lda #>ultimaxsetup_dmalist
+000018r 1  8D 01 D7     		sta $d701
+00001Br 1  A9 0F        		lda #$0f
+00001Dr 1  8D 02 D7     		sta $d702 ; DMA list is $xxFxxxx
+000020r 1  A9 FF        		lda #$ff
+000022r 1  8D 04 D7     		sta $d704 ; DMA list address is $FFxxxxx
+000025r 1               		; Run list 4 times with different destination addresses
+000025r 1  A9 30        		lda #$30
+000027r 1  A2 rr        		ldx #<ultimaxsetup_dmalist
+000029r 1               ultimax_setup_loop:
+000029r 1  8D rr rr     		sta ultimaxsetup_destination+1
+00002Cr 1               		; Trigger MEGA65 enhanced DMA
+00002Cr 1  8E 05 D7     		stx $d705
+00002Fr 1  18           		clc
+000030r 1  69 40        		adc #$40
+000032r 1  C9 30        		cmp #$30
+000034r 1  D0 F3        		bne ultimax_setup_loop
+000036r 1               
+000036r 1  60           		rts
+000037r 1               
+000037r 1               ultimaxsetup_dmalist:
+000037r 1               		; MEGA65 Enhanced DMA options
+000037r 1  80 70        		.byte $80,$70 ; copy from $70xxxxx
+000039r 1  81 00        		.byte $81,$00 ; copy to $01xxxxx
+00003Br 1  00           		.byte $00 ; end of options
+00003Cr 1               		; F018A dma list
+00003Cr 1  00           		.byte $00 ; COPY, no chain
+00003Dr 1  00 10        		.word $1000 ; 4KB
+00003Fr 1               		; source address
+00003Fr 1  00 F0        		.word $F000 ; source is $xxxF000
+000041r 1  01           		.byte $01   ; source is $xx1xxxx
+000042r 1               ultimaxsetup_destination:
+000042r 1  00 30        		.word $3000 ; destination is $xxx3000 (gets changed by routine above)
+000044r 1  00           		.byte $00   ; destination is $xx03000
+000045r 1  00 00        		.byte $00,00 ; Modulo
+000046r 1               

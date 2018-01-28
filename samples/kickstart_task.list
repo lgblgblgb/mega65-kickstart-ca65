@@ -1,0 +1,407 @@
+ca65 V2.15
+Main file   : kickstart_task.a65
+Current file: kickstart_task.a65
+
+000000r 1               .INCLUDE "kickstart.i65"
+000000r 2               ; My try to define some stuff can be included from every kickstart related sources.
+000000r 2               
+000000r 2               .SETCPU	"4510"	; Set CPU to "4510 mode"
+000000r 2               
+000000r 2               
+000000r 2               ; Try to make it clear that we want to use zero page addressing. The intended usage:
+000000r 2               ; LDA ZP(zp_temp_byte)
+000000r 2               ; I *think* it's may be better than this syntax which is even complained by ca65 as
+000000r 2               ; a warning:   LDA <zp_temp_byte
+000000r 2               
+000000r 2               .DEFINE ZP(n) .LOBYTE(n)
+000000r 2               
+000000r 2               .MACRO space label,bytes
+000000r 2               label: .res bytes
+000000r 2               .ENDMACRO
+000000r 2               
+000000r 2               
+000000r 1               .INCLUDE "kickstart_machine.a65"
+000000r 2               
+000000r 2               	reset_vector = $fffc
+000000r 2               	irq_vector = $fffe
+000000r 2               	nmi_vector = $fffa
+000000r 2               
+000000r 2               
+000000r 2               	hypervisor_a = $d640
+000000r 2               	hypervisor_x = $d641
+000000r 2               	hypervisor_y = $d642
+000000r 2               	hypervisor_z = $d643
+000000r 2               	hypervisor_b = $d644
+000000r 2               	hypervisor_spl = $d645
+000000r 2               	hypervisor_sph = $d646
+000000r 2               	hypervisor_flags = $d647
+000000r 2               	hypervisor_pcl = $d648
+000000r 2               	hypervisor_pch = $d649
+000000r 2               	hypervisor_maplolo = $d64a
+000000r 2               	hypervisor_maplohi = $d64b
+000000r 2               	hypervisor_maphilo = $d64c
+000000r 2               	hypervisor_maphihi = $d64d
+000000r 2               	hypervisor_maplomb = $d64e
+000000r 2               	hypervisor_maphimb = $d64f
+000000r 2               	hypervisor_cpuport00 = $d650
+000000r 2               	hypervisor_cpuport01 = $d651
+000000r 2               	hypervisor_iomode = $d652
+000000r 2               	hypervisor_dmagic_srcmb = $d653
+000000r 2               	hypervisor_dmagic_dstmb = $d654
+000000r 2               	hypervisor_dmagic_list0 = $d655
+000000r 2               	hypervisor_dmagic_list1 = $d656
+000000r 2               	hypervisor_dmagic_list2 = $d657
+000000r 2               	hypervisor_dmagic_list3 = $d658
+000000r 2               	hypervisor_hardware_virtualisation = $d659
+000000r 2               
+000000r 2               	; d65a
+000000r 2               	; d65b
+000000r 2               	; d65c
+000000r 2               
+000000r 2               	hypervisor_vm_currentpage_lo = $d65d
+000000r 2               	hypervisor_vm_currentpage_mid = $d65e
+000000r 2               	hypervisor_vm_currentpage_hi = $d65f
+000000r 2               
+000000r 2               	hypervisor_vm_pagetable = $d660
+000000r 2               	hypervisor_vm_pagetable0_logicalpage_lo = $d660
+000000r 2               	hypervisor_vm_pagetable0_logicalpage_hi = $d661
+000000r 2               	hypervisor_vm_pagetable0_physicalpage_lo = $d662
+000000r 2               	hypervisor_vm_pagetable0_physicalpage_hi = $d663
+000000r 2               	hypervisor_vm_pagetable1_logicalpage_lo = $d664
+000000r 2               	hypervisor_vm_pagetable1_logicalpage_hi = $d665
+000000r 2               	hypervisor_vm_pagetable1_physicalpage_lo = $d666
+000000r 2               	hypervisor_vm_pagetable1_physicalpage_hi = $d667
+000000r 2               	hypervisor_vm_pagetable2_logicalpage_lo = $d668
+000000r 2               	hypervisor_vm_pagetable2_logicalpage_hi = $d669
+000000r 2               	hypervisor_vm_pagetable2_physicalpage_lo = $d66a
+000000r 2               	hypervisor_vm_pagetable2_physicalpage_hi = $d66b
+000000r 2               	hypervisor_vm_pagetable3_logicalpage_lo = $d66c
+000000r 2               	hypervisor_vm_pagetable3_logicalpage_hi = $d66d
+000000r 2               	hypervisor_vm_pagetable3_physicalpage_lo = $d66e
+000000r 2               	hypervisor_vm_pagetable3_physicalpage_hi = $d66f
+000000r 2               
+000000r 2               	hypervisor_georam_base_mb = $d670
+000000r 2               	hypervsior_georam_block_mask = $d671
+000000r 2               
+000000r 2               	; d672 110 010
+000000r 2               	hypervisor_secure_mode_flags = $d672
+000000r 2               
+000000r 2               	; d673
+000000r 2               	; d674
+000000r 2               	; d675
+000000r 2               	; d676
+000000r 2               	; d677
+000000r 2               	; d678
+000000r 2               	; d679
+000000r 2               	; d67a
+000000r 2               	; d67b
+000000r 2               
+000000r 2               	hypervisor_write_char_to_serial_monitor = $d67c
+000000r 2               
+000000r 2               	hypervisor_feature_enables = $d67d
+000000r 2               	hypervisor_kickedup_flag = $d67e
+000000r 2               	hypervisor_cartridge_flags = $d67e
+000000r 2               	hypervisor_enterexit_trigger = $d67f
+000000r 2               
+000000r 2               	; Where sector buffer maps (over = $DE00-$DFFF IO expansion space)
+000000r 2               	sd_sectorbuffer = $DE00
+000000r 2               	sd_address_byte0 = $D681
+000000r 2               	sd_address_byte1 = $D682
+000000r 2               	sd_address_byte2 = $D683
+000000r 2               	sd_address_byte3 = $D684
+000000r 2               
+000000r 2               	fpga_switches_low = $d6ec
+000000r 2               	fpga_switches_high = $d6ed
+000000r 2               
+000000r 2               	VICIV_MAGIC = $d02f
+000000r 2               
+000000r 2               ; LGB moved here
+000000r 2               
+000000r 2               ; Current file descriptors
+000000r 2               ; Each descriptor has:
+000000r 2               ;   disk id : 1 byte ($00-$07 = file open, $FF = file closed)
+000000r 2               ;   access mode : 1 byte ($00 = read only)
+000000r 2               ;   start cluster : 4 bytes
+000000r 2               ;   current cluster : 4 bytes
+000000r 2               ;   current sector in cluster : 1 byte
+000000r 2               ;   offset in sector: 2 bytes
+000000r 2               ;   file offset / $100 : 3 bytes
+000000r 2               ;
+000000r 2               
+000000r 2                   dos_filedescriptor_max = 4
+000000r 2                   dos_filedescriptor_offset_diskid = 0
+000000r 2                   dos_filedescriptor_offset_mode = 1
+000000r 2                   dos_filedescriptor_offset_startcluster = 2
+000000r 2                   dos_filedescriptor_offset_currentcluster = 6
+000000r 2               ;
+000000r 2               ; These last three fields must be contiguous, as dos_open_current_file
+000000r 2               ; relies on it.
+000000r 2               ;
+000000r 2                   dos_filedescriptor_offset_sectorincluster = 10
+000000r 2                   dos_filedescriptor_offset_offsetinsector = 11
+000000r 2                   dos_filedescriptor_offset_fileoffset = 13
+000000r 2               
+000000r 2               ;
+000000r 2                               ; WARNING: dos_readdir_read_next_entry uses carnal knowledge about the following
+000000r 2                               ;          structure, particularly the length as calculated here:
+000000r 2                               ;
+000000r 2                               dos_dirent_structure_length =  64+1+11+4+4+1
+000000r 2               
+000000r 2               dos_max_disks = 6
+000000r 2               
+000000r 2               dos_errorcode_invalid_address = $10
+000000r 2               dos_errorcode_read_timeout = $07
+000000r 2               
+000000r 2               syspart_error_nosyspart = $ff
+000000r 2               
+000000r 2               
+000000r 1               
+000000r 1               .SEGMENT "CODE"
+000000r 1               
+000000r 1               .AUTOIMPORT +
+000000r 1               
+000000r 1               
+000000r 1               ;	========================
+000000r 1               
+000000r 1               ; Return the next free task ID
+000000r 1               ; XXX - Task ID $FF is hypervisor/operating system
+000000r 1               ; XXX - For now just lie, and always say task $00 is next.
+000000r 1               ; We should have a process allocation table that we consult.
+000000r 1               ; (actual suspended processes should be held on SD card in files)
+000000r 1               
+000000r 1               task_get_next_taskid:
+000000r 1               
+000000r 1  A9 00        	lda #$00
+000002r 1  60           	rts
+000003r 1               
+000003r 1               ;	========================
+000003r 1               
+000003r 1               .EXPORT task_set_c64_memorymap
+000003r 1               task_set_c64_memorymap:
+000003r 1               
+000003r 1               	; set contents of CPU registers for exit from hypervisor mode
+000003r 1               
+000003r 1  A9 00        	lda #$00
+000005r 1  8D 40 D6     	sta hypervisor_a
+000008r 1  8D 41 D6     	sta hypervisor_x
+00000Br 1  8D 42 D6     	sta hypervisor_y
+00000Er 1  8D 43 D6     	sta hypervisor_z
+000011r 1  8D 44 D6     	sta hypervisor_b
+000014r 1  A9 FF        	lda #$ff
+000016r 1  8D 45 D6     	sta hypervisor_spl
+000019r 1  A9 01        	lda #$01
+00001Br 1  8D 46 D6     	sta hypervisor_sph
+00001Er 1  A9 F7        	lda #$F7     ; All flags except decimal mode
+000020r 1  8D 47 D6     	sta hypervisor_flags
+000023r 1  A9 00        	lda #$00
+000025r 1  8D 4A D6     	sta hypervisor_maplolo
+000028r 1  8D 4B D6     	sta hypervisor_maplohi
+00002Br 1  8D 4C D6     	sta hypervisor_maphilo
+00002Er 1  8D 4D D6     	sta hypervisor_maphihi
+000031r 1  8D 4E D6     	sta hypervisor_maplomb
+000034r 1  8D 4F D6     	sta hypervisor_maphimb
+000037r 1  A9 3F        	lda #$3f
+000039r 1  8D 50 D6     	sta hypervisor_cpuport00
+00003Cr 1  8D 51 D6     	sta hypervisor_cpuport01
+00003Fr 1               
+00003Fr 1  A9 00        	lda #$00
+000041r 1  8D 52 D6     	sta hypervisor_iomode    ; C64 IO map
+000044r 1               
+000044r 1               	; Unmap SD sector buffer
+000044r 1  A9 82        	lda #$82
+000046r 1  8D 80 D6     	sta $D680
+000049r 1               
+000049r 1               	; Unmap 2nd KB colour RAM
+000049r 1  A9 01        	lda #$01
+00004Br 1  1C 30 D0     	trb $d030
+00004Er 1               
+00004Er 1               	; XXX - disable C65 ROM maps
+00004Er 1  60           	rts
+00004Fr 1               
+00004Fr 1               ;	========================
+00004Fr 1               
+00004Fr 1               .EXPORT task_set_pc_to_reset_vector
+00004Fr 1               task_set_pc_to_reset_vector:
+00004Fr 1               
+00004Fr 1               	; Set PC from $FFFC in ROM, i.e., $802FFFC
+00004Fr 1  A2 FC        	ldx #<reset_vector
+000051r 1  A0 FF        	ldy #>reset_vector
+000053r 1  A3 02        	ldz #$02
+000055r 1  A9 00        	lda #$00
+000057r 1  20 rr rr     	jsr longpeek
+00005Ar 1  AD rr rr     	lda kickstart_scratchbyte0
+00005Dr 1  8D 48 D6     	sta hypervisor_pcl
+000060r 1  A2 FC        	ldx #<reset_vector
+000062r 1  E8           	inx
+000063r 1  A0 FF        	ldy #>reset_vector
+000065r 1  A3 02        	ldz #$02
+000067r 1  A9 00        	lda #$00
+000069r 1  20 rr rr     	jsr longpeek
+00006Cr 1  AD rr rr     	lda kickstart_scratchbyte0
+00006Fr 1  8D 49 D6     	sta hypervisor_pch
+000072r 1               
+000072r 1  60           	rts
+000073r 1               
+000073r 1               ;	========================
+000073r 1               
+000073r 1               ; Set dummy C64 NMI vector
+000073r 1               ; This avoid a nasty crash if NMI is called during kickstart
+000073r 1               ; Points to a RTI instruction in $FEC1
+000073r 1               
+000073r 1               .EXPORT task_dummy_nmi_vector
+000073r 1               task_dummy_nmi_vector:
+000073r 1               
+000073r 1  A9 C1        	lda #<$FEC1
+000075r 1  8D 18 03     	sta $0318
+000078r 1  A9 FE        	lda #>$FEC1
+00007Ar 1  8D 19 03     	sta $0319
+00007Dr 1  60           	rts
+00007Er 1               
+00007Er 1               ;	========================
+00007Er 1               
+00007Er 1               ; Set all page entries and current page number to all zeroes
+00007Er 1               ; so that we don't think any page is loaded.
+00007Er 1               ; XXX - Is all zeroes the best value here?  Physical page 0 is $00000000, which
+00007Er 1               ; is in chipram. It might be legitimate to try to map that.  Perhaps we should set
+00007Er 1               ; the pages to $FFFF instead (but that would reduce available VM space by 16KB).
+00007Er 1               ; Physical page 0 is probably reasonable for now. We can revisit as required.
+00007Er 1               
+00007Er 1               task_clear_pagetable:
+00007Er 1               
+00007Er 1  A9 00        	lda #$00
+000080r 1  A2 5D        	ldx #<hypervisor_vm_currentpage_lo
+000082r 1  9D 00 D6     tcp1:	sta $d600,x
+000085r 1  E8           	inx
+000086r 1  E0 70        	cpx #<hypervisor_vm_pagetable3_physicalpage_hi+1
+000088r 1  D0 F8        	bne tcp1
+00008Ar 1  60           	rts
+00008Br 1               
+00008Br 1               ;	========================
+00008Br 1               
+00008Br 1               task_erase_processcontrolblock:
+00008Br 1               
+00008Br 1               	; Erase process control block
+00008Br 1               	;
+00008Br 1  A2 00        	ldx #$00
+00008Dr 1  8A           	txa
+00008Er 1  9D rr rr     tabs1:	sta currenttask_block,x
+000091r 1  E8           	inx
+000092r 1  D0 FA        	bne tabs1
+000094r 1  20 rr rr     	jsr task_clear_pagetable
+000097r 1               
+000097r 1               	; Mark all files as closed
+000097r 1               
+000097r 1  4C rr rr     	jmp dos_clear_filedescriptors
+00009Ar 1               
+00009Ar 1               ;	========================
+00009Ar 1               
+00009Ar 1               task_new_processcontrolblock:
+00009Ar 1               
+00009Ar 1  20 rr rr     	jsr task_erase_processcontrolblock
+00009Dr 1  20 rr rr     	jsr task_get_next_taskid
+0000A0r 1  8D rr rr     	sta currenttask_id
+0000A3r 1  60           	rts
+0000A4r 1               
+0000A4r 1               ;	========================
+0000A4r 1               
+0000A4r 1               ; Initialise memory to indicate a new blank task.
+0000A4r 1               ; (actually, it will be a task preconfigured for C64/C65 mode)
+0000A4r 1               
+0000A4r 1               task_asblankslate:
+0000A4r 1               
+0000A4r 1  20 rr rr     	jsr task_new_processcontrolblock
+0000A7r 1               
+0000A7r 1  20 rr rr     	jsr task_set_c64_memorymap
+0000AAr 1  60           	rts
+0000ABr 1               
+0000ABr 1               ;	========================
+0000ABr 1               
+0000ABr 1               .EXPORT double_restore_trap
+0000ABr 1               double_restore_trap:
+0000ABr 1               
+0000ABr 1               	; Freeze to slot 0
+0000ABr 1  A2 00        	ldx #$00
+0000ADr 1  A0 00        	ldy #$00
+0000AFr 1  20 rr rr     	jsr freeze_to_slot
+0000B2r 1               
+0000B2r 1               	; return from hypervisor
+0000B2r 1               	;
+0000B2r 1  8D 7F D6     	sta hypervisor_enterexit_trigger
+0000B5r 1               
+0000B5r 1               double_restore_trap_old:
+0000B5r 1               
+0000B5r 1               	; For now we just want to toggle the CPU speed between 48MHz and
+0000B5r 1               	; 1MHz
+0000B5r 1               
+0000B5r 1               	; enable 48MHz for fast mode instead of 3.5MHz
+0000B5r 1               	;
+0000B5r 1  AD 54 D0     	lda $D054
+0000B8r 1  49 40        	eor #$40
+0000BAr 1  8D 54 D0     	sta $D054
+0000BDr 1               
+0000BDr 1               	; enable FAST mode,
+0000BDr 1               	;
+0000BDr 1  AD 31 D0     	lda $D031
+0000C0r 1  09 40        	ora #$40
+0000C2r 1  8D 31 D0     	sta $D031
+0000C5r 1               
+0000C5r 1               	; bump border colour so that we know something has happened
+0000C5r 1               	;
+0000C5r 1  AD 20 D0     	lda $D020
+0000C8r 1  1A           	inc
+0000C9r 1  29 0F        	and #$0f
+0000CBr 1  8D 20 D0     	sta $D020
+0000CEr 1               
+0000CEr 1               	; return from hypervisor
+0000CEr 1               	;
+0000CEr 1  8D 7F D6     	sta hypervisor_enterexit_trigger
+0000D1r 1               
+0000D1r 1               ;	========================
+0000D1r 1               
+0000D1r 1               .EXPORT protected_hardware_config
+0000D1r 1               protected_hardware_config:
+0000D1r 1               
+0000D1r 1                       ; store config info passed from register a
+0000D1r 1  AD 40 D6             lda hypervisor_a
+0000D4r 1  8D 72 D6     	sta hypervisor_secure_mode_flags
+0000D7r 1               
+0000D7r 1               	; bump border colour so that we know something has happened
+0000D7r 1               	;
+0000D7r 1               
+0000D7r 1  AD 20 D0             lda $D020
+0000DAr 1  1A           	inc
+0000DBr 1  29 0F        	and #$0f
+0000DDr 1  8D 20 D0     	sta $D020
+0000E0r 1               
+0000E0r 1  8D 7F D6     	sta hypervisor_enterexit_trigger
+0000E3r 1               
+0000E3r 1               ;	========================
+0000E3r 1               
+0000E3r 1               .EXPORT matrix_mode_toggle
+0000E3r 1               matrix_mode_toggle:
+0000E3r 1               
+0000E3r 1  AD 72 D6     	lda hypervisor_secure_mode_flags
+0000E6r 1               	; We want to toggle bit 6 only.
+0000E6r 1  29 40        	and #$40 ; mask bit 6
+0000E8r 1  D0 08        	bne clearmm ;if its not zero
+0000EAr 1               
+0000EAr 1               	;If its not enabled, we want to set bit 6
+0000EAr 1  AD 72 D6     	lda hypervisor_secure_mode_flags
+0000EDr 1  09 40                ora #$40
+0000EFr 1  4C rr rr     	jmp exitmm
+0000F2r 1                      ;If its enabled, we want to clear bit 6
+0000F2r 1               clearmm:
+0000F2r 1  AD 72 D6             lda hypervisor_secure_mode_flags
+0000F5r 1  29 BF                and #$BF
+0000F7r 1               exitmm:
+0000F7r 1  8D 72 D6             sta hypervisor_secure_mode_flags
+0000FAr 1               
+0000FAr 1                       ;;;Dont need this any more
+0000FAr 1               	;; bump border colour so that we know something has happened
+0000FAr 1                       ;lda $D020
+0000FAr 1               	;inc
+0000FAr 1               	;and #$0f
+0000FAr 1               	;sta $D020
+0000FAr 1               
+0000FAr 1  8D 7F D6     	sta hypervisor_enterexit_trigger
+0000FAr 1               

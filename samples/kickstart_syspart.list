@@ -1,0 +1,568 @@
+ca65 V2.15
+Main file   : kickstart_syspart.a65
+Current file: kickstart_syspart.a65
+
+000000r 1               .INCLUDE "kickstart.i65"
+000000r 2               ; My try to define some stuff can be included from every kickstart related sources.
+000000r 2               
+000000r 2               .SETCPU	"4510"	; Set CPU to "4510 mode"
+000000r 2               
+000000r 2               
+000000r 2               ; Try to make it clear that we want to use zero page addressing. The intended usage:
+000000r 2               ; LDA ZP(zp_temp_byte)
+000000r 2               ; I *think* it's may be better than this syntax which is even complained by ca65 as
+000000r 2               ; a warning:   LDA <zp_temp_byte
+000000r 2               
+000000r 2               .DEFINE ZP(n) .LOBYTE(n)
+000000r 2               
+000000r 2               .MACRO space label,bytes
+000000r 2               label: .res bytes
+000000r 2               .ENDMACRO
+000000r 2               
+000000r 2               
+000000r 1               .INCLUDE "kickstart_machine.a65"
+000000r 2               
+000000r 2               	reset_vector = $fffc
+000000r 2               	irq_vector = $fffe
+000000r 2               	nmi_vector = $fffa
+000000r 2               
+000000r 2               
+000000r 2               	hypervisor_a = $d640
+000000r 2               	hypervisor_x = $d641
+000000r 2               	hypervisor_y = $d642
+000000r 2               	hypervisor_z = $d643
+000000r 2               	hypervisor_b = $d644
+000000r 2               	hypervisor_spl = $d645
+000000r 2               	hypervisor_sph = $d646
+000000r 2               	hypervisor_flags = $d647
+000000r 2               	hypervisor_pcl = $d648
+000000r 2               	hypervisor_pch = $d649
+000000r 2               	hypervisor_maplolo = $d64a
+000000r 2               	hypervisor_maplohi = $d64b
+000000r 2               	hypervisor_maphilo = $d64c
+000000r 2               	hypervisor_maphihi = $d64d
+000000r 2               	hypervisor_maplomb = $d64e
+000000r 2               	hypervisor_maphimb = $d64f
+000000r 2               	hypervisor_cpuport00 = $d650
+000000r 2               	hypervisor_cpuport01 = $d651
+000000r 2               	hypervisor_iomode = $d652
+000000r 2               	hypervisor_dmagic_srcmb = $d653
+000000r 2               	hypervisor_dmagic_dstmb = $d654
+000000r 2               	hypervisor_dmagic_list0 = $d655
+000000r 2               	hypervisor_dmagic_list1 = $d656
+000000r 2               	hypervisor_dmagic_list2 = $d657
+000000r 2               	hypervisor_dmagic_list3 = $d658
+000000r 2               	hypervisor_hardware_virtualisation = $d659
+000000r 2               
+000000r 2               	; d65a
+000000r 2               	; d65b
+000000r 2               	; d65c
+000000r 2               
+000000r 2               	hypervisor_vm_currentpage_lo = $d65d
+000000r 2               	hypervisor_vm_currentpage_mid = $d65e
+000000r 2               	hypervisor_vm_currentpage_hi = $d65f
+000000r 2               
+000000r 2               	hypervisor_vm_pagetable = $d660
+000000r 2               	hypervisor_vm_pagetable0_logicalpage_lo = $d660
+000000r 2               	hypervisor_vm_pagetable0_logicalpage_hi = $d661
+000000r 2               	hypervisor_vm_pagetable0_physicalpage_lo = $d662
+000000r 2               	hypervisor_vm_pagetable0_physicalpage_hi = $d663
+000000r 2               	hypervisor_vm_pagetable1_logicalpage_lo = $d664
+000000r 2               	hypervisor_vm_pagetable1_logicalpage_hi = $d665
+000000r 2               	hypervisor_vm_pagetable1_physicalpage_lo = $d666
+000000r 2               	hypervisor_vm_pagetable1_physicalpage_hi = $d667
+000000r 2               	hypervisor_vm_pagetable2_logicalpage_lo = $d668
+000000r 2               	hypervisor_vm_pagetable2_logicalpage_hi = $d669
+000000r 2               	hypervisor_vm_pagetable2_physicalpage_lo = $d66a
+000000r 2               	hypervisor_vm_pagetable2_physicalpage_hi = $d66b
+000000r 2               	hypervisor_vm_pagetable3_logicalpage_lo = $d66c
+000000r 2               	hypervisor_vm_pagetable3_logicalpage_hi = $d66d
+000000r 2               	hypervisor_vm_pagetable3_physicalpage_lo = $d66e
+000000r 2               	hypervisor_vm_pagetable3_physicalpage_hi = $d66f
+000000r 2               
+000000r 2               	hypervisor_georam_base_mb = $d670
+000000r 2               	hypervsior_georam_block_mask = $d671
+000000r 2               
+000000r 2               	; d672 110 010
+000000r 2               	hypervisor_secure_mode_flags = $d672
+000000r 2               
+000000r 2               	; d673
+000000r 2               	; d674
+000000r 2               	; d675
+000000r 2               	; d676
+000000r 2               	; d677
+000000r 2               	; d678
+000000r 2               	; d679
+000000r 2               	; d67a
+000000r 2               	; d67b
+000000r 2               
+000000r 2               	hypervisor_write_char_to_serial_monitor = $d67c
+000000r 2               
+000000r 2               	hypervisor_feature_enables = $d67d
+000000r 2               	hypervisor_kickedup_flag = $d67e
+000000r 2               	hypervisor_cartridge_flags = $d67e
+000000r 2               	hypervisor_enterexit_trigger = $d67f
+000000r 2               
+000000r 2               	; Where sector buffer maps (over = $DE00-$DFFF IO expansion space)
+000000r 2               	sd_sectorbuffer = $DE00
+000000r 2               	sd_address_byte0 = $D681
+000000r 2               	sd_address_byte1 = $D682
+000000r 2               	sd_address_byte2 = $D683
+000000r 2               	sd_address_byte3 = $D684
+000000r 2               
+000000r 2               	fpga_switches_low = $d6ec
+000000r 2               	fpga_switches_high = $d6ed
+000000r 2               
+000000r 2               	VICIV_MAGIC = $d02f
+000000r 2               
+000000r 2               ; LGB moved here
+000000r 2               
+000000r 2               ; Current file descriptors
+000000r 2               ; Each descriptor has:
+000000r 2               ;   disk id : 1 byte ($00-$07 = file open, $FF = file closed)
+000000r 2               ;   access mode : 1 byte ($00 = read only)
+000000r 2               ;   start cluster : 4 bytes
+000000r 2               ;   current cluster : 4 bytes
+000000r 2               ;   current sector in cluster : 1 byte
+000000r 2               ;   offset in sector: 2 bytes
+000000r 2               ;   file offset / $100 : 3 bytes
+000000r 2               ;
+000000r 2               
+000000r 2                   dos_filedescriptor_max = 4
+000000r 2                   dos_filedescriptor_offset_diskid = 0
+000000r 2                   dos_filedescriptor_offset_mode = 1
+000000r 2                   dos_filedescriptor_offset_startcluster = 2
+000000r 2                   dos_filedescriptor_offset_currentcluster = 6
+000000r 2               ;
+000000r 2               ; These last three fields must be contiguous, as dos_open_current_file
+000000r 2               ; relies on it.
+000000r 2               ;
+000000r 2                   dos_filedescriptor_offset_sectorincluster = 10
+000000r 2                   dos_filedescriptor_offset_offsetinsector = 11
+000000r 2                   dos_filedescriptor_offset_fileoffset = 13
+000000r 2               
+000000r 2               ;
+000000r 2                               ; WARNING: dos_readdir_read_next_entry uses carnal knowledge about the following
+000000r 2                               ;          structure, particularly the length as calculated here:
+000000r 2                               ;
+000000r 2                               dos_dirent_structure_length =  64+1+11+4+4+1
+000000r 2               
+000000r 2               dos_max_disks = 6
+000000r 2               
+000000r 2               dos_errorcode_invalid_address = $10
+000000r 2               dos_errorcode_read_timeout = $07
+000000r 2               
+000000r 2               syspart_error_nosyspart = $ff
+000000r 2               
+000000r 2               
+000000r 1               
+000000r 1               .AUTOIMPORT +
+000000r 1               
+000000r 1               .SEGMENT "CODE"
+000000r 1               
+000000r 1               
+000000r 1               ;
+000000r 1               ; MEGA65 System Partition functions
+000000r 1               ;
+000000r 1               ; The system partition (type = $41 = 65) holds several major data areas:
+000000r 1               ;
+000000r 1               ; 1. Header, that identifies the version and structure of the system partition.
+000000r 1               ;
+000000r 1               ; 2. Frozen programs for task switching.
+000000r 1               ;    (Some of which may be reserved by the operating system, e.g., for alarms
+000000r 1               ;     and other special purposes.)
+000000r 1               ;
+000000r 1               ; 3. Installed services that can be requested via the Hypervisor.
+000000r 1               ;    These are internally just frozen programs with a valid service description
+000000r 1               ;    header.
+000000r 1               ;
+000000r 1               
+000000r 1               	syspart_error_readerror = $01
+000000r 1               	syspart_error_badmagic  = $42
+000000r 1               	;syspart_error_nosyspart = $ff
+000000r 1               
+000000r 1               ; HEADER - First sector of partition
+000000r 1               ; $000-$00A "MEGA65SYS00" - Magic string and version indication
+000000r 1               ; $010-$017 Start and size (in sectors) of frozen program area
+000000r 1               ; $018-$01b Size of each frozen program slot
+000000r 1               ; $01c-$01d Number of frozen program slots
+000000r 1               ; $01e-$01f Number of sectors used for frozen program directory
+000000r 1               ; $020-$027 Start and size (in sectors) or installed services
+000000r 1               ; $028-$02b Size of each installed service slot
+000000r 1               ; $02c-$02d Number of service slots
+000000r 1               ; $02e-$02f Number of sectors used for slot directory
+000000r 1               ; $030-$1ff RESERVED
+000000r 1               ;
+000000r 1               ; Basically we have two main areas in the system partition for frozen programs,
+000000r 1               ; and for each we have a directory that allows for quick scanning of the lists.
+000000r 1               ; Thee goal is to reduce the number of random seeks (which still have a cost on
+000000r 1               ; SD cards, because commencing a read is much slower than continuing one), and
+000000r 1               ; also the amount of data required.
+000000r 1               ; To this end the directory entries consist of a 64 byte name field and a 64
+000000r 1               ; byte reserved field, so that each is 128 bytes in total, allowing 4 per 512
+000000r 1               ; byte sector.
+000000r 1               ; If the first byte of a direectory is $00, then the entry is assumed to be free.
+000000r 1               
+000000r 1               .EXPORT syspart_open
+000000r 1               syspart_open:
+000000r 1               	; Open a system partition.
+000000r 1               	; At this point, only syspart_start_sector and
+000000r 1               	; syspart_size_in_sectors have been initialised.
+000000r 1               
+000000r 1               	; Read First sector of system partition
+000000r 1  A2 03        	ldx #$03
+000002r 1  BD rr rr     spo1:	lda syspart_start_sector,x
+000005r 1  9D 81 D6     	sta $d681,x
+000008r 1  CA           	dex
+000009r 1  10 F7        	bpl spo1
+00000Br 1  20 rr rr     	jsr sd_fix_sectornumber
+00000Er 1               
+00000Er 1  A9 01        	lda #syspart_error_readerror
+000010r 1  8D rr rr     	sta syspart_error_code
+000013r 1  20 rr rr     	jsr sd_readsector
+000016r 1  90 62        	bcc syspart_openerror
+000018r 1               
+000018r 1               	; Got First sector of system partition.
+000018r 1               
+000018r 1               	; Check magic string
+000018r 1  A9 42        	lda #syspart_error_badmagic
+00001Ar 1  8D rr rr     	sta syspart_error_code
+00001Dr 1  A2 0A        	ldx #10
+00001Fr 1  BD 00 DE     spo2:	lda $de00,x
+000022r 1  DD rr rr     	cmp syspart_magic,x
+000025r 1  D0 53        	bne syspart_openerror
+000027r 1  CA           	dex
+000028r 1  10 F5        	bpl spo2
+00002Ar 1               
+00002Ar 1  A9 00        	lda #$00
+00002Cr 1  8D rr rr     	sta syspart_error_code
+00002Fr 1               
+00002Fr 1               	; Copy bytes from offset $10 - $2F into syspart_structure
+00002Fr 1               	; XXX It is assumed that these fields are aligned with each other
+00002Fr 1  A2 10        	ldx #$10
+000031r 1  BD 00 DE     spo3:	lda $de00,x
+000034r 1  9D rr rr     	sta syspart_structure,x
+000037r 1  E8           	inx
+000038r 1  E0 30        	cpx #$30
+00003Ar 1  D0 F5        	bne spo3
+00003Cr 1               
+00003Cr 1               	; Display info about # of freeze and service slots
+00003Cr 1  A2 rr        	ldx #<msg_syspart_info
+00003Er 1  A0 rr        	ldy #>msg_syspart_info
+000040r 1  20 rr rr     	jsr printmessage
+000043r 1  A0 00        	ldy #$00
+000045r 1  AB rr rr     	ldz syspart_freeze_slot_count+1
+000048r 1  20 rr rr     	jsr printhex
+00004Br 1  AB rr rr     	ldz syspart_freeze_slot_count+0
+00004Er 1  20 rr rr     	jsr printhex
+000051r 1  AB rr rr     	ldz syspart_service_slot_count+1
+000054r 1  20 rr rr     	jsr printhex
+000057r 1  AB rr rr     	ldz syspart_service_slot_count+0
+00005Ar 1  20 rr rr     	jsr printhex
+00005Dr 1               
+00005Dr 1  A9 01        	lda #$01
+00005Fr 1  8D rr rr     	sta syspart_present
+000062r 1               
+000062r 1  A2 rr        	ldx #<msg_syspart_ok
+000064r 1  A0 rr        	ldy #>msg_syspart_ok
+000066r 1  20 rr rr     	jsr printmessage
+000069r 1               
+000069r 1  20 rr rr     	jsr syspart_configsector_read
+00006Cr 1  20 rr rr     	jsr syspart_configsector_apply
+00006Fr 1  B0 07        	bcs spo4
+000071r 1               
+000071r 1  A2 rr        	ldx #<msg_syspart_config_invalid
+000073r 1  A0 rr        	ldy #>msg_syspart_config_invalid
+000075r 1  20 rr rr     	jsr printmessage
+000078r 1               
+000078r 1  38           spo4:	sec
+000079r 1  60           	rts
+00007Ar 1               
+00007Ar 1               syspart_openerror:
+00007Ar 1               
+00007Ar 1               	; Report error opening system partition
+00007Ar 1  A2 rr        	ldx #<msg_syspart_open_error
+00007Cr 1  A0 rr        	ldy #>msg_syspart_open_error
+00007Er 1  20 rr rr     	jsr printmessage
+000081r 1  A0 00        	ldy #$00
+000083r 1  AB rr rr     	ldz syspart_error_code
+000086r 1  20 rr rr     	jsr printhex
+000089r 1  A3 00        	ldz #$00
+00008Br 1               
+00008Br 1  18           	clc
+00008Cr 1  60           	rts
+00008Dr 1               
+00008Dr 1               ; XXX These should return success/failure indication
+00008Dr 1               syspart_configsector_read_trap:
+00008Dr 1  20 rr rr     	jsr syspart_configsector_read
+000090r 1  8D 7F D6     	sta hypervisor_enterexit_trigger
+000093r 1               
+000093r 1               syspart_configsector_write_trap:
+000093r 1  20 rr rr     	jsr syspart_configsector_write
+000096r 1  8D 7F D6     	sta hypervisor_enterexit_trigger
+000099r 1               
+000099r 1               syspart_configsector_set_trap:
+000099r 1  20 rr rr     	jsr syspart_configsector_set
+00009Cr 1  8D 7F D6     	sta hypervisor_enterexit_trigger
+00009Fr 1               
+00009Fr 1               syspart_configsector_apply_trap:
+00009Fr 1  20 rr rr     	jsr syspart_configsector_apply
+0000A2r 1  8D 7F D6     	sta hypervisor_enterexit_trigger
+0000A5r 1               
+0000A5r 1               syspart_locate_freezeslot_trap:
+0000A5r 1  AE 41 D6     	ldx hypervisor_x
+0000A8r 1  20 rr rr     	jsr syspart_locate_freezeslot
+0000ABr 1  8D 7F D6     	sta hypervisor_enterexit_trigger
+0000AEr 1               
+0000AEr 1               .EXPORT syspart_locate_freezeslot
+0000AEr 1               syspart_locate_freezeslot:
+0000AEr 1               	; Get the first sector of a given freeze slot
+0000AEr 1               	; X = low byte of slot #
+0000AEr 1               	; Y = high byte of slot #
+0000AEr 1               
+0000AEr 1  DA           	phx
+0000AFr 1  5A           	phy
+0000B0r 1               
+0000B0r 1               	; Check that we have a system partition
+0000B0r 1  AD rr rr     	lda syspart_present
+0000B3r 1  D0 06        	bne splf1
+0000B5r 1  A9 FF        	lda #syspart_error_nosyspart
+0000B7r 1  8D rr rr     	sta syspart_error_code
+0000BAr 1  60           	rts
+0000BBr 1               splf1:
+0000BBr 1  20 rr rr     	jsr syspart_locate_freezeslot_0
+0000BEr 1               	; Now add freeze slot size x (YYXX) bytes
+0000BEr 1               	; This is needless to say a bit of a pain to calculate
+0000BEr 1               	; on an 8-bit integer-only CPU.  Our long-planned
+0000BEr 1               	; Integer Processing Unit (IPU) would be welcome exactly
+0000BEr 1               	; now, so that we could load in the multiplication inputs
+0000BEr 1               	; and read the outputs a convenient few cycles later.
+0000BEr 1               
+0000BEr 1               	; Set multiplicant inputs to multiplier
+0000BEr 1  A2 03        	ldx #$03
+0000C0r 1  BD rr rr     splf4:	lda syspart_freeze_slot_size_in_bytes,x
+0000C3r 1  9D 80 D7     	sta $d780,x
+0000C6r 1  CA           	dex
+0000C7r 1  10 F7        	bpl splf4
+0000C9r 1               
+0000C9r 1  FA           	plx
+0000CAr 1  8E 84 D7     	stx $d784
+0000CDr 1  7A           	ply
+0000CEr 1  8C 85 D7     	sty $d785
+0000D1r 1  A9 00        	lda #$00
+0000D3r 1  8D 86 D7     	sta $d786
+0000D6r 1  8D 87 D7     	sta $d787
+0000D9r 1               
+0000D9r 1               	; Read out answer, and add it to slot 0 address
+0000D9r 1  A2 03        	ldx #3
+0000DBr 1  18           	clc
+0000DCr 1  BD 88 D7     splf3:	lda $d788,x
+0000DFr 1  7D 81 D6     	adc $d681,x
+0000E2r 1  9D 81 D6     	sta $d681,x
+0000E5r 1  CA           	dex
+0000E6r 1  10 F4        	bpl splf3
+0000E8r 1               
+0000E8r 1  60           	rts
+0000E9r 1               
+0000E9r 1               syspart_locate_freezeslot_0:
+0000E9r 1               	; Freeze slot #0 starts at:
+0000E9r 1               	;   syspart_start_sector + syspart_freeze_area_start
+0000E9r 1               	; + syspart_freeze_directory_sector_count
+0000E9r 1  AD rr rr     	lda syspart_start_sector+0
+0000ECr 1  18           	clc
+0000EDr 1  6D rr rr     	adc syspart_freeze_area_start+0
+0000F0r 1  8D 81 D6     	sta $d681
+0000F3r 1  A2 01        	ldx #1
+0000F5r 1  BD rr rr     splf2:	lda syspart_start_sector,x
+0000F8r 1  7D rr rr     	adc syspart_freeze_area_start,x
+0000FBr 1  9D 81 D6     	sta $d681,x
+0000FEr 1  E8           	inx
+0000FFr 1  E0 04        	cpx #4
+000101r 1  D0 F2        	bne splf2
+000103r 1  AD 81 D6     	lda $d681
+000106r 1  18           	clc
+000107r 1  6D rr rr     	adc syspart_freeze_directory_sector_count+0
+00010Ar 1  8D 81 D6     	sta $d681
+00010Dr 1  AD 82 D6     	lda $d682
+000110r 1  6D rr rr     	adc syspart_freeze_directory_sector_count+1
+000113r 1  8D 82 D6     	sta $d682
+000116r 1  AD 83 D6     	lda $d683
+000119r 1  69 00        	adc #0
+00011Br 1  8D 83 D6     	sta $d683
+00011Er 1  AD 84 D6     	lda $d684
+000121r 1  69 00        	adc #0
+000123r 1  8D 84 D6     	sta $d684
+000126r 1               
+000126r 1  60           	rts
+000127r 1               
+000127r 1               
+000127r 1               syspart_configsector_set:
+000127r 1  A2 03        	ldx #3
+000129r 1  BD rr rr     spcr1:	lda syspart_start_sector,x
+00012Cr 1  9D 81 D6     	sta $d681,x
+00012Fr 1  CA           	dex
+000130r 1  10 F7        	bpl spcr1
+000132r 1  20 rr rr     	jsr sd_fix_sectornumber
+000135r 1  4C rr rr     	jmp sd_inc_fixedsectornumber
+000138r 1               
+000138r 1               syspart_configsector_read:
+000138r 1  20 rr rr     	jsr syspart_configsector_set
+00013Br 1  4C rr rr     	jmp sd_readsector
+00013Er 1               
+00013Er 1               syspart_configsector_write:
+00013Er 1  20 rr rr     	jsr syspart_configsector_set
+000141r 1  A9 03        	lda #$03
+000143r 1  8D 80 D6     	sta $d680
+000146r 1  38           	sec
+000147r 1  60           	rts
+000148r 1               
+000148r 1               syspart_configsector_apply:
+000148r 1               	; Check version
+000148r 1  AD 00 DE     	lda $de00
+00014Br 1  C9 01        	cmp #$01
+00014Dr 1  D0 2E        	bne syspart_config_invalid
+00014Fr 1  AD 01 DE     	lda $de01
+000152r 1  C9 01        	cmp #$01
+000154r 1  D0 27        	bne syspart_config_invalid
+000156r 1               
+000156r 1               	; Set PAL/NTSC mode
+000156r 1  AD 7F D6     	lda $d67f
+000159r 1  29 3F        	and #$3f
+00015Br 1  8D 7F D6     	sta $d67f
+00015Er 1  AD 02 DE     	lda $de02
+000161r 1  29 C0        	and #$c0
+000163r 1  0D 7F D6     	ora $d67f
+000166r 1  8D 7F D6     	sta $d67f
+000169r 1               
+000169r 1               	; Set audio options
+000169r 1  AD 03 DE     	lda $de03
+00016Cr 1  8D F9 D6     	sta $d6f9
+00016Fr 1               
+00016Fr 1               	; Set F011 to use 3.5" drive or disk images
+00016Fr 1  AD 04 DE     	lda $de04
+000172r 1  8D A1 D6     	sta $d6a1
+000175r 1               
+000175r 1               	; Enable/disable Amiga mouse support (emulates 1351 mouse)
+000175r 1  AD 05 DE     	lda $de05
+000178r 1  8D 1B D6     	sta $d61b
+00017Br 1               
+00017Br 1  38           	sec
+00017Cr 1  60           	rts
+00017Dr 1               
+00017Dr 1               syspart_config_invalid:
+00017Dr 1  18           	clc
+00017Er 1  60           	rts
+00017Fr 1               
+00017Fr 1               ; Magic string that identifies a MEGA65 system partition
+00017Fr 1               syspart_magic:
+00017Fr 1  4D 45 47 41  	.byte "MEGA65SYS00"
+000183r 1  36 35 53 59  
+000187r 1  53 30 30     
+00018Ar 1               
+00018Ar 1               msg_syspart_open_error:
+00018Ar 1  53 59 53 54  	.byte "SYSTEM PARTITION ERROR: (ERRNO: $$)",0
+00018Er 1  45 4D 20 50  
+000192r 1  41 52 54 49  
+0001AEr 1               msg_syspart_ok:
+0001AEr 1  53 59 53 54  	.byte "SYSTEM PARTITION OK",0
+0001B2r 1  45 4D 20 50  
+0001B6r 1  41 52 54 49  
+0001C2r 1               msg_syspart_info:
+0001C2r 1  53 59 53 50  	.byte "SYSPART: $$$$ FREEZE, $$$$ SERVICE SLOTS",0
+0001C6r 1  41 52 54 3A  
+0001CAr 1  20 24 24 24  
+0001EBr 1               msg_syspart_config_invalid:
+0001EBr 1  53 59 53 50  	.byte "SYSPART CONFIG INVALID. PLEASE SET.",0
+0001EFr 1  41 52 54 20  
+0001F3r 1  43 4F 4E 46  
+00020Fr 1               
+00020Fr 1               
+00020Fr 1               .EXPORT syspart_trap
+00020Fr 1               syspart_trap:
+00020Fr 1  78           	sei
+000210r 1  D8           	cld
+000211r 1  29 FE        	and #$fe
+000213r 1  AA           	tax
+000214r 1  7C rr rr     	jmp (syspart_trap_table,x)
+000217r 1               
+000217r 1               syspart_trap_table:
+000217r 1               	; $00-$0E
+000217r 1  rr rr        	.word syspart_configsector_read_trap
+000219r 1  rr rr        	.word syspart_configsector_write_trap
+00021Br 1  rr rr        	.word syspart_configsector_apply_trap
+00021Dr 1  rr rr        	.word syspart_configsector_set_trap
+00021Fr 1  rr rr        	.word invalid_subfunction
+000221r 1  rr rr        	.word invalid_subfunction
+000223r 1  rr rr        	.word invalid_subfunction
+000225r 1  rr rr        	.word invalid_subfunction
+000227r 1               
+000227r 1               	; $10-$1E
+000227r 1  rr rr        	.word syspart_locate_freezeslot_trap
+000229r 1  rr rr        	.word invalid_subfunction
+00022Br 1  rr rr        	.word invalid_subfunction
+00022Dr 1  rr rr        	.word invalid_subfunction
+00022Fr 1  rr rr        	.word invalid_subfunction
+000231r 1  rr rr        	.word invalid_subfunction
+000233r 1  rr rr        	.word invalid_subfunction
+000235r 1  rr rr        	.word invalid_subfunction
+000237r 1               
+000237r 1               	; $20-$2E
+000237r 1  rr rr        	.word invalid_subfunction
+000239r 1  rr rr        	.word invalid_subfunction
+00023Br 1  rr rr        	.word invalid_subfunction
+00023Dr 1  rr rr        	.word invalid_subfunction
+00023Fr 1  rr rr        	.word invalid_subfunction
+000241r 1  rr rr        	.word invalid_subfunction
+000243r 1  rr rr        	.word invalid_subfunction
+000245r 1  rr rr        	.word invalid_subfunction
+000247r 1               
+000247r 1               	; $30-$3E
+000247r 1  rr rr        	.word invalid_subfunction
+000249r 1  rr rr        	.word invalid_subfunction
+00024Br 1  rr rr        	.word invalid_subfunction
+00024Dr 1  rr rr        	.word invalid_subfunction
+00024Fr 1  rr rr        	.word invalid_subfunction
+000251r 1  rr rr        	.word invalid_subfunction
+000253r 1  rr rr        	.word invalid_subfunction
+000255r 1  rr rr        	.word invalid_subfunction
+000257r 1               
+000257r 1               	; $40-$4E
+000257r 1  rr rr        	.word invalid_subfunction
+000259r 1  rr rr        	.word invalid_subfunction
+00025Br 1  rr rr        	.word invalid_subfunction
+00025Dr 1  rr rr        	.word invalid_subfunction
+00025Fr 1  rr rr        	.word invalid_subfunction
+000261r 1  rr rr        	.word invalid_subfunction
+000263r 1  rr rr        	.word invalid_subfunction
+000265r 1  rr rr        	.word invalid_subfunction
+000267r 1               
+000267r 1               	; $50-$5E
+000267r 1  rr rr        	.word invalid_subfunction
+000269r 1  rr rr        	.word invalid_subfunction
+00026Br 1  rr rr        	.word invalid_subfunction
+00026Dr 1  rr rr        	.word invalid_subfunction
+00026Fr 1  rr rr        	.word invalid_subfunction
+000271r 1  rr rr        	.word invalid_subfunction
+000273r 1  rr rr        	.word invalid_subfunction
+000275r 1  rr rr        	.word invalid_subfunction
+000277r 1               
+000277r 1               	; $60-$6E
+000277r 1  rr rr        	.word invalid_subfunction
+000279r 1  rr rr        	.word invalid_subfunction
+00027Br 1  rr rr        	.word invalid_subfunction
+00027Dr 1  rr rr        	.word invalid_subfunction
+00027Fr 1  rr rr        	.word invalid_subfunction
+000281r 1  rr rr        	.word invalid_subfunction
+000283r 1  rr rr        	.word invalid_subfunction
+000285r 1  rr rr        	.word invalid_subfunction
+000287r 1               
+000287r 1               	; $70-$7E
+000287r 1  rr rr        	.word invalid_subfunction
+000289r 1  rr rr        	.word invalid_subfunction
+00028Br 1  rr rr        	.word invalid_subfunction
+00028Dr 1  rr rr        	.word invalid_subfunction
+00028Fr 1  rr rr        	.word invalid_subfunction
+000291r 1  rr rr        	.word invalid_subfunction
+000293r 1  rr rr        	.word invalid_subfunction
+000295r 1  rr rr        	.word invalid_subfunction
+000295r 1               

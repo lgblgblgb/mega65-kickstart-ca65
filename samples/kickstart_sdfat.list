@@ -1,0 +1,615 @@
+ca65 V2.15
+Main file   : kickstart_sdfat.a65
+Current file: kickstart_sdfat.a65
+
+000000r 1               ;======================================================================================
+000000r 1               ;======================================================================================
+000000r 1               ;======================================================================================
+000000r 1               ; These routines provide support for FAT32 and SDCARD support.
+000000r 1               
+000000r 1               
+000000r 1                       .include "kickstart.i65"
+000000r 2               ; My try to define some stuff can be included from every kickstart related sources.
+000000r 2               
+000000r 2               .SETCPU	"4510"	; Set CPU to "4510 mode"
+000000r 2               
+000000r 2               
+000000r 2               ; Try to make it clear that we want to use zero page addressing. The intended usage:
+000000r 2               ; LDA ZP(zp_temp_byte)
+000000r 2               ; I *think* it's may be better than this syntax which is even complained by ca65 as
+000000r 2               ; a warning:   LDA <zp_temp_byte
+000000r 2               
+000000r 2               .DEFINE ZP(n) .LOBYTE(n)
+000000r 2               
+000000r 2               .MACRO space label,bytes
+000000r 2               label: .res bytes
+000000r 2               .ENDMACRO
+000000r 2               
+000000r 2               
+000000r 1                       .include "kickstart_machine.a65"
+000000r 2               
+000000r 2               	reset_vector = $fffc
+000000r 2               	irq_vector = $fffe
+000000r 2               	nmi_vector = $fffa
+000000r 2               
+000000r 2               
+000000r 2               	hypervisor_a = $d640
+000000r 2               	hypervisor_x = $d641
+000000r 2               	hypervisor_y = $d642
+000000r 2               	hypervisor_z = $d643
+000000r 2               	hypervisor_b = $d644
+000000r 2               	hypervisor_spl = $d645
+000000r 2               	hypervisor_sph = $d646
+000000r 2               	hypervisor_flags = $d647
+000000r 2               	hypervisor_pcl = $d648
+000000r 2               	hypervisor_pch = $d649
+000000r 2               	hypervisor_maplolo = $d64a
+000000r 2               	hypervisor_maplohi = $d64b
+000000r 2               	hypervisor_maphilo = $d64c
+000000r 2               	hypervisor_maphihi = $d64d
+000000r 2               	hypervisor_maplomb = $d64e
+000000r 2               	hypervisor_maphimb = $d64f
+000000r 2               	hypervisor_cpuport00 = $d650
+000000r 2               	hypervisor_cpuport01 = $d651
+000000r 2               	hypervisor_iomode = $d652
+000000r 2               	hypervisor_dmagic_srcmb = $d653
+000000r 2               	hypervisor_dmagic_dstmb = $d654
+000000r 2               	hypervisor_dmagic_list0 = $d655
+000000r 2               	hypervisor_dmagic_list1 = $d656
+000000r 2               	hypervisor_dmagic_list2 = $d657
+000000r 2               	hypervisor_dmagic_list3 = $d658
+000000r 2               	hypervisor_hardware_virtualisation = $d659
+000000r 2               
+000000r 2               	; d65a
+000000r 2               	; d65b
+000000r 2               	; d65c
+000000r 2               
+000000r 2               	hypervisor_vm_currentpage_lo = $d65d
+000000r 2               	hypervisor_vm_currentpage_mid = $d65e
+000000r 2               	hypervisor_vm_currentpage_hi = $d65f
+000000r 2               
+000000r 2               	hypervisor_vm_pagetable = $d660
+000000r 2               	hypervisor_vm_pagetable0_logicalpage_lo = $d660
+000000r 2               	hypervisor_vm_pagetable0_logicalpage_hi = $d661
+000000r 2               	hypervisor_vm_pagetable0_physicalpage_lo = $d662
+000000r 2               	hypervisor_vm_pagetable0_physicalpage_hi = $d663
+000000r 2               	hypervisor_vm_pagetable1_logicalpage_lo = $d664
+000000r 2               	hypervisor_vm_pagetable1_logicalpage_hi = $d665
+000000r 2               	hypervisor_vm_pagetable1_physicalpage_lo = $d666
+000000r 2               	hypervisor_vm_pagetable1_physicalpage_hi = $d667
+000000r 2               	hypervisor_vm_pagetable2_logicalpage_lo = $d668
+000000r 2               	hypervisor_vm_pagetable2_logicalpage_hi = $d669
+000000r 2               	hypervisor_vm_pagetable2_physicalpage_lo = $d66a
+000000r 2               	hypervisor_vm_pagetable2_physicalpage_hi = $d66b
+000000r 2               	hypervisor_vm_pagetable3_logicalpage_lo = $d66c
+000000r 2               	hypervisor_vm_pagetable3_logicalpage_hi = $d66d
+000000r 2               	hypervisor_vm_pagetable3_physicalpage_lo = $d66e
+000000r 2               	hypervisor_vm_pagetable3_physicalpage_hi = $d66f
+000000r 2               
+000000r 2               	hypervisor_georam_base_mb = $d670
+000000r 2               	hypervsior_georam_block_mask = $d671
+000000r 2               
+000000r 2               	; d672 110 010
+000000r 2               	hypervisor_secure_mode_flags = $d672
+000000r 2               
+000000r 2               	; d673
+000000r 2               	; d674
+000000r 2               	; d675
+000000r 2               	; d676
+000000r 2               	; d677
+000000r 2               	; d678
+000000r 2               	; d679
+000000r 2               	; d67a
+000000r 2               	; d67b
+000000r 2               
+000000r 2               	hypervisor_write_char_to_serial_monitor = $d67c
+000000r 2               
+000000r 2               	hypervisor_feature_enables = $d67d
+000000r 2               	hypervisor_kickedup_flag = $d67e
+000000r 2               	hypervisor_cartridge_flags = $d67e
+000000r 2               	hypervisor_enterexit_trigger = $d67f
+000000r 2               
+000000r 2               	; Where sector buffer maps (over = $DE00-$DFFF IO expansion space)
+000000r 2               	sd_sectorbuffer = $DE00
+000000r 2               	sd_address_byte0 = $D681
+000000r 2               	sd_address_byte1 = $D682
+000000r 2               	sd_address_byte2 = $D683
+000000r 2               	sd_address_byte3 = $D684
+000000r 2               
+000000r 2               	fpga_switches_low = $d6ec
+000000r 2               	fpga_switches_high = $d6ed
+000000r 2               
+000000r 2               	VICIV_MAGIC = $d02f
+000000r 2               
+000000r 2               ; LGB moved here
+000000r 2               
+000000r 2               ; Current file descriptors
+000000r 2               ; Each descriptor has:
+000000r 2               ;   disk id : 1 byte ($00-$07 = file open, $FF = file closed)
+000000r 2               ;   access mode : 1 byte ($00 = read only)
+000000r 2               ;   start cluster : 4 bytes
+000000r 2               ;   current cluster : 4 bytes
+000000r 2               ;   current sector in cluster : 1 byte
+000000r 2               ;   offset in sector: 2 bytes
+000000r 2               ;   file offset / $100 : 3 bytes
+000000r 2               ;
+000000r 2               
+000000r 2                   dos_filedescriptor_max = 4
+000000r 2                   dos_filedescriptor_offset_diskid = 0
+000000r 2                   dos_filedescriptor_offset_mode = 1
+000000r 2                   dos_filedescriptor_offset_startcluster = 2
+000000r 2                   dos_filedescriptor_offset_currentcluster = 6
+000000r 2               ;
+000000r 2               ; These last three fields must be contiguous, as dos_open_current_file
+000000r 2               ; relies on it.
+000000r 2               ;
+000000r 2                   dos_filedescriptor_offset_sectorincluster = 10
+000000r 2                   dos_filedescriptor_offset_offsetinsector = 11
+000000r 2                   dos_filedescriptor_offset_fileoffset = 13
+000000r 2               
+000000r 2               ;
+000000r 2                               ; WARNING: dos_readdir_read_next_entry uses carnal knowledge about the following
+000000r 2                               ;          structure, particularly the length as calculated here:
+000000r 2                               ;
+000000r 2                               dos_dirent_structure_length =  64+1+11+4+4+1
+000000r 2               
+000000r 2               dos_max_disks = 6
+000000r 2               
+000000r 2               dos_errorcode_invalid_address = $10
+000000r 2               dos_errorcode_read_timeout = $07
+000000r 2               
+000000r 2               syspart_error_nosyspart = $ff
+000000r 2               
+000000r 2               
+000000r 1               
+000000r 1               .SEGMENT "CODE"
+000000r 1               
+000000r 1               
+000000r 1               .autoimport +
+000000r 1               
+000000r 1               
+000000r 1               
+000000r 1               ;;; ----------------------------------------------------------------------------
+000000r 1               ;;; FAT file system routines
+000000r 1               ;;; ----------------------------------------------------------------------------
+000000r 1               ;
+000000r 1               .EXPORT toupper
+000000r 1               toupper:	; convert ASCII character to upper case
+000000r 1               		;
+000000r 1               		; INPUT:  .A is the ASCII char to convert up uppercase
+000000r 1               		; OUTPUT: .A will hold the resulting uppersace
+000000r 1               		;
+000000r 1               		; BG has not verified this yet
+000000r 1               		;
+000000r 1  C9 60        		cmp #$60
+000002r 1  90 06        		bcc tu1
+000004r 1  C9 7A        		cmp #$7a
+000006r 1  B0 02        		bcs tu1
+000008r 1  29 5F        		and #$5f
+00000Ar 1  60           tu1:		rts
+00000Br 1               
+00000Br 1               
+00000Br 1               
+00000Br 1               ;;; ----------------------------------------------------------------------------
+00000Br 1               ;;; MBP / partition routines
+00000Br 1               ;;; ----------------------------------------------------------------------------
+00000Br 1               ;
+00000Br 1               ; read master boot record. Does not sanity check anything.
+00000Br 1               ;
+00000Br 1               .EXPORT readmbr
+00000Br 1               readmbr:
+00000Br 1               		; begin by resetting SD card
+00000Br 1               		;
+00000Br 1               
+00000Br 1  20 rr rr     	jsr checkpoint
+00000Er 1  00 52 65 73  	.byte 0,"Resetting SDCARD",0
+000012r 1  65 74 74 69  
+000016r 1  6E 67 20 53  
+000020r 1               
+000020r 1  20 rr rr     		jsr sd_resetsequence
+000023r 1  B0 1D        		bcs l7
+000025r 1  20 rr rr     	jsr checkpoint
+000028r 1  00 46 41 49  	.byte 0,"FAILED resetting SDCARD",0
+00002Cr 1  4C 45 44 20  
+000030r 1  72 65 73 65  
+000041r 1  60           		rts
+000042r 1               
+000042r 1               l7:
+000042r 1               		; MBR is sector 0
+000042r 1               		;
+000042r 1  A9 00        		lda #$00
+000044r 1  8D 81 D6     		sta sd_address_byte0 ; is $D681
+000047r 1  8D 82 D6     		sta sd_address_byte1 ; is $d682
+00004Ar 1  8D 83 D6     		sta sd_address_byte2 ; is $d683
+00004Dr 1  8D 84 D6     		sta sd_address_byte3 ; is $d684
+000050r 1               
+000050r 1               		; Work out if SD card or SDHC card
+000050r 1               		; SD cards only read on 512 byte aligned addresses.
+000050r 1               		; SDHC addresses by sector, so all addresses are valid
+000050r 1               		; Attempt non-aligned read
+000050r 1  A9 02        		lda #$02
+000052r 1  8D 81 D6     		sta sd_address_byte0
+000055r 1  8D 80 D6     		sta $d680
+000058r 1               sdhccheckwait:
+000058r 1  20 rr rr     		jsr sdreadytest
+00005Br 1  B0 14        		bcs issdhc
+00005Dr 1  D0 F9        		bne sdhccheckwait
+00005Fr 1               
+00005Fr 1               		; Normal SD (SDSC) card
+00005Fr 1               
+00005Fr 1               		; Reset after SDHC test for normal SD mode
+00005Fr 1  20 rr rr     		jsr sd_resetsequence
+000062r 1               
+000062r 1  A9 00        		lda #$00
+000064r 1  8D 81 D6     		sta sd_address_byte0
+000067r 1               
+000067r 1  A2 rr        		ldx #<msg_foundsdcard
+000069r 1  A0 rr        		ldy #>msg_foundsdcard
+00006Br 1  20 rr rr     		jsr printmessage
+00006Er 1               
+00006Er 1  4C rr rr     		jmp sd_readsector
+000071r 1               
+000071r 1               issdhc:
+000071r 1  A2 rr        		ldx #<msg_foundsdhccard
+000073r 1  A0 rr        		ldy #>msg_foundsdhccard
+000075r 1  20 rr rr     		jsr printmessage
+000078r 1               
+000078r 1               		; set SDHC flag
+000078r 1  A9 41        		lda #$41
+00007Ar 1  8D 80 D6     		sta $d680
+00007Dr 1               
+00007Dr 1  4C rr rr     		jmp sd_readsector
+000080r 1               
+000080r 1               ;;; ----------------------------------------------------------------------------
+000080r 1               ;;; SD Card access routines
+000080r 1               ;;; ----------------------------------------------------------------------------
+000080r 1               ;
+000080r 1               sd_resetsequence:
+000080r 1               		; write $00 to $D680 to start reset
+000080r 1               		;
+000080r 1               
+000080r 1               		; Clear SDHC flag
+000080r 1  A9 40        		lda #$40
+000082r 1  8D 80 D6     		sta $d680
+000085r 1               
+000085r 1  A9 00        		lda #$00
+000087r 1  8D 80 D6     		sta $D680
+00008Ar 1  20 rr rr     		jsr sdtimeoutreset
+00008Dr 1  20 rr rr     re1:		jsr sdreadytest
+000090r 1  B0 03        		bcs re1done	; success, so return
+000092r 1  D0 F9        		bne re1		; not timed out, so keep trying
+000094r 1  60           		rts		; timeout, so return
+000095r 1               
+000095r 1               re1done:
+000095r 1               		; write $01 to $D680 to complete reset
+000095r 1               		;
+000095r 1  A9 01        		lda #$01
+000097r 1  8D 80 D6     		sta $D680
+00009Ar 1  20 rr rr     		jsr sdtimeoutreset
+00009Dr 1  20 rr rr     re2:		jsr sdreadytest
+0000A0r 1  B0 03        		bcs re2done	; success, so return
+0000A2r 1  D0 F9        		bne re2		; not timed out, so keep trying
+0000A4r 1  60           		rts		; timeout, so return
+0000A5r 1               
+0000A5r 1               re2done:
+0000A5r 1               		; give card some time to settle after reset, otherwise
+0000A5r 1               		; reading sectors will fail
+0000A5r 1               		;
+0000A5r 1  20 rr rr     		jsr sdwaitawhile
+0000A8r 1               
+0000A8r 1  20 rr rr     		jsr sd_map_sectorbuffer
+0000ABr 1               
+0000ABr 1               		; write $02 to $D680 to read MBR as a test of reset
+0000ABr 1               		;
+0000ABr 1  A9 02        		lda #$02	;B#0000.0010
+0000ADr 1  8D 80 D6     		sta $D680
+0000B0r 1  20 rr rr     		jsr sdtimeoutreset
+0000B3r 1               
+0000B3r 1               re3:		; allow time for read to happen
+0000B3r 1  AD 80 D6     		lda $d680
+0000B6r 1  20 rr rr     		jsr sdreadytest
+0000B9r 1  B0 03        		bcs redone	; success, so return
+0000BBr 1  D0 F6        		bne re3		; not timed out, so keep trying
+0000BDr 1               			; timeout -- so call reset again
+0000BDr 1  60           		rts
+0000BEr 1               
+0000BEr 1               redone:
+0000BEr 1  38           		sec
+0000BFr 1  60           		rts
+0000C0r 1               
+0000C0r 1               ;	========================
+0000C0r 1               
+0000C0r 1               		; Watch for ethernet packets while waiting for the SD card.
+0000C0r 1               		; this allows loading of code into the hypervisor for testing and
+0000C0r 1               		; bare-metal operation.
+0000C0r 1               		;
+0000C0r 1               .EXPORT sdwaitawhile
+0000C0r 1               sdwaitawhile:
+0000C0r 1  20 rr rr     		jsr sdtimeoutreset
+0000C3r 1               
+0000C3r 1               sw1:
+0000C3r 1  EE rr rr     		inc sdcounter+0
+0000C6r 1  D0 FB        		bne sw1
+0000C8r 1  EE rr rr     		inc sdcounter+1
+0000CBr 1  D0 F6        		bne sw1
+0000CDr 1  EE rr rr     		inc sdcounter+2
+0000D0r 1  D0 F1        		bne sw1
+0000D2r 1  60           		rts
+0000D3r 1               
+0000D3r 1               ;	========================
+0000D3r 1               
+0000D3r 1               sdtimeoutreset:
+0000D3r 1               		; count to timeout value when trying to read from SD card
+0000D3r 1               		; (if it is too short, the SD card won't reset)
+0000D3r 1               		;
+0000D3r 1  A9 00        		lda #$00
+0000D5r 1  8D rr rr     		sta sdcounter+0
+0000D8r 1  8D rr rr     		sta sdcounter+1
+0000DBr 1  A9 F7        		lda #$f7
+0000DDr 1  8D rr rr     		sta sdcounter+2
+0000E0r 1  60           		rts
+0000E1r 1               
+0000E1r 1               ;	========================
+0000E1r 1               
+0000E1r 1               sdreadytest:	; check if SD card is ready, or if timeout has occurred
+0000E1r 1               		; C is set if ready.
+0000E1r 1               		; Z is set if timeout has occurred.
+0000E1r 1               		;
+0000E1r 1  AD 80 D6     		lda $d680
+0000E4r 1  29 03        		and #$03
+0000E6r 1  F0 13        		beq sdisready
+0000E8r 1  EE rr rr     		inc sdcounter+0
+0000EBr 1  D0 0C        		bne sr1
+0000EDr 1  EE rr rr     		inc sdcounter+1
+0000F0r 1  D0 07        		bne sr1
+0000F2r 1  EE rr rr     		inc sdcounter+2
+0000F5r 1  D0 02        		bne sr1
+0000F7r 1               
+0000F7r 1               		; timeout
+0000F7r 1               		;
+0000F7r 1  A9 00        		lda #$00 ; set Z
+0000F9r 1               
+0000F9r 1  18           sr1:		clc
+0000FAr 1  60           		rts
+0000FBr 1               
+0000FBr 1  38           sdisready:	sec
+0000FCr 1  60           		rts
+0000FDr 1               
+0000FDr 1               ;	========================
+0000FDr 1               .EXPORT sd_map_sectorbuffer
+0000FDr 1               sd_map_sectorbuffer:
+0000FDr 1               
+0000FDr 1               ; BG this clobbers .A, maybe we should protect .A as the UNMAP-function does? (see below)
+0000FDr 1               
+0000FDr 1  A9 81        		lda #$81
+0000FFr 1  8D 80 D6     		sta $D680
+000102r 1  38           		sec
+000103r 1  60           		rts
+000104r 1               
+000104r 1               ;	========================
+000104r 1               
+000104r 1               .EXPORT sd_unmap_sectorbuffer
+000104r 1               sd_unmap_sectorbuffer:
+000104r 1               
+000104r 1  48           		pha
+000105r 1  A9 82        		lda #$82
+000107r 1  8D 80 D6     		sta $D680
+00010Ar 1  68           		pla
+00010Br 1  38           		sec
+00010Cr 1  60           		rts
+00010Dr 1               
+00010Dr 1               
+00010Dr 1               ;	========================
+00010Dr 1               
+00010Dr 1               ;======================================================================================
+00010Dr 1               ;====below function is self-contained==================================================
+00010Dr 1               ;======================================================================================
+00010Dr 1               
+00010Dr 1               .EXPORT sd_readsector
+00010Dr 1               sd_readsector:
+00010Dr 1               		; Assumes fixed sector number (or byte address in case of SD cards)
+00010Dr 1               		; is loaded into $D681 - $D684
+00010Dr 1               
+00010Dr 1               		; print out debug info
+00010Dr 1               		;
+00010Dr 1               ;		jsr printsectoraddress	; to screen
+00010Dr 1               
+00010Dr 1  20 rr rr     		jsr dumpsectoraddress	; checkpoint message
+000110r 1               
+000110r 1               		; check if sd card is busy
+000110r 1               		;
+000110r 1  AD 80 D6     		lda $d680
+000113r 1  29 01        		and #$01
+000115r 1  D0 5E        		bne rsbusyfail
+000117r 1               
+000117r 1               		;
+000117r 1  4C rr rr     		jmp rs4		; skipping the redoread-delay below
+00011Ar 1               
+00011Ar 1               ;	========================
+00011Ar 1               
+00011Ar 1               redoread:
+00011Ar 1               		; redo-read delay
+00011Ar 1               		;
+00011Ar 1               		; when retrying, introduce a delay.  This seems to be needed often
+00011Ar 1               		; when reading the first sector after SD card reset.
+00011Ar 1               		;
+00011Ar 1               		; print out a debug message to indicate RE-reading (ie previous read failed)
+00011Ar 1               		;
+00011Ar 1  A2 rr        		ldx #<msg_sdredoread
+00011Cr 1  A0 rr        		ldy #>msg_sdredoread
+00011Er 1  20 rr rr     		jsr printmessage
+000121r 1               
+000121r 1  20 rr rr     	jsr checkpoint			; we never want to do a redo-read
+000124r 1  00 45 52 52  	.byte 0,"ERROR redoread:",0
+000128r 1  4F 52 20 72  
+00012Cr 1  65 64 6F 72  
+000135r 1               
+000135r 1  A2 F0        		ldx #$f0
+000137r 1  A0 00        		ldy #$00
+000139r 1  A3 00        		ldz #$00
+00013Br 1  1B           r1:		inz
+00013Cr 1  D0 FD        		bne r1
+00013Er 1  C8           		iny
+00013Fr 1  D0 FA        		bne r1
+000141r 1  E8           		inx
+000142r 1  D0 F7        		bne r1
+000144r 1               
+000144r 1               rs4:
+000144r 1               
+000144r 1               		; ask for sector to be read
+000144r 1               		;
+000144r 1  A9 02        		lda #$02
+000146r 1  8D 80 D6     		sta $d680
+000149r 1               
+000149r 1               		; wait for sector to be read
+000149r 1               		;
+000149r 1  20 rr rr     		jsr sdtimeoutreset
+00014Cr 1               rs3:
+00014Cr 1  20 rr rr     		jsr sdreadytest
+00014Fr 1  B0 04        		bcs rsread	;yes, sdcard is ready
+000151r 1  D0 F9        		bne rs3		; not ready, so check if ready now?
+000153r 1  F0 02        		beq rereadsector	;Z was set, ie timeout
+000155r 1               rsread:
+000155r 1  38           		sec
+000156r 1  60           		rts
+000157r 1               
+000157r 1               ;	========================
+000157r 1               
+000157r 1               rereadsector:
+000157r 1               		; reset sd card and try again
+000157r 1               		;
+000157r 1               
+000157r 1  20 rr rr     		jsr checkpoint			; we should never get here
+00015Ar 1  00 45 52 52  		.byte 0,"ERROR rereadsector:",0
+00015Er 1  4F 52 20 72  
+000162r 1  65 72 65 61  
+00016Fr 1               
+00016Fr 1  20 rr rr     		jsr sd_resetsequence
+000172r 1  4C rr rr     		jmp rs4
+000175r 1               
+000175r 1               rsbusyfail:     ; fail
+000175r 1               		;
+000175r 1  A9 07        		lda #dos_errorcode_read_timeout
+000177r 1  8D rr rr     		sta dos_error_code
+00017Ar 1  20 rr rr     		jsr checkpoint			; we should not ever get here
+00017Dr 1  00 45 52 52  		.byte 0,"ERROR rsbusyfail:",0
+000181r 1  4F 52 20 72  
+000185r 1  73 62 75 73  
+000190r 1               
+000190r 1  18           		clc
+000191r 1  60           		rts
+000192r 1               
+000192r 1               ;======================================================================================
+000192r 1               ;====above function is self-contained==================================================
+000192r 1               ;======================================================================================
+000192r 1               
+000192r 1               .EXPORT sd_inc_fixedsectornumber
+000192r 1               sd_inc_fixedsectornumber:
+000192r 1               
+000192r 1               		; increment fixed sector number.
+000192r 1               		; if SDHC, then increment is simple.
+000192r 1               		; if SD, then we add $200
+000192r 1               		;
+000192r 1  AD 80 D6     		lda $D680
+000195r 1  29 10        		and #$10	;B#0001.0000
+000197r 1  D0 1A        		bne sdhc1	;branch if clear
+000199r 1               
+000199r 1               		; sd card mode: add $200
+000199r 1               		;
+000199r 1  AD 82 D6     		lda sd_address_byte1 ;d682
+00019Cr 1  18           		clc
+00019Dr 1  69 02        		adc #$02
+00019Fr 1  8D 82 D6     		sta sd_address_byte1 ;d682
+0001A2r 1               
+0001A2r 1  AD 83 D6     		lda sd_address_byte2 ;d683
+0001A5r 1  69 00        		adc #$00
+0001A7r 1  8D 83 D6     		sta sd_address_byte2 ;d683
+0001AAr 1               
+0001AAr 1  AD 84 D6     		lda sd_address_byte3 ;d684
+0001ADr 1  69 00        		adc #$00
+0001AFr 1  8D 84 D6     		sta sd_address_byte3 ;d684
+0001B2r 1  60           		rts
+0001B3r 1               
+0001B3r 1               ;	========================
+0001B3r 1               
+0001B3r 1               sdhc1:		; SDHC card mode: add 1
+0001B3r 1               		;
+0001B3r 1               
+0001B3r 1  EE 81 D6     		inc sd_address_byte0
+0001B6r 1  D0 0D        		bne s1
+0001B8r 1  EE 82 D6     		inc sd_address_byte1
+0001BBr 1  D0 08        		bne s1
+0001BDr 1  EE 83 D6     		inc sd_address_byte2
+0001C0r 1  D0 03        		bne s1
+0001C2r 1  EE 84 D6     		inc sd_address_byte3
+0001C5r 1               s1:
+0001C5r 1  60           		rts
+0001C6r 1               
+0001C6r 1               ;	========================
+0001C6r 1               
+0001C6r 1               .EXPORT sd_fix_sectornumber
+0001C6r 1               sd_fix_sectornumber:
+0001C6r 1               		; assumes sector number has been loaded into
+0001C6r 1               		; $D681 - $D684
+0001C6r 1               		;
+0001C6r 1               		; We need to check if the card is SDHC or SD.
+0001C6r 1               		; - If SD, we need to shift sector number left 9 bits,
+0001C6r 1               		;   as SD cards address by byte, not sector.
+0001C6r 1               		; - If card is SD, then shift it all left nine bits.
+0001C6r 1               		;
+0001C6r 1               		; We detect SD versus SDHC by reading whether SD controller is
+0001C6r 1               		; in SDHC or SD mode.
+0001C6r 1               		;
+0001C6r 1  AD 80 D6     		lda $D680
+0001C9r 1  29 10        		and #$10
+0001CBr 1  F0 01        		beq sdcardmode
+0001CDr 1               
+0001CDr 1               		; SDHC mode, so nothing to do
+0001CDr 1               		;
+0001CDr 1               
+0001CDr 1  60           		rts
+0001CEr 1               
+0001CEr 1               ;	========================
+0001CEr 1               
+0001CEr 1               sdcardmode:
+0001CEr 1               		; multiply the current address by $200
+0001CEr 1               
+0001CEr 1               		;	jsr checkpoint
+0001CEr 1               		;	.byte 0,"SDcard mode, ie not SDHC, so x$200",0
+0001CEr 1               
+0001CEr 1               		; shift right 8 bits first
+0001CEr 1               		;
+0001CEr 1  AD 83 D6     		lda $D683
+0001D1r 1  8D 84 D6     		sta $D684
+0001D4r 1  AD 82 D6     		lda $D682
+0001D7r 1  8D 83 D6     		sta $D683
+0001DAr 1  AD 81 D6     		lda $D681
+0001DDr 1  8D 82 D6     		sta $D682
+0001E0r 1  A9 00        		lda #$00
+0001E2r 1  8D 81 D6     		sta $D681
+0001E5r 1               
+0001E5r 1               		; now shift it all left one bit
+0001E5r 1               		;
+0001E5r 1  AD 82 D6     		lda $D682
+0001E8r 1  0A           		asl
+0001E9r 1  8D 82 D6     		sta $D682
+0001ECr 1  AD 83 D6     		lda $D683
+0001EFr 1  2A           		rol
+0001F0r 1  8D 83 D6     		sta $D683
+0001F3r 1  AD 84 D6     		lda $D684
+0001F6r 1  2A           		rol
+0001F7r 1  8D 84 D6     		sta $D684
+0001FAr 1  60           		rts
+0001FBr 1               
+0001FBr 1               
+0001FBr 1               
+0001FBr 1               
+0001FBr 1               
+0001FBr 1               
+0001FBr 1               ;	========================
+0001FBr 1               
+0001FBr 1               
+0001FBr 1               
+0001FBr 1               
+0001FBr 1               
+0001FBr 1               
