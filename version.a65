@@ -1,0 +1,3 @@
+;msg_gitcommit: .byte "GIT: px100m,94c613b,20180126.03",0
+msg_gitcommit:  .byte "LGB-CA65-LGB-CA65-LGB-CA65-LGB!",0
+

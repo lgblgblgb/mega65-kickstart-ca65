@@ -1,0 +1,16 @@
+; My try to define some stuff can be included from every kickstart related sources.
+
+.SETCPU	"4510"	; Set CPU to "4510 mode"
+
+
+; Try to make it clear that we want to use zero page addressing. The intended usage:
+; LDA ZP(zp_temp_byte)
+; I *think* it's may be better than this syntax which is even complained by ca65 as
+; a warning:   LDA <zp_temp_byte
+
+.DEFINE ZP(n) .LOBYTE(n)
+
+.MACRO space label,bytes
+label: .res bytes
+.ENDMACRO
+
