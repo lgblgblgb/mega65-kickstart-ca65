@@ -32,7 +32,7 @@ $(TARGET): $(OBJECTS) $(LD65CFG) Makefile
 	$(MAKE) $(DIFF)
 	ls -l $(TARGET) $(DIFF)
 
-%.o: %.a65 $(INCLUDES) Makefile
+%.o: %.a65 $(INCLUDES) $(LD65CFG) Makefile
 	$(CA65) $(CA65FLAGS) -l $(@:.o=.list) -o $@ $<
 
 board:	$(TARGET)

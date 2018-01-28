@@ -3232,7 +3232,7 @@ syspart_present:
 
 ;		.checkpc $BF00
 ;		.advance $BF00,$3e
-.SEGMENT "ZEROPAGE"
+.SEGMENT "HYPERZP"
 
 		; Temporary vector storage for DOS
 		;

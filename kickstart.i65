@@ -111,6 +111,9 @@ label: .res bytes
 	VICIV_MAGIC = $d02f
 
 ; LGB moved here
+; FIXME: some stuffs are needed to be moved here, as they like a constant etc, but used at various places.
+; Surely a "constant" can be IMPORT'ed as well but it's problematic espcially if it's used in LDA #... or such
+; when it's need to be faked as "ZP" :-O Too confusing.
 
 ; Current file descriptors
 ; Each descriptor has:
